@@ -1,0 +1,14 @@
+# Default reviewers for all PRs · Tüm PR'lar için varsayılan inceleyiciler
+*                       @your-org/core-engineering
+
+# Infrastructure and DevOps files · Altyapı ve DevOps dosyaları
+/infrastructure/        @your-org/devops-team
+/terraform/             @your-org/devops-team
+*.dockerfile            @your-org/devops-team
+docker-compose*.yml     @your-org/devops-team
+
+# CI/CD Workflows · CI/CD İş Akışları
+/.github/workflows/     @your-org/devops-team @your-org/tech-leads
+
+# Documentation · Dokümantasyon
+/docs/                  @your-org/tech-leads
