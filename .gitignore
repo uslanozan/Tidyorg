@@ -1,7 +1,6 @@
 # ─── Terraform ───────────────────────────────────────────
 # Local .terraform directory (provider binaries, modules cache)
 .terraform/
-.terraform.lock.hcl
 
 # State files — managed by HCP Terraform Cloud, never commit locally
 *.tfstate
