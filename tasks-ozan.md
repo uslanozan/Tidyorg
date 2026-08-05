@@ -9,7 +9,7 @@
 ## Hafta 1 — Proje Altyapısı & GitHub Templates
 
 ### 📦 Proje Yapısı
-- [ ] Klasör yapısını oluştur:
+- [x] Klasör yapısını oluştur:
   ```
   Tidyorg/
   ├── terraform/
@@ -29,7 +29,7 @@
   │   └── adr/
   └── presentation/
   ```
-- [ ] `.gitignore` — Genel + Terraform kuralları
+- [x] `.gitignore` — Genel + Terraform kuralları
   ```gitignore
   # Terraform
   .terraform/
@@ -50,41 +50,53 @@
   .DS_Store
   Thumbs.db
   ```
-- [ ] İlk commit: `chore(repo): initialize project structure`
+- [x] İlk commit: `chore(repo): initialize project structure`
 
 ### 📝 Issue Templates (YAML Forms)
-- [ ] `templates/.github/ISSUE_TEMPLATE/bug_report.yml`
-  - [ ] Bug description (zorunlu, textarea)
-  - [ ] Steps to reproduce (zorunlu, textarea, pre-filled template)
-  - [ ] Expected behavior (zorunlu, textarea)
-  - [ ] Actual behavior (zorunlu, textarea)
-  - [ ] Severity dropdown (Critical / High / Medium / Low)
-  - [ ] Environment bilgisi (opsiyonel, textarea)
-  - [ ] Screenshots / Logs (opsiyonel, textarea)
-  - [ ] Auto-label: `type: bug`
+- [x] `templates/.github/ISSUE_TEMPLATE/bug_report.yml`
+  - [x] Bug description (zorunlu, textarea)
+  - [x] Steps to reproduce (zorunlu, textarea, pre-filled template)
+  - [x] Expected behavior (zorunlu, textarea)
+  - [x] Actual behavior (zorunlu, textarea)
+  - [x] Severity dropdown (Critical / High / Medium / Low)
+  - [x] Environment bilgisi (opsiyonel, textarea)
+  - [x] Screenshots / Logs (opsiyonel, textarea)
+  - [x] Auto-label: `type: bug`
 
-- [ ] `templates/.github/ISSUE_TEMPLATE/feature_request.yml`
-  - [ ] Feature description (zorunlu)
-  - [ ] Motivation / business value (zorunlu)
-  - [ ] Acceptance criteria (zorunlu)
-  - [ ] Alternative solutions (opsiyonel)
-  - [ ] Design notes / mockups (opsiyonel)
-  - [ ] Auto-label: `type: feature`
+- [x] `templates/.github/ISSUE_TEMPLATE/feature_request.yml`
+  - [x] Feature description (zorunlu)
+  - [x] Motivation / business value (zorunlu)
+  - [x] Acceptance criteria (zorunlu)
+  - [x] Alternative solutions (opsiyonel)
+  - [x] Design notes / mockups (opsiyonel)
+  - [x] Auto-label: `type: feature`
 
-- [ ] `templates/.github/ISSUE_TEMPLATE/config.yml`
-  - [ ] `blank_issues_enabled: false`
-  - [ ] Discussions linki
-  - [ ] Documentation linki
+- [x] `templates/.github/ISSUE_TEMPLATE/config.yml`
+  - [x] `blank_issues_enabled: false`
+  - [x] Discussions linki
+  - [x] Documentation linki
+  - [x] _(ek)_ Security policy linki
 
 ### 📝 PR Template
-- [ ] `templates/.github/PULL_REQUEST_TEMPLATE.md`
-  - [ ] "What does this PR do?" bölümü
-  - [ ] "Why is this change needed?" bölümü + `Closes #` linki
-  - [ ] "How was this tested?" bölümü
-  - [ ] Checklist: tests pass, docs updated, conventional commits
-  - [ ] Screenshots bölümü (UI değişiklikleri için)
+- [x] `templates/.github/PULL_REQUEST_TEMPLATE.md`
+  - [x] "What does this PR do?" bölümü → _"What changed?"_ olarak yazıldı
+  - [x] "Why is this change needed?" bölümü + `Closes #` linki → _"Why?"_
+  - [x] "How was this tested?" bölümü → _"Testing / Validation"_ + Validation notes alanı
+  - [x] Checklist: tests pass, docs updated, conventional commits
+  - [x] Screenshots bölümü (UI değişiklikleri için)
+  - [x] _(ek)_ "Type of change" — SemVer etkisiyle birlikte
+  - [x] _(ek)_ "Semantic commit checklist"
+  - [x] _(ek)_ "Release impact" — migration/manuel adım uyarısı dahil
 
-- [ ] ✅ **Hafta Sonu Sync:** Emre'nin PR'larını review et
+### 🌐 Dil Konvansiyonu _(plan dışı, Hafta 1'de karara bağlandı)_
+- [x] `docs/notes/language-convention.md` — okunan Türkçe, çalıştırılan İngilizce, doldurulan iki dilli (English first)
+- [x] Template'ler tek dosya içinde iki dilli hâle getirildi (`EN · TR`)
+
+### 🔐 Auth Stratejisi _(plan dışı, Emre'nin görevini etkiliyor)_
+- [x] `docs/notes/github-auth-strategy.md` — classic PAT yerine GitHub App önerisi
+- [ ] Emre bu notu review etsin ve `tasks-emre.md`'deki PAT satırını güncellesin
+
+- [ ] ✅ **Hafta Sonu Sync:** Emre'nin PR'larını review et _(Emre'nin henüz PR'ı yok — bekliyor)_
 
 ---
 
