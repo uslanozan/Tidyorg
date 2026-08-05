@@ -1,0 +1,121 @@
+name: 🐛 Bug Report · Hata Bildirimi
+description: Report something broken or misbehaving · Bozuk ya da beklendiği gibi çalışmayan bir şeyi bildir
+title: "[Bug]: "
+labels: ["type: bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **EN** — A reproducible report is worth ten vague ones. The more precisely you
+        describe the failure, the faster it gets fixed. Please
+        [search existing issues](../issues?q=is%3Aissue+label%3A%22type%3A+bug%22) first to avoid duplicates.
+
+        **TR** — Tekrar üretilebilir tek bir rapor, muğlak on rapordan değerlidir. Hatayı ne
+        kadar net anlatırsan o kadar hızlı düzeltilir. Mükerrer kayıt olmaması için lütfen önce
+        [mevcut issue'lara bak](../issues?q=is%3Aissue+label%3A%22type%3A+bug%22).
+
+        ℹ️ You may fill this form in **English or Turkish**. · Formu **İngilizce ya da Türkçe** doldurabilirsin.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug description · Hata açıklaması
+      description: |
+        EN — What is broken? One or two sentences — details go in the fields below.
+        TR — Ne bozuk? Bir iki cümle; detaylar aşağıdaki alanlara.
+      placeholder: Uploading an avatar larger than 2 MB returns a 500 instead of a validation error.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to reproduce · Tekrar adımları
+      description: |
+        EN — Exact steps to trigger the bug, starting from a clean state.
+        TR — Hatayı tetikleyen adımlar, temiz bir başlangıç durumundan itibaren.
+      value: |
+        1.
+        2.
+        3.
+        4. → Error / Hata:
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior · Beklenen davranış
+      description: |
+        EN — What should have happened?
+        TR — Ne olması gerekiyordu?
+      placeholder: The API should return 422 with a message naming the size limit.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Actual behavior · Gerçekleşen davranış
+      description: |
+        EN — What actually happened? Include the exact error message if there is one.
+        TR — Ne oldu? Varsa hata mesajını birebir yaz.
+      placeholder: The API returned 500 and the response body was empty.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity · Ciddiyet
+      description: |
+        EN — Critical: production down or data loss, no workaround. · High: core feature unusable,
+        workaround is painful. · Medium: degraded, acceptable workaround exists. · Low: cosmetic.
+        TR — Kritik: prod durdu veya veri kaybı var, workaround yok. · Yüksek: temel özellik
+        kullanılamıyor, workaround zahmetli. · Orta: özellik kısıtlı çalışıyor, kabul edilebilir
+        workaround var. · Düşük: kozmetik ya da küçük rahatsızlık.
+      options:
+        - Critical · Kritik
+        - High · Yüksek
+        - Medium · Orta
+        - Low · Düşük
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment · Ortam bilgisi
+      description: |
+        EN — Where did you see this? Delete any line that does not apply.
+        TR — Bunu nerede gördün? Geçerli olmayan satırı sil.
+      value: |
+        - OS · İşletim sistemi:
+        - Browser / client · Tarayıcı veya istemci:
+        - Version / commit SHA · Sürüm veya commit SHA:
+        - Environment · Ortam: (local / staging / production)
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Screenshots / Logs · Ekran görüntüsü / Log
+      description: |
+        EN — Drag and drop screenshots here, or paste relevant log output.
+        **Redact secrets, tokens, and personal data before pasting.**
+        TR — Ekran görüntülerini buraya sürükleyip bırakabilirsin, ya da ilgili log çıktısını yapıştır.
+        **Yapıştırmadan önce secret, token ve kişisel veriyi temizle.**
+      render: shell
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting · Göndermeden önce
+      options:
+        - label: I searched existing issues and this is not a duplicate · Mevcut issue'ları aradım, bu bir kopya değil
+          required: true
+        - label: I removed any secrets, tokens, or personal data from the logs above · Yukarıdaki loglardan secret, token ve kişisel veriyi temizledim
+          required: true

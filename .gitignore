@@ -1,3 +1,5 @@
+ozan/
+
 # ─── Terraform ───────────────────────────────────────────
 # Local .terraform directory (provider binaries, modules cache)
 .terraform/
