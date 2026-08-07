@@ -1,0 +1,175 @@
+# =============================================================================
+# Release
+# =============================================================================
+# Derives the next semantic version from Conventional Commits, tags it, and
+# publishes a GitHub Release with an auto-generated changelog.
+#
+# Version rules (see docs/commit-convention.md):
+#   BREAKING CHANGE / type!  -> MAJOR
+#   feat                     -> MINOR
+#   fix, perf                -> PATCH
+#   anything else            -> no release
+#
+# Deliberately implemented with git and the GitHub CLI rather than third-party
+# actions: fewer supply-chain dependencies for a workflow that holds write
+# permission on the repository.
+# =============================================================================
+
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Force a specific bump instead of deriving it from commits"
+        required: false
+        type: choice
+        default: auto
+        options: [auto, patch, minor, major]
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Tag and publish
+    runs-on: ubuntu-latest
+    outputs:
+      released: ${{ steps.version.outputs.released }}
+      version: ${{ steps.version.outputs.next }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history and tags are required to find the previous release.
+          fetch-depth: 0
+
+      - name: Determine next version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          last_tag="$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || echo '')"
+
+          if [ -z "$last_tag" ]; then
+            range=""
+            current="v0.0.0"
+            echo "No previous tag found; starting from v0.0.0"
+          else
+            range="${last_tag}..HEAD"
+            current="$last_tag"
+            echo "Previous release: $last_tag"
+          fi
+
+          commits="$(git log --format=%B ${range})"
+
+          bump="${{ inputs.bump || 'auto' }}"
+          if [ "$bump" = "auto" ]; then
+            bump=none
+            if grep -qE '^[a-z]+(\([^)]*\))?!:' <<< "$commits" || grep -q 'BREAKING CHANGE' <<< "$commits"; then
+              bump=major
+            elif grep -qE '^feat(\([^)]*\))?:' <<< "$commits"; then
+              bump=minor
+            elif grep -qE '^(fix|perf)(\([^)]*\))?:' <<< "$commits"; then
+              bump=patch
+            fi
+          fi
+
+          if [ "$bump" = "none" ]; then
+            echo "No release-worthy commits since ${current}."
+            echo "released=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          version="${current#v}"
+          major="${version%%.*}"
+          rest="${version#*.}"
+          minor="${rest%%.*}"
+          patch="${rest#*.}"
+
+          case "$bump" in
+            major) major=$((major + 1)); minor=0; patch=0 ;;
+            minor) minor=$((minor + 1)); patch=0 ;;
+            patch) patch=$((patch + 1)) ;;
+          esac
+
+          next="v${major}.${minor}.${patch}"
+          echo "Next version: $next ($bump)"
+
+          {
+            echo "released=true"
+            echo "next=$next"
+            echo "previous=$current"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create tag
+        if: steps.version.outputs.released == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.version.outputs.next }}" -m "Release ${{ steps.version.outputs.next }}"
+          git push origin "${{ steps.version.outputs.next }}"
+
+      - name: Publish GitHub Release
+        if: steps.version.outputs.released == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release create "${{ steps.version.outputs.next }}" \
+            --title "${{ steps.version.outputs.next }}" \
+            --generate-notes \
+            --verify-tag
+
+  # ---------------------------------------------------------------------------
+  # Optional container image publishing.
+  #
+  # Runs only when the repository actually contains a Dockerfile, so the same
+  # template is harmless in repositories that ship no image.
+  # ---------------------------------------------------------------------------
+  docker:
+    name: Build and push image
+    needs: release
+    if: needs.release.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for Dockerfile
+        id: dockerfile
+        shell: bash
+        run: |
+          if [ -f Dockerfile ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "No Dockerfile; skipping image build."
+          fi
+
+      - name: Log in to GitHub Container Registry
+        if: steps.dockerfile.outputs.exists == 'true'
+        run: echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Build and push
+        if: steps.dockerfile.outputs.exists == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          image="ghcr.io/${GITHUB_REPOSITORY,,}"
+          version="${{ needs.release.outputs.version }}"
+
+          docker build -t "${image}:${version}" -t "${image}:latest" .
+          docker push "${image}:${version}"
+          docker push "${image}:latest"
