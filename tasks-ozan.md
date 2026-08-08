@@ -4,6 +4,10 @@
 **Alan:** Repo modülü, issue/PR templates, CI/CD workflows, DX dokümantasyonu, Linear/ClickUp  
 **Tahmini Süre:** 4 hafta
 
+> **Durum (2026-08-08):** Hafta 1–3 tamamlandı. Hafta 4 **ertelendi** — dış entegrasyonlar
+> ek özellik olarak sonraya bırakıldı, kalan çekirdek işler yeni yol haritasına taşındı.
+> Bkz. [`ROADMAP.md`](ROADMAP.md).
+
 ---
 
 ## Hafta 1 — Proje Altyapısı & GitHub Templates
@@ -265,7 +269,153 @@
 
 ---
 
-## Hafta 4 — Entegrasyonlar, Proje Yönetimi & Finalizasyon
+## Hafta 4 — Temizlik & Config Yapısı
+
+> **Paralel:** Emre bu hafta GitOps döngüsünü kuruyor (Faz 3). İki iş birbirinden
+> bağımsız; yalnızca hafta sonunda birleşiyor.
+
+### 🧹 Faz 0 — Kalan temizlik
+- [ ] **`pilot-intern-api`'yi modüle taşı** _(Emre ile ortak — onun `branch-protection.tf`'i,
+      senin modülün)_
+  - [ ] Repo'yu `config/repositories/pilot-intern-api.yml` olarak tanımla
+  - [ ] `terraform state mv` ile kaydı modül altına taşı — **silme/yeniden yaratma yok**
+  - [ ] `branch-protection.tf`'teki ham `github_repository` ve iki `github_branch_protection`
+        bloğunu kaldır
+  - [ ] `plan` → `No changes` görülmeli
+- [ ] **Bekleyen üç branch'i push et ve PR aç** _(dogfooding)_
+  - [ ] `feat/repository-module`
+  - [ ] `docs/engineering-standards-fixes` → Emre'nin PR'ına
+  - [ ] `feat/branch-protection-fixes` → Emre'nin PR'ına
+
+### 🔧 Faz 1 — Config yapısını repo başına dosyaya böl
+- [ ] Dizin yapısını kur:
+  ```
+  terraform/config/
+  ├── organization.yml          # roller, defaults, people
+  └── repositories/
+      ├── pilot-intern-web.yml
+      └── pilot-intern-api.yml
+  ```
+- [ ] `repositories.tf`'i `fileset()` + `yamldecode` ile besle — dosya adı = repo adı
+- [ ] `organization.example.yml`'i yeni yapıya göre güncelle
+- [ ] `plan` çıktısının **değişmediğini** doğrula _(bu bir refactor; davranış değişmemeli)_
+- [ ] [`docs/config-guide.md`](docs/config-guide.md)'yi yeni yapıya göre güncelle
+
+**Neden:** Dashboard'un ön koşulu. İki mentör aynı anda düzenlediğinde tek dosyada
+çakışırlar, ayrı dosyalarda çakışmazlar. Ayrıca CODEOWNERS ile mentör bazlı review
+yönlendirmesi ancak ayrı dosyalarla mümkün.
+
+- [ ] ✅ **Hafta Sonu Sync:** Emre'nin GitOps workflow'larını review et; config bölünmesi
+      sonrası CODEOWNERS kurallarını birlikte yaz
+
+---
+
+## Hafta 5 — Şablon & Workflow Dağıtımı
+
+> **Paralel:** Emre bu hafta GitHub App'i kuruyor (Faz 4). Bağımsız.
+
+### 📦 Faz 2 — `templates/` klasörünü canlıya çıkar
+- [ ] Config şemasına `files` ve `workflows` alanlarını ekle
+  ```yaml
+  defaults:
+    files:
+      contributing: seed        # strict | seed | none
+      security: seed
+      editorconfig: seed
+      issue_templates: strict
+      pr_template: strict
+    workflows: [ci]             # ci | release | dependabot
+  ```
+- [ ] Modülde `github_repository_file` ile dağıtımı kur _(CODEOWNERS mekanizmasının aynısı)_
+- [ ] **`strict` modu** — Terraform içeriği sahiplenir, elle değişiklik geri alınır
+  - [ ] `.github/CODEOWNERS` _(zaten var)_
+  - [ ] `.github/ISSUE_TEMPLATE/*`
+  - [ ] `.github/PULL_REQUEST_TEMPLATE.md`
+  - [ ] `.github/workflows/*`
+  - [ ] `.github/dependabot.yml`
+- [ ] **`seed` modu** — yalnızca ilk oluşturmada yazılır, repo sonra değiştirebilir
+      _(`lifecycle { ignore_changes = [content] }`)_
+  - [ ] `CONTRIBUTING.md`, `SECURITY.md`, `.editorconfig`, `README.md`
+- [ ] **Tutarlılık doğrulaması** — `workflows` içinde `ci` yoksa `require_status_checks`
+      da boş olmalı. Modül bunu `precondition` ile hata olarak vermeli; aksi halde PR'lar
+      hiç raporlanmayacak bir check'i sonsuza kadar bekler.
+- [ ] Pilot repo'da doğrula
+  - [ ] PR açınca şablon dolu geliyor mu?
+  - [ ] Issue template'leri görünüyor mu?
+  - [ ] `ci/test` raporlanıyor mu?
+- [ ] [`docs/onboarding.md`](docs/onboarding.md)'deki "PR şablonu otomatik dolar" iddiası
+      artık doğru — dokümanı gözden geçir
+
+- [ ] ✅ **Hafta Sonu Sync:** App devreye girince dağıtımı yeni kimlikle test et
+
+---
+
+## Hafta 6 — Güvenlik Ayarları & Dashboard Desteği
+
+> **Paralel:** Emre dashboard'un okuma modunu ve PR yazma akışını yazıyor (Faz 5a–5b).
+
+### 🔒 Repo güvenlik ayarları
+- [ ] Modüle `vulnerability_alerts` ekle _(Dependabot uyarıları)_
+- [ ] Uygun olduğunda `security_and_analysis` blokları
+- [ ] [`docs/security-policy.md`](docs/security-policy.md)'deki durum tablosunu güncelle —
+      "planlandı" olan maddeler "aktif" olacak
+
+### 👤 `people` → organizasyon üyeliği
+- [ ] `github_membership` ile org üyeliğini config'den yönet
+- [ ] ⚠️ **Riskli:** mevcut owner yetkilerini etkileyebilir. Önce `plan`'ı dikkatle
+      incele, gerekirse `import` ile mevcut üyelikleri state'e al. **Emre review etsin.**
+- [ ] `docs/onboarding.md`'deki "davet otomatik gelir" iddiası artık doğru
+
+### 🧩 Dashboard desteği
+- [ ] Config için JSON Schema yaz — dashboard kaydetmeden önce doğrulama yapabilsin
+  - _YAML ayrıştırıldığında JSON ile aynı veri modeline dönüştüğü için aynı şema her
+    ikisini de doğrular. Depoda saklanan format her zaman YAML; dönüştürme yok._
+  - _Emre ihtiyaç duyarsa şemayı değiştirebilir._
+- [ ] Anlamsal kuralları tanımla: her repo'nun tam bir mentörü olmalı, arşiv repo'ya
+      developer eklenemez, `required_reviews` developer sayısını aşamaz
+- [ ] **Dosya sahipliği ayrımını uygula** _(ACCESS-MODEL Karar 16)_
+  - [ ] `config/repositories/*.yml` makine sahipli — yorum satırı konmayacak, dashboard
+        serbestçe yeniden üretebilecek
+  - [ ] `config/organization.yml` insan sahipli — yorumlar burada kalacak, dashboard
+        dokunmayacak
+
+### 🧪 Bekleyen testler
+- [ ] İkinci hesapla engelleme testleri _(bkz. [`TODO.md`](TODO.md))_
+- [ ] Sonuçları [`docs/pilot-verification.md`](docs/pilot-verification.md) Bölüm 6'ya işle
+
+- [ ] ✅ **Hafta Sonu Sync:** Dashboard'un okuma modunu birlikte gözden geçir
+
+---
+
+## Hafta 7 — Finalizasyon
+
+> **Paralel:** Emre dashboard'u tamamlıyor (Faz 5c–5d).
+
+- [ ] **README.md** — Emre review etsin
+  - [ ] Proje açıklaması, hızlı başlangıç, klasör yapısı, katkı linki
+  - [ ] Mimari özet: kod katmanı / veri katmanı ayrımı
+- [ ] **Doküman bakımı**
+  - [ ] Cross-reference'ları tamamla — Emre'nin dokümanlarından seninkilere link
+  - [ ] `ROADMAP.md` ve `TODO.md`'yi güncelle
+  - [ ] Değişen davranışları dokümanlara yansıt
+- [ ] **Uçtan uca pilot test** _(Emre ile ortak)_
+  - [ ] Config'den sıfırdan yeni repo aç
+  - [ ] Şablonlar geldi mi, CI tetiklendi mi, label'lar doğru mu?
+  - [ ] Dashboard'dan bir kişi ekle → PR → plan → apply → GitHub'da gör
+- [ ] **Sunum hazırlığı**
+  - [ ] Problem tanımı ve çözüm mimarisi
+  - [ ] Kod/veri katmanı ayrımı ve dashboard demosu
+  - [ ] Pilotta bulunan iki hata — beyan temelli yönetimin somut faydası
+  - [ ] Piyasa karşılaştırması _(safe-settings, native ruleset, IDP — `adr/004`)_
+  - [ ] Sonraki adımlar ve bilinen kısıtlar
+
+---
+
+## ⏸️ Ertelenen — Ek Özellikler
+
+> Sistemin çalışması için gerekli değil. Çekirdek işler bittiğinde ele alınacak.
+
+## Hafta 8+ — Entegrasyonlar & Proje Yönetimi
 
 ### 🔗 Linear Entegrasyonu
 - [ ] `integrations/linear/github-sync.md` — Linear ↔ GitHub sync rehberi
@@ -299,29 +449,7 @@
 ### 📝 ADR
 - [ ] `docs/adr/003-external-integrations.md` — Linear vs ClickUp karşılaştırması, karar kriterleri
 
-### 🤝 Ortak Çalışma
-- [ ] README.md — Taslağı yaz, Emre review etsin
-  - [ ] Proje açıklaması
-  - [ ] Hızlı başlangıç (Quick Start)
-  - [ ] Klasör yapısı
-  - [ ] Katkıda bulunma linki
-- [ ] Pilot test — Emre ile birlikte tüm sistemi test et
-  - [ ] Template'lerden repo oluştur
-  - [ ] Issue template'leri çalışıyor mu?
-  - [ ] PR template'i görünüyor mu?
-  - [ ] CI workflow tetikleniyor mu?
-  - [ ] Label'lar doğru atanmış mı?
-- [ ] Sunum hazırlığı — Sunum yapısını oluştur
-  - [ ] Problem tanımı
-  - [ ] Çözüm mimarisi
-  - [ ] Organizasyon & Yetki yapısı
-  - [ ] Branching & PR workflow
-  - [ ] CI/CD pipeline
-  - [ ] Template repository demo
-  - [ ] Terraform demo (Emre gösterir)
-  - [ ] Entegrasyonlar
-  - [ ] Sonuç & Sonraki adımlar
-- [ ] Canlı demo senaryosu (Emre ile birlikte)
+> _README, pilot test ve sunum hazırlığı **Hafta 7**'ye taşındı._
 
 ---
 

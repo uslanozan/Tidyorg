@@ -159,6 +159,58 @@ Biz zaten public repo'larla çalıştığımız için sorun değil.
 Workflow'lar ve `.editorconfig` bu kapsamın dışında — onlar repo başına dağıtılacak,
 CODEOWNERS için kullandığım `github_repository_file` mekanizmasıyla.
 
+### `.github` fikri reddedildi
+
+Ozan (yani ben) bunu önerdi ama kabul edilmedi: org'daki repo'ların çoğu private olacak
+ve `.github` repo'sunun public olması, içindeki CONTRIBUTING/SECURITY/template dosyalarını
+internete açıyor. İstenmedi.
+
+**Yerine:** her repo'ya ayrı ayrı yazılacak. Bedeli net — bir şablonu güncellemek 40
+repo'da 40 commit. Kabul edildi.
+
+Bu arada daha büyük bir şey fark ettik: **repo'ların çoğu private olacaksa Free plan
+yetmiyor.** Private repo'da branch protection ve ruleset çalışmıyor; yani kurduğumuz
+modelin koruma tarafının tamamı devre dışı kalır. Team planı artık "ileride bakarız"
+değil, ön koşul. Ne zaman alınacağı belli olmadığı için plan onsuz da ilerleyecek biçimde
+sıralandı.
+
+### Yol haritası ve iş bölümü
+
+Dört haftalık plan bitti ama hedef mimariye daha varmadık. [ROADMAP.md](../../ROADMAP.md)
+yazıldı: sekiz faz, Hafta 4–7'ye bölünüp iki görev dosyasına dağıtıldı. Emre organizasyon
+ve kimlik tarafında (GitOps, GitHub App, dashboard), ben repo modülü ve şablonlar
+tarafında. Her hafta iki iş bağımsız ilerliyor, yalnızca hafta sonunda birleşiyor.
+
+Hafta 4'ün ilk yarısı bugün bitti: `enforce_admins` düzeltildi, kök `outputs.tf`
+dolduruldu, ben `platform-admins`'e eklendim, **9 eski takım silindi**.
+
+Silme öncesi önemli bir tespit yaptım: `platform-admins` silinemez. Bir "etiket takımı"
+değil, taşıyıcı kaynak — modül `head-of-engineering` rolünü onun üzerinden uyguluyor.
+Silinseydi apply patlar, mentörlerin push izni de çökerdi. Yani "hepsini silelim"
+kararının teknik bir istisnası vardı ve fark edilmeseydi bugünkü drift'in aynısını
+yaşayacaktık.
+
+### Dashboard mimarisi — beklemediğim bir sadeleşme
+
+Emre "backend'siz yazabilir miyiz, Semaphore UI gibi bir şey kullansak" diye sordu.
+Semaphore uygun değil — HCP Terraform'la aynı kategoride, çalıştırma arayüzü, yetki
+paneli değil. Ama sorunun kendisi beni daha iyi bir yere götürdü.
+
+**Dashboard'un kendi token'ı olmayacak.** Kullanıcı GitHub device flow ile giriş yapacak
+(`client_secret` gerektirmiyor), işlemler onun kimliğiyle yapılacak. Sonuçları:
+
+- Barındırılacak, güvenliği sağlanacak bir sunucu yok
+- Ele geçirilecek `admin:org` token'ı yok — blast radius tartışmasının tamamı düşüyor
+- Yetkilendirmeyi GitHub'ın kendisi yapıyor; dashboard'a yazacağımız yetki mantığı azalıyor
+- Commit'ler bot adına değil, işi yapan kişinin adına düşüyor — `paitblack` sorununun
+  tam tersi
+
+Bir de zincirleme fayda: **plan önizlemesi için HCP API'sine bağlanmaya gerek yok.**
+Faz 3'teki workflow zaten `plan` çıktısını PR'a yorum olarak yazacak; dashboard onu okuyup
+gösterir. Emre'nin işi bir hayli hafifledi.
+
+Kararlar ACCESS-MODEL'e 10–16 olarak işlendi.
+
 ---
 
 ## 2026-08-07 — Emre'nin PR'ları, erişim modeli, Hafta 2 kodu

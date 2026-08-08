@@ -8,6 +8,48 @@ Son güncelleme: 2026-08-08
 
 ---
 
+## 🔥 YARIN KONUŞULACAK — GitHub tarafı implementasyonu
+
+**Durum:** Dokümanlar hedef durumu anlatıyor ama birkaç parçası kurulu değil.
+En göze batanı: **`templates/` klasörünün tamamı atıl.** Issue template'leri, PR
+template'i, CONTRIBUTING, SECURITY, `.editorconfig`, workflow'lar — hiçbiri hiçbir
+repo'ya ulaşmıyor. Modül yalnızca CODEOWNERS yazıyor.
+
+Sonucu: [`docs/onboarding.md`](docs/onboarding.md) "PR şablonu otomatik dolar" diyor,
+şu an doğru değil. Emre'nin `security-policy.md`'sine yapılan eleştirinin aynısı.
+
+### Önerilen sıra
+
+| # | İş | Neden bu sırada |
+| :--- | :--- | :--- |
+| 1 | **`.github` org repo'sunu Terraform'la kur** | En yüksek kazanç/emek oranı; tek hamlede tüm şablonlar canlıya çıkar ve dokümanlar doğru hale gelir |
+| 2 | **Workflow dağıtımı** (config'de `workflows` alanı) | `require_status_checks` ile birlikte tutarlı ayarlanmalı |
+| 3 | **Repo güvenlik ayarları** (`vulnerability_alerts`, secret scanning) | Birkaç satır; `security-policy.md`'nin iddialarını gerçek yapar |
+| 4 | **GitOps döngüsü** (`terraform-plan.yml` / `terraform-apply.yml`) | Dokümanların temel akışı; şu an `apply` elle çalıştırılıyor. Emre ile ortak |
+| 5 | **`people` → org üyeliği** | Riskli — mevcut owner yetkilerini etkileyebilir, dikkatli yapılmalı |
+| 6 | **`pilot-intern-api` göçü** | Emre ile karar |
+
+### Araştırılmış çözüm — `.github` repo'su
+
+Organizasyonda **`.github`** adında bir repo, kendi dosyası olmayan tüm repo'lar için
+varsayılan sağlıyor: `CONTRIBUTING.md`, `SECURITY.md`, `ISSUE_TEMPLATE/`,
+`PULL_REQUEST_TEMPLATE.md`. Tek repo, tüm organizasyon; yeni açılan her repo otomatik
+kapsama giriyor.
+
+**Kısıt:** Issue ve PR template'lerinin org geneli çalışması için `.github` repo'sunun
+**public** olması gerekiyor — internal yetmiyor, private hiç çalışmıyor. Public repo'larla
+çalışıldığı için sorun değil.
+
+**Kapsam dışı kalanlar:** workflow'lar ve `.editorconfig`. Bunlar community health dosyası
+sayılmıyor; repo başına `github_repository_file` ile dağıtılacak (CODEOWNERS'ın aynısı).
+
+**Alternatif:** Modülde kullanılmayan bir `template_repo` değişkeni duruyor. `.github`
+repo'su daha az bakım istiyor.
+
+Kaynak: [Creating a default community health file — GitHub Docs](https://docs.github.com/en/communities/setting-up-your-project-for-healthy-contributions/creating-a-default-community-health-file)
+
+---
+
 ## 🟡 Tek başına yapılabilir — sıradaki iş
 
 - [ ] **CI tetiklenme testi** — pilot repo'ya `.github/workflows/ci.yml` ekle

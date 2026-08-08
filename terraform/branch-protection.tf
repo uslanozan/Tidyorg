@@ -8,9 +8,14 @@ resource "github_repository" "pilot_project" {
 
 # --- main Branch Koruması ---
 resource "github_branch_protection" "main_protection" {
-  repository_id       = github_repository.pilot_project.node_id
-  pattern             = "main"
-  enforce_admins      = true  # Adminler de kurallara tabi
+  repository_id = github_repository.pilot_project.node_id
+  pattern       = "main"
+
+  # false: mentörler ve head-of-engineering korumalı dala doğrudan push atabilmelidir.
+  # true olduğunda admin yetkisindeki mentörler de engellenir ve ACCESS-MODEL.md'de
+  # tanımlanan davranış bozulur. Modül tarafında da false.
+  enforce_admins = false
+
   allows_deletions    = false # Dal silinemez
   allows_force_pushes = false # Force push yasak
 

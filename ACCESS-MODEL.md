@@ -212,6 +212,88 @@ Config'den bir repo satırı silinirse Terraform o repo'yu **gerçekten siler**.
 `archived: true` kullanılır; repo dondurulur, içerik korunur. Gerçekten silmek gerekirse
 ileride ayrı ve bilinçli bir adım olarak yapılır.
 
+### Karar 10 — Org geneli `.github` repo'su kullanılmayacak ✅
+Community health dosyalarını (CONTRIBUTING, SECURITY, issue/PR template) org geneli
+dağıtmanın en temiz yolu `.github` adında bir repo açmaktır. Ancak issue ve PR
+template'lerinin çalışması için o repo'nun **public** olması gerekiyor — dosyalar
+internete açılırdı. Kabul edilmedi.
+
+**Bunun yerine:** Şablonlar her repo'ya ayrı ayrı yazılacak (`github_repository_file`).
+Private repo'larda çalışır, içerik dışarı açılmaz. Bedeli: bir şablonu güncellemek N
+repo'da N commit üretir.
+
+### Karar 11 — Şablon dosyaları için iki senkronizasyon modu ✅
+- **`strict`** — Terraform içeriği sahiplenir; elle yapılan değişiklik bir sonraki
+  `apply`'da geri alınır. Kapsam: `CODEOWNERS`, `.github/workflows/*`, issue/PR
+  template'leri, `dependabot.yml`.
+- **`seed`** — Yalnızca ilk oluşturmada yazılır; repo sonradan kendine göre değiştirebilir.
+  Kapsam: `CONTRIBUTING.md`, `SECURITY.md`, `.editorconfig`, `README.md`.
+
+Yönetişim dosyaları standart kalır, içerik dosyaları repo'ya devredilir.
+
+### Karar 12 — Disiplin takımları kaldırılıyor ✅
+`backend-team`, `frontend-team`, `devops-team`, `core-engineering`, `tech-leads`,
+`interns-2026`, `interns-backend`, `interns-frontend`, `external-collaborators` siliniyor.
+Rol tabanlı modelde karşılıkları yok; yetki repo başına üretilen takımlardan geliyor.
+
+**`platform-admins` kalıyor** — silinemez. `head-of-engineering` rolü teknik olarak bu
+takım üzerinden uygulanıyor: modüldeki `github_team_repository.org_admins` ve branch
+protection'ın `push_allowed_roles` içindeki `head-of-engineering` karşılığı ona bağlı.
+
+_İleride disiplin takımları geri istenirse **etiket** olarak eklenebilir — ancak repo
+yetkisi verilmeden. GitHub bir kişiye birden fazla takım üzerinden erişim verildiğinde
+en yüksek yetkiyi uygular; yetki verilirse en az yetki ilkesi sessizce delinir._
+
+### Karar 13 — Dashboard bu repo'nun içinde yaşayacak ✅
+Config, Terraform kodu ve dashboard aynı repo'da. Ayrı repo açılmayacak.
+
+Blast radius sonucu: dashboard'un App'i bu repo'ya yazma yetkisi taşır, dolayısıyla
+teorik olarak HCL'i de değiştirebilir. İki önlemle sınırlanır — dashboard doğrudan
+`main`'e yazmaz (PR açar), ve `CODEOWNERS` `terraform/*.tf` yollarını insan onayına
+bağlar.
+
+### Karar 15 — Dashboard kullanıcının kendi kimliğiyle çalışacak ✅
+Dashboard'un kendi token'ı **olmayacak**. Kullanıcı GitHub **device flow** ile giriş yapar
+(`client_secret` gerektirmez, tarayıcıda çalışan uygulamalar için tasarlanmıştır) ve
+işlemler onun token'ıyla yapılır.
+
+**Kazandırdıkları:**
+- Barındırılacak, güncellenecek, güvenliği sağlanacak bir sunucu yok
+- Dashboard'un elinde `admin:org` kapsamlı bir sır yok — ele geçirilecek bir şey yok
+- **Yetkilendirmeyi GitHub yapar:** kullanıcının config repo'suna yazma yetkisi yoksa
+  istek reddedilir. "Mentör yalnızca kendi repo'sunu düzenler" kuralını CODEOWNERS
+  merge anında zorlar.
+- **Denetim izi gerçek:** commit'ler bot adına değil, işlemi yapan kişinin adına düşer
+
+**Plan önizlemesi HCP API'siyle değil, PR yorumundan gelir.** GitOps workflow'u zaten
+PR'a `plan` çıktısını yazacak; dashboard o yorumu kullanıcının token'ıyla okuyup gösterir.
+Böylece dashboard'un HCP Terraform'a hiç bağlanması gerekmez.
+
+**Kısıt:** Dashboard, kullanıcının yapamayacağı hiçbir şeyi yapamaz. Bu bir özelliktir,
+ancak yükseltilmiş yetki gerektiren senaryolar (acil erişim kesme gibi) için ileride
+küçük bir servis gerekebilir. Gerekirse eklenecek.
+
+> **Not:** Semaphore UI gibi Terraform çalıştırma arayüzleri değerlendirildi ve elendi.
+> Onlar HCP Terraform ile aynı kategoride — yetki yönetim paneli değil, çalıştırma
+> arayüzü. Karar 2'deki gerekçelerin tamamı onlar için de geçerli, üstelik işletilecek
+> bir sistem daha eklerler.
+
+### Karar 16 — Config dosyaları sahipliğe göre ayrılır ✅
+YAML programla yeniden üretildiğinde yorum satırları ve biçim kaybolur. Bu nedenle:
+
+| Dosya | Sahibi | Kural |
+| :--- | :--- | :--- |
+| `config/repositories/*.yml` | **Makine** | Dashboard yazar. Yorum satırı konmaz, serbestçe yeniden üretilebilir. |
+| `config/organization.yml` | **İnsan** | Roller, varsayılanlar, açıklayıcı yorumlar. Nadiren değişir; dashboard dokunmaz veya cerrahi düzenleme yapar. |
+
+Depoda saklanan biçim her zaman **YAML**'dır. JSON Schema yalnızca doğrulama için
+kullanılır — YAML ayrıştırıldığında JSON ile aynı veri modeline dönüştüğü için aynı şema
+her ikisini de doğrular. Dosya formatı dönüşümü yoktur.
+
+### Karar 14 — Repo isimlendirme standardı yok ✅
+Önek zorunluluğu (`svc-`, `web-`, `lib-`) uygulanmayacak. Repo'ları head-of-engineering
+veya mentörler açıyor; isim serbest.
+
 ---
 
 ## 5b. Future Work
