@@ -8,6 +8,90 @@ Resmî dokümantasyon değil — düşünce sürecinin kaydı. Hafta 4'teki sunu
 
 ---
 
+## 2026-08-08 — İlk apply, iki gerçek hata, pilot doğrulandı
+
+### Yapılanlar
+
+**Apply çalıştırıldı — sistem canlıya çıktı.** `pilot-intern-web` repo'su tek bir YAML
+satırından doğdu. Config'de sadece açıklama, dil, mentör ve developer yazıyor; geri kalan
+her şey `defaults`'tan miras alındı.
+
+İlk apply **yarıda kaldı**: 23 kaynak oluştu, 2 label hata verdi. Panik yapmadım çünkü
+Terraform oluşanları geri almıyor, state'e yazıp duruyor. Düzeltip tekrar apply demek
+yetti. **Yakınsama** dedikleri şeyin canlı örneğini görmüş oldum — aynı komutu kaç kez
+çalıştırırsan çalıştır sonuç aynı yere geliyor.
+
+### Bulduğum iki hata
+
+**1. Label çakışması (422 already_exists).** GitHub yeni repo açarken kendi varsayılan
+label'larını da oluşturuyor (`good first issue`, `help wanted`, `bug`, `enhancement`...).
+Tekil `github_issue_label` kaynağı her label için "oluştur" çağrısı yaptığından bu
+isimlere çarptı.
+
+Çözüm: çoğul `github_issue_labels` kaynağına geçtim. Bu kaynak repo'nun label setinin
+**tamamını** yönetiyor — mevcutları güncelliyor, eksikleri ekliyor, listede olmayanları
+siliyor. Yan fayda: GitHub'ın varsayılan label çöplüğü de temizleniyor. Zaten planımdaki
+madde de çoğul kaynağı söylüyormuş, tekil yazmam benim hatamdı.
+
+Geçişte `removed { lifecycle { destroy = false } }` bloğunu kullandım: ilk apply'da oluşan
+11 label state'ten çıktı ama GitHub'dan silinmedi, çoğul kaynak onları devraldı. Gereksiz
+bir sil-yarat turu yaşanmadı. Bu blok Terraform 1.7 ile gelmiş; eskiden `terraform state rm`
+komutunu elle çalıştırmak gerekiyormuş. Artık kod içinde beyan edilebildiği için PR'da
+görünüyor — GitOps akışıyla çok daha uyumlu.
+
+**2. Kalıcı drift — push izni hiç yerleşmiyordu.** Apply başarılı olmasına rağmen her
+`plan` aynı iki branch protection için "değişecek" diyordu. Detaya bakınca gördüm:
+`push_allowances` listesinden `your-org/platform-admins` sürekli geri düşüyor.
+
+Sebep: **GitHub, bir takımı push izin listesine ancak o takımın repo'ya erişimi varsa
+kabul ediyor.** Erişimi yoksa isteği hata vermeden yok sayıyor. Modül `platform-admins`
+takımına hiçbir repo yetkisi vermiyordu. `head-of-engineering` rolü ACCESS-MODEL'de
+`scope: organization` ve tüm repo'larda admin diye tanımlıydı ama modül bunu
+uygulamıyordu.
+
+Çözüm: modüle `data "github_team"` + `github_team_repository.org_admins` ekledim.
+
+**Bu ikincisi beni gerçekten etkiledi.** GitHub bazı istekleri sessizce yok sayıyor.
+Terraform olmasaydı "push kısıtı koydum" sanıp devam edecektik ve kimse fark etmeyecekti.
+Drift tespiti bunu ortaya çıkardı — beyan temelli yönetimin en somut faydası bu.
+Sunumda bu örneği kullanacağım.
+
+### Doğrulama
+
+GitHub arayüzünden madde madde kontrol ettim, ekran görüntülerini aldım:
+[pilot-verification.md](../pilot-verification.md).
+
+Default branch `develop`, CODEOWNERS geçerli (GitHub'ın yeşil "valid" bandı), tam 13 label,
+üç takım doğru rollerle, `main` 2 onay + code owner, `develop` 1 onay. İki koruma
+ekranının yan yana görünmesi hoşuma gitti — aynı modülden çıkan iki farklı katılık,
+tasarımın kanıtı gibi duruyor.
+
+### Fark ettiğim bir şey
+
+CODEOWNERS commit'i GitHub'da **`paitblack`** adına görünüyor. Yani HCP workspace'indeki
+`TF_VAR_github_token` Emre'nin kişisel token'ı ve Terraform'un yaptığı her yazma işlemi
+onun adına kaydediliyor. Otomasyonun yaptığı ile insanın yaptığı ayırt edilemiyor, Emre
+ayrılırsa her şey durur, denetim izi yanıltıcı oluyor.
+
+Hafta 1'de yazdığım [github-auth-strategy.md](../notes/github-auth-strategy.md) notu o
+zaman teorik bir tavsiyeydi; şimdi ekran görüntüsüyle gösterilebilir bir sorun.
+
+### Test edemediğim şey — ve nedeni
+
+Kuralların **engellediğini** test edemedim. Sebebi kendimdim: bu repo'da hem
+`pilot-intern-web-mentors` hem `platform-admins` üyesiyim, ayrıca org owner'ım. Config'de
+`enforce_admins: false` olduğu için kurallar bana uygulanmıyor — ki bu bilinçli bir
+tercihti, mentörler korumalı dala push atabilsin diye.
+
+Yani benim push atabiliyor olmam kuralın çalışmadığını göstermiyor, tam tersini gösteriyor.
+Engellenme davranışını doğrulamak için yalnızca `developer` rolüne sahip bir hesap gerekiyor.
+Bunu ve diğer bekleyen işleri unutmamak için kök dizine [TODO.md](../../TODO.md) açtım.
+
+Kendi kendime not: yarım kalan bir testi "doğrulandı" diye yazmamak lazım. Rapordaki
+Bölüm 6'yı bilerek "henüz doğrulanmayanlar" olarak bıraktım.
+
+---
+
 ## 2026-08-07 — Emre'nin PR'ları, erişim modeli, Hafta 2 kodu
 
 ### Yapılanlar

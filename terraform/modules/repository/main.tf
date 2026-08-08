@@ -116,6 +116,24 @@ resource "github_team_repository" "mentors" {
   permission = lookup(var.role_permissions, "mentor", "admin")
 }
 
+# head-of-engineering rolü organizasyon geneli kapsama sahiptir: her repo'da
+# admin yetkisi bulunur.
+#
+# Bu yetki aynı zamanda teknik bir zorunluluktur. GitHub, bir takımı branch
+# protection'ın push izin listesine ancak o takımın repo'ya erişimi varsa kabul
+# eder; erişimi yoksa isteği sessizce yok sayar. Bu kaynak olmadan
+# push_allowed_roles içindeki "head-of-engineering" hiçbir zaman yerleşmez ve
+# her plan'da tekrar uygulanmaya çalışılır (kalıcı drift).
+data "github_team" "org_admins" {
+  slug = var.org_admin_team_slug
+}
+
+resource "github_team_repository" "org_admins" {
+  team_id    = data.github_team.org_admins.id
+  repository = github_repository.this.name
+  permission = lookup(var.role_permissions, "head-of-engineering", "admin")
+}
+
 resource "github_team_repository" "developers" {
   team_id    = github_team.developers.id
   repository = github_repository.this.name
@@ -139,14 +157,41 @@ resource "github_team_membership" "developers" {
 }
 
 # --- Label'lar -------------------------------------------------------------
+# Tekil `github_issue_label` yerine çoğul `github_issue_labels` kullanılır.
+#
+# Sebep: GitHub yeni bir repo açarken kendi varsayılan label'larını da oluşturur
+# (bug, documentation, enhancement, good first issue, help wanted, question...).
+# Tekil kaynak her label için "oluştur" çağrısı yaptığından bu isimlerle çakışıp
+# 422 already_exists hatası verir. Çoğul kaynak ise repo'nun label setinin
+# tamamını yönetir: mevcutları günceller, eksikleri ekler, listede olmayanları
+# siler. Böylece her repo aynı standart sete sahip olur ve GitHub'ın varsayılan
+# label'ları temizlenir.
 
-resource "github_issue_label" "this" {
-  for_each = local.active ? { for l in var.labels : l.name => l } : {}
+resource "github_issue_labels" "this" {
+  count = local.active ? 1 : 0
 
-  repository  = github_repository.this.name
-  name        = each.value.name
-  color       = each.value.color
-  description = each.value.description
+  repository = github_repository.this.name
+
+  dynamic "label" {
+    for_each = var.labels
+    content {
+      name        = label.value.name
+      color       = label.value.color
+      description = label.value.description
+    }
+  }
+}
+
+# Tekil kaynaktan çoğul kaynağa geçişte, ilk apply'da oluşmuş olan label'lar
+# state'ten çıkarılır ancak GitHub'dan SİLİNMEZ (destroy = false). Silinselerdi
+# çoğul kaynak onları yeniden oluşturmak zorunda kalır, gereksiz bir sil-yarat
+# turu yaşanırdı. Çoğul kaynak mevcut label'ları olduğu gibi devralır.
+removed {
+  from = github_issue_label.this
+
+  lifecycle {
+    destroy = false
+  }
 }
 
 # --- CODEOWNERS ------------------------------------------------------------
