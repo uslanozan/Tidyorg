@@ -186,14 +186,67 @@ kalkar.
 
 ---
 
-## 6. Henüz Doğrulanmayanlar
+## 6. Davranış Testleri
 
-- [ ] CI workflow tetiklenmesi — pilot repo'da henüz `.github/workflows/ci.yml` yok.
-      Modül CODEOWNERS yazıyor ancak workflow dosyalarını dağıtmıyor.
-- [ ] `ci/test` status check'inin raporlanması
-- [ ] Onay olmadan merge'in engellendiğinin fiilen görülmesi
-- [ ] `restrict_pushes` kuralının gerçekten uygulandığı (mevcut plan seviyesinde
-      GitHub'ın bu kısıtı ne ölçüde uyguladığı test edilmedi)
+### 6.1 `prevent_destroy` — ✅ Doğrulandı
+
+Config'den repo tanımı geçici olarak çıkarıldı ve `terraform plan` çalıştırıldı:
+
+```
+Error: Instance cannot be destroyed
+
+  on modules/repository/main.tf line 43:
+  43: resource "github_repository" "this" {
+
+Resource module.repositories["pilot-intern-web"].github_repository.this has
+lifecycle.prevent_destroy set, but the plan calls for this resource to be
+destroyed.
+```
+
+Terraform `plan` aşamasında durdu; `apply`'a hiç geçilmedi. Config testten hemen sonra
+eski hâline döndürüldü.
+
+**Kanıtladığı:** Dashboard'da biri bir repo satırını yanlışlıkla silerse repo yok olmaz.
+Silme işlemi ancak modüldeki `lifecycle` bloğu bilinçli olarak kaldırılırsa mümkün.
+
+### 6.2 Mentörün korumalı dala doğrudan yazması — ✅ Doğrulandı
+
+`develop` dalına GitHub arayüzünden doğrudan commit atıldı. GitHub commit ekranında
+uyarısını açıkça gösterdi ve işleme izin verdi:
+
+![Doğrudan commit ekranı — GitHub "Some rules will be bypassed by committing directly" uyarısı gösteriyor](images/pilot-verification/07-direct-commit-bypass-warning.png)
+
+**Kanıtladığı:** `enforce_admins: false` ayarı canlıda çalışıyor. Mentör rolündeki bir
+kullanıcı korumalı dala doğrudan yazabiliyor ve GitHub bunu "kurallar bypass ediliyor"
+diye açıkça bildiriyor. [`ACCESS-MODEL.md`](../ACCESS-MODEL.md)'de tanımlanan davranış bu.
+
+> Bu ekran aynı zamanda tasarımın kabul edilmiş bir tavizini gösteriyor: mentöre bu gücü
+> vermek, onun elle yaptığı değişikliklerin bir sonraki `apply` ile geri alınması pahasına
+> geliyor. Kalıcı değişikliğin tek yolu konfigürasyondur.
+
+### 6.3 Henüz doğrulanmayanlar
+
+**Tek kullanıcıyla test edilemeyenler.** Ozan bu repo'da hem `pilot-intern-web-mentors`
+hem `platform-admins` üyesi ve organizasyon sahibi. `enforce_admins: false` olduğu için
+kurallar ona uygulanmıyor — dolayısıyla kuralların **engelleme** tarafı yalnızca
+`developer` rolüne sahip ayrı bir hesapla doğrulanabilir:
+
+- [ ] Developer'ın `develop`'a doğrudan push'unun reddedilmesi
+- [ ] Onay olmadan merge'in engellenmesi
+- [ ] `main`'de code owner (mentör) onayının zorunlu kılınması
+- [ ] `restrict_pushes` kuralının mevcut GitHub plan seviyesinde fiilen uygulanması
+
+**Diğer bekleyenler:**
+
+- [ ] CI workflow tetiklenmesi ve `ci/test` status check'inin raporlanması
+- [ ] Force push denemesinin sonucu (admin bypass'ının force push'u kapsayıp kapsamadığı
+      bilinmiyor)
+
+Takip: [`TODO.md`](../TODO.md)
+
+> **Not:** Modül CODEOWNERS dosyasını repo'ya yazıyor ancak workflow dosyalarını
+> dağıtmıyor. Workflow dağıtımının repo bazında konfigüre edilebilir hale getirilmesi
+> kararlaştırıldı; ayrıntı `TODO.md` içinde.
 
 ---
 

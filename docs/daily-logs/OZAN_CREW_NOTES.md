@@ -8,7 +8,7 @@ Resmî dokümantasyon değil — düşünce sürecinin kaydı. Hafta 4'teki sunu
 
 ---
 
-## 2026-08-08 — İlk apply, iki gerçek hata, pilot doğrulandı
+## 2026-08-08 — İlk apply, iki gerçek hata, pilot doğrulandı, Hafta 3 dokümanları
 
 ### Yapılanlar
 
@@ -89,6 +89,75 @@ Bunu ve diğer bekleyen işleri unutmamak için kök dizine [TODO.md](../../TODO
 
 Kendi kendime not: yarım kalan bir testi "doğrulandı" diye yazmamak lazım. Rapordaki
 Bölüm 6'yı bilerek "henüz doğrulanmayanlar" olarak bıraktım.
+
+### Hafta 3 — dokümantasyon
+
+Yedi doküman yazıldı. Dördü plandaki, üçü konuştuğumuz kararlardan doğdu.
+
+**[workflow-guide.md](../workflow-guide.md)** master doküman. Planda tek bir akış vardı,
+ben **iki** akış yazdım: kod akışı (developer'ın günlük döngüsü) ve yetki akışı
+(config → PR → plan → apply). İkincisi plan yazıldığında yoktu ama artık projenin asıl
+iddiası o. Sunumun omurgası bu diyagram olacak.
+
+**[config-guide.md](../config-guide.md)** planda yoktu. Dashboard yazılana kadar
+arayüzün yerini tutuyor, yazıldıktan sonra da onun spec'i olacak. "Sık karşılaşılan
+tuzaklar" bölümüne bugün canlı yaşadığımız iki şeyi koydum: GitHub'ın istekleri sessizce
+yok sayması ve arayüzden yapılan değişikliğin geri alınması.
+
+**[onboarding.md](../onboarding.md)** — "İlk gün" listesini baştan yazdım. Plandaki
+"GitHub org davetini kabul et" maddesi artık farklı çalışıyor: kimse elle davet etmiyor,
+mentör config'e ekliyor. FAQ'ya gerçekten sorulacak sekiz soru koydum.
+
+**[code-review-guide.md](../code-review-guide.md)** — Tek bir "min 2 onay" kuralı
+yazmadım, çünkü artık repo'dan repo'ya değişiyor. Yorumlara `blocker:` / `öneri:` /
+`soru:` / `nit:` ön eki önerdim — hangi yorumun bloke edici olduğu belirsiz kaldığında
+PR gereksiz bekliyor.
+
+**[release-process.md](../release-process.md)** — Teorik anlatım yerine yazdığımız
+`release.yml`'ı adım adım açıkladım. Bir karar verdim: ayrı `CHANGELOG.md` tutulmayacak,
+GitHub Release notları tek kaynak olacak. İkisini birden tutmak er geç çelişki üretir.
+
+**[adr/004](../adr/004-config-driven-access-management.md)** — Dört alternatifi
+(doğrudan API, safe-settings, GitHub native ruleset + custom properties, Backstage/Port)
+gerekçeleriyle karşılaştırdım. Sunumda "piyasada bunun yapılmışı var mı" sorusu kesin
+gelecek; hazır cevap olsun. Kabul ettiğimiz tavizleri ve bu kararın hangi koşullarda
+yeniden değerlendirileceğini de yazdım.
+
+**[runbook.md](../runbook.md)** — Senaryo bazlı. Offboarding'i GitHub içi / GitHub dışı
+diye ikiye ayırdım, çünkü Terraform Linear'ı yönetmiyor ve bu kapsam sınırının
+unutulması ciddi bir güvenlik boşluğu olur.
+
+### Rahatsız eden bir tespit
+
+Dokümanları bitirince fark ettim: **Emre'nin `security-policy.md`'sine yaptığım
+eleştirinin aynısı benim `onboarding.md`'mde var.** "PR şablonu otomatik dolar" yazdım
+ama şu an doğru değil — `templates/` klasörünün tamamı atıl, hiçbir repo'ya ulaşmıyor.
+Modül yalnızca CODEOWNERS yazıyor.
+
+Aynı standardı kendime de uygulamam lazım. Ya dokümana "henüz aktif değil" notu
+düşeceğim ya da mekanizmayı kurup iddiayı doğru hale getireceğim. İkincisini tercih
+ediyorum.
+
+**GitHub tarafında kurulmayı bekleyen altı şey var:**
+1. Şablon dağıtımı (issue/PR template, CONTRIBUTING, SECURITY, `.editorconfig`)
+2. Workflow dağıtımı (`ci.yml`, `release.yml`, `dependabot.yml`)
+3. `people` bölümü Terraform tarafından okunmuyor — org üyeliği elle yönetiliyor
+4. Repo güvenlik ayarları (`vulnerability_alerts`, secret scanning)
+5. GitOps döngüsü — `terraform-plan.yml` / `terraform-apply.yml` yok, apply'ı elle
+   çalıştırıyorum
+6. `pilot-intern-api` hâlâ modül dışında
+
+**Araştırdığım çözüm:** Organizasyonda `.github` adında bir repo açmak. GitHub, kendi
+dosyası olmayan tüm repo'lar için oradaki CONTRIBUTING, SECURITY, ISSUE_TEMPLATE ve
+PULL_REQUEST_TEMPLATE dosyalarını varsayılan olarak kullanıyor. Tek repo, tüm
+organizasyon; yeni açılan her repo otomatik kapsama giriyor.
+
+Bir kısıt var: issue ve PR template'lerinin org geneli çalışması için `.github`
+repo'sunun **public** olması gerekiyor (internal yetmiyor, private hiç çalışmıyor).
+Biz zaten public repo'larla çalıştığımız için sorun değil.
+
+Workflow'lar ve `.editorconfig` bu kapsamın dışında — onlar repo başına dağıtılacak,
+CODEOWNERS için kullandığım `github_repository_file` mekanizmasıyla.
 
 ---
 
