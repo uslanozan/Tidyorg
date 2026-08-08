@@ -1,5 +1,22 @@
 # Tidyorg GitHub Infrastructure — Implementation Plan
 
+> ## ⚠️ Bu doküman tarihsel kayıttır
+>
+> **Durum (2026-08-08):** Faz 1–6 büyük ölçüde tamamlandı. Faz 7 (dış entegrasyonlar)
+> ertelendi.
+>
+> Bu plan projenin **başlangıcında** yazıldı ve o zamanki varsayımları yansıtıyor.
+> Çalışma sırasında model önemli ölçüde değişti — özellikle rol tabanlı erişim,
+> config-driven mimari ve dashboard hedefi bu planda yok.
+>
+> **Güncel yol haritası için:** [`ROADMAP.md`](ROADMAP.md)
+> **Erişim modeli ve kararlar için:** [`ACCESS-MODEL.md`](ACCESS-MODEL.md)
+>
+> Aşağıdaki bölümler, özellikle **Faz 2'deki takım hiyerarşisi ve yetki matrisi**,
+> güncel modelle örtüşmüyor. Tarihsel referans olarak bırakılmıştır.
+
+---
+
 Şirket genelinde standart bir GitHub geliştirme iş akışı (workflow) tasarlamak ve bunu **Infrastructure as Code (IaC)** prensipleriyle Terraform kullanarak kodlamak. Sonuç olarak her yeni proje, ekip veya stajyer grubu için tekrarlanabilir, güvenli ve denetlenebilir bir altyapı oluşturmak.
 
 ## Proje Özeti

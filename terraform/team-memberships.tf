@@ -1,25 +1,22 @@
-# Kendi üyeliğin - Platform Admin ve Backend Team
+# =============================================================================
+# Organizasyon Seviyesi Takım Üyelikleri
+# =============================================================================
+# Yalnızca `platform-admins` üyelikleri burada tutulur — head-of-engineering rolünün
+# teknik karşılığı bu takımdır (bkz. ACCESS-MODEL.md, Karar 12).
+#
+# Repo bazlı üyelikler (mentör ve developer) buraya yazılmaz; onlar
+# terraform/config/ altındaki konfigürasyondan üretilir.
+# =============================================================================
+
 resource "github_team_membership" "emre_admin" {
   team_id  = github_team.platform_admins.id
   username = "paitblack"
   role     = "maintainer"
 }
 
-resource "github_team_membership" "emre_backend" {
-  team_id  = github_team.backend_team.id
-  username = "paitblack"
-  role     = "member"
-}
-
-# Ozan'ın üyeliği - Tech Leads ve Backend Team
-resource "github_team_membership" "ozan_tech_lead" {
-  team_id  = github_team.tech_leads.id
+# Config'de her ikisi de head-of-engineering rolünde; takım üyeliği de bunu yansıtmalı.
+resource "github_team_membership" "ozan_admin" {
+  team_id  = github_team.platform_admins.id
   username = "uslanozan"
   role     = "maintainer"
-}
-
-resource "github_team_membership" "ozan_backend" {
-  team_id  = github_team.backend_team.id
-  username = "uslanozan"
-  role     = "member"
 }

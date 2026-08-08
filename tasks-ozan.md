@@ -4,6 +4,10 @@
 **Alan:** Repo modülü, issue/PR templates, CI/CD workflows, DX dokümantasyonu, Linear/ClickUp  
 **Tahmini Süre:** 4 hafta
 
+> **Durum (2026-08-08):** Hafta 1–3 tamamlandı. Hafta 4 **ertelendi** — dış entegrasyonlar
+> ek özellik olarak sonraya bırakıldı, kalan çekirdek işler yeni yol haritasına taşındı.
+> Bkz. [`ROADMAP.md`](ROADMAP.md).
+
 ---
 
 ## Hafta 1 — Proje Altyapısı & GitHub Templates
@@ -96,148 +100,322 @@
 - [x] `docs/notes/github-auth-strategy.md` — classic PAT yerine GitHub App önerisi
 - [ ] Emre bu notu review etsin ve `tasks-emre.md`'deki PAT satırını güncellesin
 
-- [ ] ✅ **Hafta Sonu Sync:** Emre'nin PR'larını review et _(Emre'nin henüz PR'ı yok — bekliyor)_
+- [x] ✅ **Hafta Sonu Sync:** Emre'nin PR'larını review et _(2026-08-07'de yapıldı; düzeltmeler `docs/engineering-standards-fixes` ve `feat/branch-protection-fixes` branch'lerinde)_
 
 ---
 
 ## Hafta 2 — Repository Module & CI/CD Workflows
 
 ### 🔧 Terraform Repository Modülü
-- [ ] `terraform/modules/repository/variables.tf` — Input değişkenleri
-  - [ ] `name` (string, zorunlu)
-  - [ ] `description` (string, zorunlu)
-  - [ ] `language` (string: go/python/typescript/php)
-  - [ ] `visibility` (string: private/public, default: private)
-  - [ ] `team_access` (map: team_name → permission)
-  - [ ] `has_issues`, `has_projects`, `has_wiki` (bool, defaults)
-  - [ ] `template_repo` (string, opsiyonel)
-  - [ ] `branch_protection` (object: required_reviews, enforce_admins, require_ci)
-- [ ] `terraform/modules/repository/main.tf` — Ana modül
-  - [ ] `github_repository` resource — repo oluşturma
-    - [ ] Auto-init, default branch, gitignore template
-  - [ ] `github_team_repository` resource — team erişimi (for_each)
-  - [ ] `github_branch_default` — default branch ayarı
-  - [ ] `github_issue_labels` — standart label seti (for_each)
-    - [ ] type: labels (bug, feature, chore, docs)
-    - [ ] priority: labels (critical, high, medium, low)
-    - [ ] status: labels (in-review, blocked, ready)
-    - [ ] lang: labels (go, python, typescript)
-    - [ ] onboarding: labels (good first issue, help wanted)
-- [ ] `terraform/modules/repository/outputs.tf` — Output'lar
-  - [ ] `repo_url`, `repo_full_name`, `repo_html_url`, `repo_ssh_url`
+- [x] `terraform/modules/repository/variables.tf` — Input değişkenleri
+  - [x] `name` (string, zorunlu)
+  - [x] `description` (string, zorunlu)
+  - [x] `language` (string: go/python/typescript/php)
+  - [x] `visibility` (string: private/public, default: private)
+  - [x] ~~`team_access` (map: team_name → permission)~~ → _rol tabanlı yapıya çevrildi:_ `mentors` + `developers` + `role_permissions` _(gerekçe: `ACCESS-MODEL.md`)_
+  - [x] `has_issues`, `has_projects`, `has_wiki` (bool, defaults)
+  - [x] `template_repo` (object, opsiyonel) — _tanımlı ama henüz kullanılmıyor_
+  - [x] ~~`branch_protection` (object)~~ → _dal başına kural veren_ `protected_branches` _haritası_
+  - [x] _(ek)_ `archived`, `code_owners`, `org_admin_team_slug`, `manage_codeowners_file`
+- [x] `terraform/modules/repository/main.tf` — Ana modül
+  - [x] `github_repository` resource — repo oluşturma
+    - [x] Auto-init, default branch _(gitignore template kullanılmadı — repo'lar config'den doğuyor)_
+    - [x] _(ek)_ `lifecycle { prevent_destroy = true }`
+  - [x] `github_team_repository` resource — team erişimi
+    - [x] _(ek)_ `github_team` — repo başına `<repo>-mentors` ve `<repo>-devs` takımları
+    - [x] _(ek)_ `github_team_repository.org_admins` — head-of-engineering org geneli erişimi
+  - [x] `github_branch_default` — default branch ayarı
+  - [x] `github_issue_labels` — standart label seti
+    - [x] type: labels (bug, feature, chore, docs)
+    - [x] priority: labels (critical, high, medium, low)
+    - [x] status: labels (in-review, blocked, ready)
+    - [ ] lang: labels (go, python, typescript) — _eklenmedi; dil zaten config'de `language` alanında_
+    - [x] onboarding: labels (good first issue, help wanted)
+  - [x] _(ek)_ `github_branch_protection` — dal başına, `for_each` ile
+  - [x] _(ek)_ `github_repository_file` — CODEOWNERS repo içine yazılıyor
+- [x] `terraform/modules/repository/outputs.tf` — Output'lar
+  - [x] `repo_url`, `repo_full_name`, `repo_html_url`, `repo_ssh_url`
+  - [x] _(ek)_ `repo_node_id`, `default_branch`, takım slug'ları ve ID'leri
+- [x] _(plan dışı)_ `terraform/modules/repository/versions.tf` — provider beyanı
 
 ### 🔧 Pilot Repo Tanımı
-- [ ] `terraform/repositories.tf` — Modülü kullanarak pilot repo
-  ```hcl
-  module "pilot_project" {
-    source      = "./modules/repository"
-    name        = "pilot-intern-api"
-    description = "Pilot project for testing GitHub workflow"
-    language    = "go"
-    visibility  = "private"
-    team_access = {
-      "backend-team"    = "push"
-      "interns-backend" = "pull"
-      "tech-leads"      = "maintain"
-    }
-  }
+- [x] `terraform/repositories.tf` — Modülü kullanarak pilot repo
+  - _Sabit `module` bloğu yerine config'den üretim:_ `yamldecode` + `for_each`.
+    Dosyada tek bir repo adı veya kişi adı yok.
+  - _Repo adı `pilot-intern-api` değil **`pilot-intern-web`**: Emre aynı isimli repo'yu
+    `branch-protection.tf` içinde elle oluşturmuştu, çakışmayı önlemek için ayrı tutuldu._
+  ```yaml
+  # terraform/config/organization.yml
+  repositories:
+    pilot-intern-web:
+      description: "Pilot proje — repository modülünün uçtan uca doğrulanması"
+      language: typescript
+      mentors: [uslanozan]
+      developers: [paitblack]
   ```
+- [x] _(plan dışı)_ `terraform/config/organization.yml` — canlı konfigürasyon
+- [x] _(plan dışı)_ `terraform/config/organization.example.yml` — şema referansı
+- [x] _(plan dışı)_ `terraform apply` — 25 kaynak canlıya alındı, GitHub'dan doğrulandı
+      _(bkz. `docs/pilot-verification.md`)_
 
 ### 📝 CI/CD Workflow Templates
-- [ ] `templates/.github/workflows/ci.yml` — Temel CI pipeline
-  - [ ] Tetikleyici: `pull_request` + `push to develop`
-  - [ ] Concurrency grubu (aynı branch'te çoklu run engelleme)
-  - [ ] Go job:
-    - [ ] `actions/setup-go@v5`
-    - [ ] Cache: `~/go/pkg/mod`
-    - [ ] `golangci/golangci-lint-action` ile lint
-    - [ ] `go test ./...` ile test
-    - [ ] `go build ./...` ile build
-  - [ ] Python job:
-    - [ ] `actions/setup-python@v5`
-    - [ ] Cache: `~/.cache/pip`
-    - [ ] `ruff check .` ile lint
-    - [ ] `pytest` ile test
-  - [ ] TypeScript job:
-    - [ ] `actions/setup-node@v4`
-    - [ ] Cache: `node_modules`
-    - [ ] `eslint .` ile lint
-    - [ ] `prettier --check .` ile format
-    - [ ] `jest` veya `vitest` ile test
-    - [ ] `tsc --noEmit` ile type check
-  - [ ] PHP/Laravel job:
-    - [ ] `phpstan analyse` ile static analysis
-    - [ ] `pint --test` ile format
-    - [ ] `phpunit` ile test
+- [x] `templates/.github/workflows/ci.yml` — Temel CI pipeline
+  - [x] Tetikleyici: `pull_request` + `push to develop`
+  - [x] Concurrency grubu (aynı branch'te çoklu run engelleme)
+  - [x] _(ek)_ `detect` job'u — dil job'ları yalnızca ilgili manifest varsa çalışıyor
+  - [x] _(ek)_ `ci/test` toplayıcı job'u — branch protection'ın beklediği status check adı
+  - [x] Go job:
+    - [x] `actions/setup-go@v5`
+    - [x] Cache: `~/go/pkg/mod` _(setup-go'nun yerleşik `cache: true` özelliğiyle)_
+    - [x] `golangci/golangci-lint-action` ile lint
+    - [x] `go test ./...` ile test
+    - [x] `go build ./...` ile build
+  - [x] Python job:
+    - [x] `actions/setup-python@v5`
+    - [x] Cache: `~/.cache/pip` _(setup-python'ın `cache: pip` özelliğiyle)_
+    - [x] `ruff check .` ile lint
+    - [x] `pytest` ile test
+  - [x] TypeScript job:
+    - [x] `actions/setup-node@v4`
+    - [x] Cache: `node_modules` _(setup-node'un `cache: npm` özelliğiyle)_
+    - [x] `eslint .` ile lint
+    - [x] `prettier --check .` ile format
+    - [x] `jest` veya `vitest` ile test _(`npm test --if-present`)_
+    - [x] `tsc --noEmit` ile type check
+  - [x] PHP/Laravel job:
+    - [x] `phpstan analyse` ile static analysis
+    - [x] `pint --test` ile format
+    - [x] `phpunit` ile test
 
-- [ ] `templates/.github/workflows/release.yml` — Release workflow
-  - [ ] Tetikleyici: main'e push veya manual dispatch
-  - [ ] Semantic version tag oluşturma (otomatik)
-  - [ ] GitHub Release oluşturma (auto-generated changelog)
-  - [ ] Docker build & push step (opsiyonel, koşullu)
+- [x] `templates/.github/workflows/release.yml` — Release workflow
+  - [x] Tetikleyici: main'e push veya manual dispatch
+  - [x] Semantic version tag oluşturma (otomatik, Conventional Commits'ten türetiliyor)
+  - [x] GitHub Release oluşturma (auto-generated changelog)
+  - [x] Docker build & push step (opsiyonel, koşullu — yalnızca `Dockerfile` varsa)
 
-- [ ] `templates/.github/dependabot.yml` — Dependabot config
-  - [ ] Go modules: haftalık
-  - [ ] npm: haftalık
-  - [ ] pip: haftalık
-  - [ ] GitHub Actions: haftalık
-  - [ ] PR label: `type: chore`
-  - [ ] Max open PRs: 5
+- [x] `templates/.github/dependabot.yml` — Dependabot config
+  - [x] Go modules: haftalık
+  - [x] npm: haftalık
+  - [x] pip: haftalık
+  - [x] GitHub Actions: haftalık
+  - [x] _(ek)_ composer: haftalık
+  - [x] PR label: `type: chore`
+  - [x] Max open PRs: 5
+
+> ⚠️ **Dağıtım eksik:** Bu üç dosya yazıldı ancak hiçbir repo'ya dağıtılmıyor.
+> Modül yalnızca CODEOWNERS yazıyor. Workflow dağıtımının repo bazında konfigüre
+> edilebilir olması kararlaştırıldı — bkz. `TODO.md`.
 
 - [ ] ✅ **Hafta Sonu Sync:** Emre ile birlikte branch protection + CI test et
-  - [ ] Pilot repo'da PR aç
+  - [ ] Pilot repo'da PR aç _(doğrudan commit ile test edildi, PR akışı henüz denenmedi)_
   - [ ] CI workflow tetiklendi mi?
   - [ ] Lint/test adımları çalışıyor mu?
-  - [ ] Onay olmadan merge engellenmiş mi?
+  - [ ] Onay olmadan merge engellenmiş mi? _(ikinci bir GitHub hesabı gerekiyor — `TODO.md`)_
+  - [x] _(ek)_ `prevent_destroy` doğrulandı
+  - [x] _(ek)_ Mentörün korumalı dala doğrudan yazabildiği doğrulandı
 
 ---
 
 ## Hafta 3 — Developer Experience Dokümantasyonu
 
 ### 📝 Ana İş Akışı Dokümanı
-- [ ] `docs/workflow-guide.md` — Master document
-  - [ ] Genel akış diyagramı (Mermaid)
-  - [ ] Günlük geliştirme döngüsü (branch aç → commit → PR → review → merge)
-  - [ ] PR → Review → Merge → Deploy akışı
-  - [ ] Release süreci özeti
-  - [ ] Hotfix süreci özeti
-  - [ ] Tüm detay dokümanlara linkler
+- [x] `docs/workflow-guide.md` — Master document
+  - [x] Genel akış diyagramı (Mermaid)
+  - [x] Günlük geliştirme döngüsü (branch aç → commit → PR → review → merge)
+  - [x] PR → Review → Merge → Deploy akışı _(sequence diyagramı)_
+  - [x] Release süreci özeti
+  - [x] Hotfix süreci özeti
+  - [x] Tüm detay dokümanlara linkler _("ne zaman okunur" sütunlu harita)_
+  - [x] _(ek)_ **Yetki akışı** — config → PR → plan → apply. Plan yazıldığında bu akış yoktu.
+  - [x] _(ek)_ `ci/test` isim kilidi uyarısı
 
 ### 📝 Onboarding Rehberi
-- [ ] `docs/onboarding.md` — Yeni geliştirici katılım rehberi
-  - [ ] "İlk Gün" checklist:
-    - GitHub org davetini kabul et
-    - 2FA'yı etkinleştir
-    - SSH key ekle
-    - Repo'yu klonla
-    - Geliştirme ortamını kur
-    - `.editorconfig` plugin'ini yükle
-  - [ ] "İlk PR'ınız" — adım adım rehber (komutlarla)
-  - [ ] Commit message örnekleri
-  - [ ] Review sürecinde ne beklenmeli?
-  - [ ] Sıkça Sorulan Sorular (FAQ)
+- [x] `docs/onboarding.md` — Yeni geliştirici katılım rehberi
+  - [x] "İlk Gün" checklist _(davet artık elle gönderilmiyor — mentör config'e ekliyor)_
+  - [x] "İlk PR'ınız" — adım adım rehber (komutlarla)
+  - [x] Commit message örnekleri
+  - [x] Review sürecinde ne beklenmeli?
+  - [x] Sıkça Sorulan Sorular (FAQ) — 8 soru
 
 ### 📝 Code Review Rehberi
-- [ ] `docs/code-review-guide.md`
-  - [ ] Reviewer nelere bakmalı? (mantık, güvenlik, performans, okunabilirlik)
-  - [ ] PR sahibi PR'ı nasıl hazırlamalı? (küçük PR'lar, açıklayıcı description)
-  - [ ] Yapıcı geri bildirim verme kuralları
-  - [ ] Review SLA'ları (örn: 24 saat içinde ilk review)
-  - [ ] "Request Changes" vs "Approve" ne zaman verilmeli?
+- [x] `docs/code-review-guide.md`
+  - [x] Reviewer nelere bakmalı? (doğruluk, güvenlik, okunabilirlik, performans, test)
+  - [x] PR sahibi PR'ı nasıl hazırlamalı? (küçük PR'lar, açıklayıcı description)
+  - [x] Yapıcı geri bildirim verme kuralları _(`blocker:` / `öneri:` / `soru:` / `nit:` ön ekleri)_
+  - [x] Review SLA'ları — 1 iş günü _(öneri olarak yazıldı, ekip teyit etmeli)_
+  - [x] "Request Changes" vs "Approve" ne zaman verilmeli? _(karar tablosu)_
+  - [x] _(ek)_ Onay kurallarının repo bazında değiştiği; CODEOWNERS'ın elle düzenlenemeyeceği
 
 ### 📝 Release Process
-- [ ] `docs/release-process.md`
-  - [ ] SemVer açıklaması ve örnekler
-  - [ ] Release branch oluşturma
-  - [ ] Changelog oluşturma
-  - [ ] Git tag oluşturma
-  - [ ] GitHub Release oluşturma
+- [x] `docs/release-process.md`
+  - [x] SemVer açıklaması ve örnekler
+  - [x] Release branch oluşturma
+  - [x] Changelog oluşturma _(ayrı `CHANGELOG.md` tutulmuyor — GitHub Release notları tek kaynak)_
+  - [x] Git tag oluşturma
+  - [x] GitHub Release oluşturma
+  - [x] _(ek)_ Yazılan `release.yml`'ın adım adım açıklaması ve sorun giderme
 
-- [ ] ✅ **Hafta Sonu Sync:** Emre'nin dokümanlarını review et, cross-reference'ları kontrol et
+### 📝 Plan Dışı Dokümanlar _(konuşulan kararlardan doğdu)_
+- [x] `docs/config-guide.md` — Config'i kim nasıl değiştirir; dashboard'un spec'i
+- [x] `docs/runbook.md` — Operasyonel senaryolar (offboarding, repo kapatma, drift, acil erişim kesme)
+- [x] `docs/adr/004-config-driven-access-management.md` — Neden safe-settings/native ruleset/IDP değil
+- [x] `docs/pilot-verification.md` — Uçtan uca doğrulama raporu + ekran görüntüleri
+- [x] `ACCESS-MODEL.md` — Erişim modeli ve verilen kararlar
+- [x] `TODO.md` — Engelli ve bekleyen işler
+
+- [x] ✅ **Hafta Sonu Sync:** Emre'nin dokümanlarını review et
+  - [x] Dört doküman incelendi, düzeltmeler `docs/engineering-standards-fixes` branch'inde
+  - [ ] Cross-reference'lar — benim dokümanlarım Emre'ninkilere link veriyor, tersi henüz yok
 
 ---
 
-## Hafta 4 — Entegrasyonlar, Proje Yönetimi & Finalizasyon
+## Hafta 4 — Temizlik & Config Yapısı
+
+> **Paralel:** Emre bu hafta GitOps döngüsünü kuruyor (Faz 3). İki iş birbirinden
+> bağımsız; yalnızca hafta sonunda birleşiyor.
+
+### 🧹 Faz 0 — Kalan temizlik
+- [ ] **`pilot-intern-api`'yi modüle taşı** _(Emre ile ortak — onun `branch-protection.tf`'i,
+      senin modülün)_
+  - [ ] Repo'yu `config/repositories/pilot-intern-api.yml` olarak tanımla
+  - [ ] `terraform state mv` ile kaydı modül altına taşı — **silme/yeniden yaratma yok**
+  - [ ] `branch-protection.tf`'teki ham `github_repository` ve iki `github_branch_protection`
+        bloğunu kaldır
+  - [ ] `plan` → `No changes` görülmeli
+- [ ] **Bekleyen üç branch'i push et ve PR aç** _(dogfooding)_
+  - [ ] `feat/repository-module`
+  - [ ] `docs/engineering-standards-fixes` → Emre'nin PR'ına
+  - [ ] `feat/branch-protection-fixes` → Emre'nin PR'ına
+
+### 🔧 Faz 1 — Config yapısını repo başına dosyaya böl
+- [ ] Dizin yapısını kur:
+  ```
+  terraform/config/
+  ├── organization.yml          # roller, defaults, people
+  └── repositories/
+      ├── pilot-intern-web.yml
+      └── pilot-intern-api.yml
+  ```
+- [ ] `repositories.tf`'i `fileset()` + `yamldecode` ile besle — dosya adı = repo adı
+- [ ] `organization.example.yml`'i yeni yapıya göre güncelle
+- [ ] `plan` çıktısının **değişmediğini** doğrula _(bu bir refactor; davranış değişmemeli)_
+- [ ] [`docs/config-guide.md`](docs/config-guide.md)'yi yeni yapıya göre güncelle
+
+**Neden:** Dashboard'un ön koşulu. İki mentör aynı anda düzenlediğinde tek dosyada
+çakışırlar, ayrı dosyalarda çakışmazlar. Ayrıca CODEOWNERS ile mentör bazlı review
+yönlendirmesi ancak ayrı dosyalarla mümkün.
+
+- [ ] ✅ **Hafta Sonu Sync:** Emre'nin GitOps workflow'larını review et; config bölünmesi
+      sonrası CODEOWNERS kurallarını birlikte yaz
+
+---
+
+## Hafta 5 — Şablon & Workflow Dağıtımı
+
+> **Paralel:** Emre bu hafta GitHub App'i kuruyor (Faz 4). Bağımsız.
+
+### 📦 Faz 2 — `templates/` klasörünü canlıya çıkar
+- [ ] Config şemasına `files` ve `workflows` alanlarını ekle
+  ```yaml
+  defaults:
+    files:
+      contributing: seed        # strict | seed | none
+      security: seed
+      editorconfig: seed
+      issue_templates: strict
+      pr_template: strict
+    workflows: [ci]             # ci | release | dependabot
+  ```
+- [ ] Modülde `github_repository_file` ile dağıtımı kur _(CODEOWNERS mekanizmasının aynısı)_
+- [ ] **`strict` modu** — Terraform içeriği sahiplenir, elle değişiklik geri alınır
+  - [ ] `.github/CODEOWNERS` _(zaten var)_
+  - [ ] `.github/ISSUE_TEMPLATE/*`
+  - [ ] `.github/PULL_REQUEST_TEMPLATE.md`
+  - [ ] `.github/workflows/*`
+  - [ ] `.github/dependabot.yml`
+- [ ] **`seed` modu** — yalnızca ilk oluşturmada yazılır, repo sonra değiştirebilir
+      _(`lifecycle { ignore_changes = [content] }`)_
+  - [ ] `CONTRIBUTING.md`, `SECURITY.md`, `.editorconfig`, `README.md`
+- [ ] **Tutarlılık doğrulaması** — `workflows` içinde `ci` yoksa `require_status_checks`
+      da boş olmalı. Modül bunu `precondition` ile hata olarak vermeli; aksi halde PR'lar
+      hiç raporlanmayacak bir check'i sonsuza kadar bekler.
+- [ ] Pilot repo'da doğrula
+  - [ ] PR açınca şablon dolu geliyor mu?
+  - [ ] Issue template'leri görünüyor mu?
+  - [ ] `ci/test` raporlanıyor mu?
+- [ ] [`docs/onboarding.md`](docs/onboarding.md)'deki "PR şablonu otomatik dolar" iddiası
+      artık doğru — dokümanı gözden geçir
+
+- [ ] ✅ **Hafta Sonu Sync:** App devreye girince dağıtımı yeni kimlikle test et
+
+---
+
+## Hafta 6 — Güvenlik Ayarları & Dashboard Desteği
+
+> **Paralel:** Emre dashboard'un okuma modunu ve PR yazma akışını yazıyor (Faz 5a–5b).
+
+### 🔒 Repo güvenlik ayarları
+- [ ] Modüle `vulnerability_alerts` ekle _(Dependabot uyarıları)_
+- [ ] Uygun olduğunda `security_and_analysis` blokları
+- [ ] [`docs/security-policy.md`](docs/security-policy.md)'deki durum tablosunu güncelle —
+      "planlandı" olan maddeler "aktif" olacak
+
+### 👤 `people` → organizasyon üyeliği
+- [ ] `github_membership` ile org üyeliğini config'den yönet
+- [ ] ⚠️ **Riskli:** mevcut owner yetkilerini etkileyebilir. Önce `plan`'ı dikkatle
+      incele, gerekirse `import` ile mevcut üyelikleri state'e al. **Emre review etsin.**
+- [ ] `docs/onboarding.md`'deki "davet otomatik gelir" iddiası artık doğru
+
+### 🧩 Dashboard desteği
+- [ ] Config için JSON Schema yaz — dashboard kaydetmeden önce doğrulama yapabilsin
+  - _YAML ayrıştırıldığında JSON ile aynı veri modeline dönüştüğü için aynı şema her
+    ikisini de doğrular. Depoda saklanan format her zaman YAML; dönüştürme yok._
+  - _Emre ihtiyaç duyarsa şemayı değiştirebilir._
+- [ ] Anlamsal kuralları tanımla: her repo'nun tam bir mentörü olmalı, arşiv repo'ya
+      developer eklenemez, `required_reviews` developer sayısını aşamaz
+- [ ] **Dosya sahipliği ayrımını uygula** _(ACCESS-MODEL Karar 16)_
+  - [ ] `config/repositories/*.yml` makine sahipli — yorum satırı konmayacak, dashboard
+        serbestçe yeniden üretebilecek
+  - [ ] `config/organization.yml` insan sahipli — yorumlar burada kalacak, dashboard
+        dokunmayacak
+
+### 🧪 Bekleyen testler
+- [ ] İkinci hesapla engelleme testleri _(bkz. [`TODO.md`](TODO.md))_
+- [ ] Sonuçları [`docs/pilot-verification.md`](docs/pilot-verification.md) Bölüm 6'ya işle
+
+- [ ] ✅ **Hafta Sonu Sync:** Dashboard'un okuma modunu birlikte gözden geçir
+
+---
+
+## Hafta 7 — Finalizasyon
+
+> **Paralel:** Emre dashboard'u tamamlıyor (Faz 5c–5d).
+
+- [ ] **README.md** — Emre review etsin
+  - [ ] Proje açıklaması, hızlı başlangıç, klasör yapısı, katkı linki
+  - [ ] Mimari özet: kod katmanı / veri katmanı ayrımı
+- [ ] **Doküman bakımı**
+  - [ ] Cross-reference'ları tamamla — Emre'nin dokümanlarından seninkilere link
+  - [ ] `ROADMAP.md` ve `TODO.md`'yi güncelle
+  - [ ] Değişen davranışları dokümanlara yansıt
+- [ ] **Uçtan uca pilot test** _(Emre ile ortak)_
+  - [ ] Config'den sıfırdan yeni repo aç
+  - [ ] Şablonlar geldi mi, CI tetiklendi mi, label'lar doğru mu?
+  - [ ] Dashboard'dan bir kişi ekle → PR → plan → apply → GitHub'da gör
+- [ ] **Sunum hazırlığı**
+  - [ ] Problem tanımı ve çözüm mimarisi
+  - [ ] Kod/veri katmanı ayrımı ve dashboard demosu
+  - [ ] Pilotta bulunan iki hata — beyan temelli yönetimin somut faydası
+  - [ ] Piyasa karşılaştırması _(safe-settings, native ruleset, IDP — `adr/004`)_
+  - [ ] Sonraki adımlar ve bilinen kısıtlar
+
+---
+
+## ⏸️ Ertelenen — Ek Özellikler
+
+> Sistemin çalışması için gerekli değil. Çekirdek işler bittiğinde ele alınacak.
+
+## Hafta 8+ — Entegrasyonlar & Proje Yönetimi
 
 ### 🔗 Linear Entegrasyonu
 - [ ] `integrations/linear/github-sync.md` — Linear ↔ GitHub sync rehberi
@@ -271,29 +449,7 @@
 ### 📝 ADR
 - [ ] `docs/adr/003-external-integrations.md` — Linear vs ClickUp karşılaştırması, karar kriterleri
 
-### 🤝 Ortak Çalışma
-- [ ] README.md — Taslağı yaz, Emre review etsin
-  - [ ] Proje açıklaması
-  - [ ] Hızlı başlangıç (Quick Start)
-  - [ ] Klasör yapısı
-  - [ ] Katkıda bulunma linki
-- [ ] Pilot test — Emre ile birlikte tüm sistemi test et
-  - [ ] Template'lerden repo oluştur
-  - [ ] Issue template'leri çalışıyor mu?
-  - [ ] PR template'i görünüyor mu?
-  - [ ] CI workflow tetikleniyor mu?
-  - [ ] Label'lar doğru atanmış mı?
-- [ ] Sunum hazırlığı — Sunum yapısını oluştur
-  - [ ] Problem tanımı
-  - [ ] Çözüm mimarisi
-  - [ ] Organizasyon & Yetki yapısı
-  - [ ] Branching & PR workflow
-  - [ ] CI/CD pipeline
-  - [ ] Template repository demo
-  - [ ] Terraform demo (Emre gösterir)
-  - [ ] Entegrasyonlar
-  - [ ] Sonuç & Sonraki adımlar
-- [ ] Canlı demo senaryosu (Emre ile birlikte)
+> _README, pilot test ve sunum hazırlığı **Hafta 7**'ye taşındı._
 
 ---
 

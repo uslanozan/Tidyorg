@@ -1,0 +1,110 @@
+# =============================================================================
+# Organizasyon Konfigürasyonu — CANLI DOSYA
+# =============================================================================
+# Bu dosya Terraform tarafından okunur (terraform/repositories.tf).
+# Burada yapılan her değişiklik, apply sonrası GitHub'a yansır.
+#
+# Şemanın tüm alanları ve örnekleri için: config/organization.example.yml
+# Modelin gerekçeleri için: ACCESS-MODEL.md
+#
+# Pilot aşama: yalnızca tek repo yönetilmektedir. Emre'nin
+# terraform/branch-protection.tf içinde elle tanımladığı `pilot-intern-api`
+# repo'su BU DOSYADAN YÖNETİLMEZ — çakışmayı önlemek için ayrı tutulmuştur.
+# =============================================================================
+
+version: 1
+organization: your-org
+
+# -----------------------------------------------------------------------------
+# ROLLER — Yetkinin ne anlama geldiği tek yerde tanımlanır.
+# -----------------------------------------------------------------------------
+roles:
+  head-of-engineering:
+    scope: organization
+    repo_permission: admin
+    bypass_branch_protection: true
+
+  mentor:
+    scope: repository
+    repo_permission: admin
+    bypass_branch_protection: true
+
+  developer:
+    scope: repository
+    repo_permission: push
+    bypass_branch_protection: false
+
+# head-of-engineering rolünü taşıyan organizasyon seviyesi takım
+org_admin_team: platform-admins
+
+# -----------------------------------------------------------------------------
+# KİŞİLER
+# -----------------------------------------------------------------------------
+# NOT: Bu bölüm henüz Terraform tarafından tüketilmiyor. Organizasyon üyeliğinin
+# (github_membership) Terraform'a devredilmesi, mevcut owner yetkilerini
+# etkileyebileceği için bilinçli olarak ertelendi.
+people:
+  uslanozan:
+    org_role: admin
+    roles: [head-of-engineering]
+
+  paitblack:
+    org_role: admin
+    roles: [head-of-engineering]
+
+# -----------------------------------------------------------------------------
+# VARSAYILANLAR — Her repo bunları miras alır, repo bazında ezilebilir.
+# -----------------------------------------------------------------------------
+defaults:
+  visibility: public # FREE PLAN: private repo'da branch protection çalışmıyor
+  has_issues: true
+  has_projects: false
+  has_wiki: false
+  auto_init: true
+  default_branch: develop
+
+  protected_branches:
+    main:
+      required_reviews: 2
+      require_code_owner_review: true
+      dismiss_stale_reviews: true
+      require_status_checks: [ci/test]
+      require_conversation_resolution: true
+      allow_force_push: false
+      allow_deletions: false
+      push_allowed_roles: [mentor, head-of-engineering]
+
+    develop:
+      required_reviews: 1
+      require_code_owner_review: false
+      dismiss_stale_reviews: true
+      require_status_checks: [ci/test]
+      require_conversation_resolution: false
+      allow_force_push: false
+      allow_deletions: false
+      push_allowed_roles: [mentor, head-of-engineering]
+
+  labels:
+    - { name: "type: bug", color: "d73a4a", description: "Hatalı davranış" }
+    - { name: "type: feature", color: "0e8a16", description: "Yeni özellik" }
+    - { name: "type: chore", color: "cfd3d7", description: "Bakım işi" }
+    - { name: "type: docs", color: "0075ca", description: "Dokümantasyon" }
+    - { name: "priority: critical", color: "b60205", description: "Acil müdahale" }
+    - { name: "priority: high", color: "d93f0b", description: "Yüksek öncelik" }
+    - { name: "priority: medium", color: "fbca04", description: "Orta öncelik" }
+    - { name: "priority: low", color: "c2e0c6", description: "Düşük öncelik" }
+    - { name: "status: in-review", color: "5319e7", description: "İnceleme bekliyor" }
+    - { name: "status: blocked", color: "e99695", description: "Engellenmiş" }
+    - { name: "status: ready", color: "0e8a16", description: "Başlanabilir" }
+    - { name: "good first issue", color: "7057ff", description: "Yeni katılanlar için" }
+    - { name: "help wanted", color: "008672", description: "Yardım aranıyor" }
+
+# -----------------------------------------------------------------------------
+# REPO'LAR
+# -----------------------------------------------------------------------------
+repositories:
+  pilot-intern-web:
+    description: "Pilot proje — repository modülünün uçtan uca doğrulanması"
+    language: typescript
+    mentors: [uslanozan]
+    developers: [paitblack]
