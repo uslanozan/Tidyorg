@@ -1,8 +1,10 @@
 # Pilot Doğrulama Raporu — `pilot-intern-web`
 
-**Tarih:** 2026-08-07
+**Tarih:** 2026-08-07 · **Güncelleme:** 2026-08-15 (Bölüm 6.3–6.4 — ret tarafı doğrulandı)
 **Kapsam:** `terraform/modules/repository` modülünün uçtan uca doğrulanması
 **Repo:** https://github.com/your-org/pilot-intern-web
+_(Bölüm 6.3–6.4 testleri `Tidyorg` reposunda yapıldı; aynı modülden
+aynı kurallarla üretildiği için sonuçlar tüm repo'lar için geçerlidir.)_
 
 Bu rapor, konfigürasyondan repo üretme zincirinin gerçekten çalıştığını kanıtlar.
 Sunumda "çalışıyor" demek yerine gösterilecek kayıt budur.
@@ -224,21 +226,67 @@ diye açıkça bildiriyor. [`ACCESS-MODEL.md`](../ACCESS-MODEL.md)'de tanımlana
 > vermek, onun elle yaptığı değişikliklerin bir sonraki `apply` ile geri alınması pahasına
 > geliyor. Kalıcı değişikliğin tek yolu konfigürasyondur.
 
-### 6.3 Henüz doğrulanmayanlar
+### 6.3 Developer'ın korumalı dala doğrudan push'u — ✅ Reddedildi
 
-**Tek kullanıcıyla test edilemeyenler.** Ozan bu repo'da hem `pilot-intern-web-mentors`
-hem `platform-admins` üyesi ve organizasyon sahibi. `enforce_admins: false` olduğu için
-kurallar ona uygulanmıyor — dolayısıyla kuralların **engelleme** tarafı yalnızca
-`developer` rolüne sahip ayrı bir hesapla doğrulanabilir:
+**Tarih:** 2026-08-15 · **Repo:** `Tidyorg` · **Hesap:** `paitblack`
 
-- [ ] Developer'ın `develop`'a doğrudan push'unun reddedilmesi
-- [ ] Onay olmadan merge'in engellenmesi
-- [ ] `main`'de code owner (mentör) onayının zorunlu kılınması
-- [ ] `restrict_pushes` kuralının mevcut GitHub plan seviyesinde fiilen uygulanması
+Raporun bu bölümü aylardır boştu; sebebi tek bir hesapla test edilememesiydi (bkz. 6.5).
+Emre projeden ayrılınca `platform-admins` üyeliği kaldırıldı ve org rolü `member`a
+sabitlendi — böylece elimizde ilk kez **gerçek bir `developer` hesabı** oldu. Aynı push
+tekrar denendi:
 
-**Diğer bekleyenler:**
+![Failed to push — GH006 Protected branch update failed, üç ayrı ret gerekçesi listeleniyor](images/pilot-verification/09-developer-push-rejected.jpeg)
 
-- [ ] CI workflow tetiklenmesi ve `ci/test` status check'inin raporlanması
+```
+remote: error: GH006: Protected branch update failed for refs/heads/develop.
+remote: - Changes must be made through a pull request.
+remote: - Required status check "ci/test" is expected.
+remote: - You're not authorized to push to this branch.
+```
+
+**Kanıtladığı — üç ayrı şey:**
+
+1. **PR zorunluluğu çalışıyor.** *"Changes must be made through a pull request."*
+2. **`restrict_pushes` mevcut plan seviyesinde fiilen uygulanıyor.** *"You're not authorized
+   to push to this branch."* Bu satır, açık kalan en önemli sorunun cevabıdır: free plan +
+   public repo'da push izin listesi **gerçekten zorlanıyor**, sessizce yok sayılmıyor.
+   Hafta 2'de "apply sırasında patlayabilir, patlarsa `push_allowed_roles` boşaltılacak"
+   diye not düşülmüştü — gerek kalmadı.
+3. **Aynı kullanıcı bir gün önce bu push'u başarıyla atmıştı.** Değişen tek şey rol
+   ataması. Kural baştan doğruydu; kimin ondan muaf olduğu görünmüyordu.
+
+> Karşılaştırma için 6.2'ye bakın: aynı dal, aynı kural, farklı rol. Mentör "kurallar
+> bypass ediliyor" uyarısıyla geçiyor, developer `GH006` ile duruyor. İki ekran görüntüsü
+> yan yana, `enforce_admins: false` tasarımının tam olarak amaçlandığı gibi çalıştığını
+> gösteriyor.
+
+### 6.4 Onay olmadan merge — ✅ Engellendi
+
+**Tarih:** 2026-08-15 · **PR:** `Test4` #10 → `develop`
+
+Push reddedilince aynı hesap kural gereği PR açtı:
+
+![PR #10 — Review required, ci/test bekliyor, Merging is blocked](images/pilot-verification/10-developer-merge-blocked.jpeg)
+
+- [x] **Review required** — *"At least 1 approving review is required by reviewers with
+      write access."* `required_reviews: 1` canlıda zorlanıyor.
+- [x] **Merging is blocked** — merge düğmesi kapalı; kullanıcı kendi PR'ını onaylayamıyor.
+- [x] Kullanıcı adının yanındaki **`Member`** rozeti org rolünün `member` olduğunu
+      doğruluyor — `github_membership` kaynağı yerleşmiş.
+- [x] PR açma yetkisi korunmuş: developer engellenmiyor, **doğru kanala yönlendiriliyor.**
+
+**Ayrıca görünen — `ci/test` blokajı:** *"ci/test · Expected — Waiting for status to be
+reported"* satırı `Required` etiketiyle duruyor. Bu check hiçbir repoda üretilmiyor
+(`templates/` henüz dağıtılmıyor), dolayısıyla **onay alınsa bile bu PR merge edilemez.**
+Mentör admin muafiyetiyle geçtiği için bugüne kadar fark edilmedi; ilk kez normal developer
+akışında görünür oldu. Kalıcı çözüm şablon dağıtımıdır — [`ROADMAP.md`](../ROADMAP.md) Faz 2.
+
+### 6.5 Henüz doğrulanmayanlar
+
+- [ ] `main`'de code owner (mentör) onayının zorunlu kılınması — 6.3/6.4 testleri
+      `develop` üzerinde yapıldı, `main` akışı ayrıca denenmeli
+- [ ] CI workflow tetiklenmesi ve `ci/test` status check'inin **raporlanması**
+      _(zorunlu olduğu doğrulandı, üretildiği doğrulanmadı — bkz. 6.4)_
 - [ ] Force push denemesinin sonucu (admin bypass'ının force push'u kapsayıp kapsamadığı
       bilinmiyor)
 

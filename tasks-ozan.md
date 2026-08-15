@@ -320,6 +320,46 @@ Dashboard'un PR açması ancak bu döngü varsa anlamlı — plan çıktısı bu
 - [x] Concurrency grubu — iki apply aynı anda çalışmasın _(2026-08-15)_
 - [x] Bu repo'nun kendi branch protection'ını config'den yönet (dogfooding) _(2026-08-15)_
 
+### 🔐 Erişim düzeltmesi — Emre `developer` rolüne indirildi _(2026-08-15, plan dışı)_
+
+Emre projeden ayrıldıktan sonra `develop`'a doğrudan push denendi ve **push geçti**.
+İlk bakışta "direct push yasağı çalışmıyor" gibi göründü; değildi. Kural doğruydu,
+**rol ataması yanlıştı.**
+
+**Zincir neden kırılmıştı:**
+1. [`terraform/team-memberships.tf`](terraform/team-memberships.tf) Emre'yi `platform-admins`
+   takımında tutuyordu.
+2. O takım `org_admin_team`, yani **head-of-engineering** rolünün taşıyıcısı.
+3. Modül bu takıma [her repo'da admin](terraform/modules/repository/main.tf) veriyor.
+4. `enforce_admins = false` (bilinçli tercih — mentörler push atabilsin diye) → **admin
+   yetkisindeki herkes PR zorunluluğunu ve onay kuralını atlar.**
+5. Üstüne `push_allowed_roles: [mentor, head-of-engineering]` onu push allowlist'ine
+   açıkça koyuyordu.
+
+Yani Emre `developer` olarak değil, `head-of-engineering` olarak push attı. Bu,
+[`TODO.md`](TODO.md)'de "ikinci bir hesap gerekiyor, Emre'nin hesabı org owner olduğu için
+aynı bypass sorununu yaşar" diye zaten öngörülmüş durumun ta kendisiydi.
+
+- [x] `github_team_membership.emre_admin` kaldırıldı — `platform-admins` üyeliği bitti
+- [x] `terraform/org-membership.tf` eklendi — org rolü `member` olarak **beyana bağlandı**
+  - Takımdan çıkarmak tek başına yetmez: org owner branch protection dahil her şeyi ezer
+  - `downgrade_on_destroy = true` — kaynak koddan kalkarsa org'dan atılmaz, member'a düşer
+  - `uslanozan` bilerek yönetim dışında (break-glass; tek org owner'ı bağlamak lockout riski)
+- [x] Repo tarafında değişiklik gerekmedi — üç repoda da zaten `developers: [paitblack]`
+- [x] Apply: **1 added, 0 changed, 1 destroyed**; doğrulama planı `No changes`
+- [ ] Emre'ye aynı push'u tekrar denet — ret davranışı ilk kez canlı doğrulanabilir
+      _(sonucu [`docs/pilot-verification.md`](docs/pilot-verification.md) Bölüm 6'ya işle)_
+
+**Yan tespit:** Silinen üyeliğin GitHub'daki gerçek rolü `member`'dı, kodda `maintainer`
+yazıyordu. O üyelik bir ara arayüzden elle değiştirilmiş — drift'in bir örneği daha.
+
+> ⚠️ **Bu düzeltme `ci/test` blokajını görünür hale getirdi.** Bugüne kadar tüm PR'lar
+> admin bypass'ıyla merge edildiği için fark edilmedi. Artık normal developer akışı devrede
+> ve `require_status_checks: [ci/test]` hiçbir repoda karşılığı olmayan bir check bekliyor →
+> **onaylanmış PR bile merge edilemez.** Faz 2'deki tutarlılık maddesi artık teorik değil,
+> aktif blokaj. Kalıcı çözüm şablon dağıtımı; ara çözüm `require_status_checks`'i geçici
+> boşaltmak.
+
 - [ ] ✅ **Hafta Sonu Sync:** Config bölünmesi sonrası CODEOWNERS kurallarını yaz;
       GitOps'u Medine ile birlikte test et (dashboard PR açıyor mu, plan yorumu düşüyor mu?)
 
@@ -388,13 +428,88 @@ Dashboard'un PR açması ancak bu döngü varsa anlamlı — plan çıktısı bu
 ### 🔒 Repo güvenlik ayarları
 - [ ] Modüle `vulnerability_alerts` ekle _(Dependabot uyarıları)_
 - [ ] Uygun olduğunda `security_and_analysis` blokları
+- [ ] ⚠️ **`default_repository_permission` doğrula ve yönetime al** _(2026-08-15'te fark edildi)_
+      Org'un base permission ayarı hiçbir yerde yönetilmiyor — `github_organization_settings`
+      kaynağı yok. Bu ayar `read`/`write` ise **org'daki her üye, takımlara bakılmaksızın
+      her repoda o yetkiye sahip olur** ve repo başına kurduğumuz modelin tabanı delinir.
+      Settings → Member privileges → Base permissions'tan `None` olduğunu teyit et;
+      değilse Terraform'a bağla.
 - [ ] [`docs/security-policy.md`](docs/security-policy.md)'deki durum tablosunu güncelle —
       "planlandı" olan maddeler "aktif" olacak
 
 ### 👤 `people` → organizasyon üyeliği
-- [ ] `github_membership` ile org üyeliğini config'den yönet
+
+> **Bağlam (2026-08-15):** Emre'yi indirirken [`org-membership.tf`](terraform/org-membership.tf)
+> tek kişilik bir **istisna dosyası** olarak açıldı. Bu kalıcı çözüm değil — her yeni üye
+> için `.tf` düzenlemek gerekiyor ki bu, projenin "veri katmanı config'de" iddiasının tam
+> tersi. Aşağıdaki iş bunu kapatır.
+
+**Önce netleşen tasarım sorusu — iki katman çakışıyor mu?**
+
+Hayır, üst üste biniyorlar. Farklı soruları cevaplıyorlar:
+
+| Katman | Cevapladığı soru | Nerede tanımlı | Bugün tüketiliyor mu |
+| :--- | :--- | :--- | :--- |
+| **Org üyeliği** | Kişi org'da mı, **owner mı**? | `people` → şu an `org-membership.tf` | Yalnızca paitblack |
+| **Repo erişimi** | Hangi repoda ne yapabilir? | `config/repositories/*.yml` | ✅ Tamamı |
+
+Repo dosyası "bu kişi org owner mı" sorusunu **cevaplayamaz** — ve org owner branch
+protection dahil her şeyi ezdiği için bu sorunun bir yerde cevaplanması zorunlu.
+Emre olayının kökü tam olarak buydu.
+
+**"Org'da developer, repo'da admin dersek ne olur?" — iki farklı okuma:**
+
+- `people.X.roles: [developer]` + repo dosyasında `mentors: [X]` → **hiçbir şey olmaz.**
+  `people` bölümünü Terraform hiç okumuyor ([`repositories.tf`](terraform/repositories.tf)
+  yalnızca `defaults`, `roles`, `organization`, `org_admin_team` anahtarlarına dokunuyor).
+  Repo dosyası kazanır, config sessizce yalan söyler. **Bugünkü en büyük tuzak bu.**
+- `org_role: member` + repo dosyasında `mentors: [X]` → **çelişki değil, doğru kombinasyon.**
+  Org'da sıradan üye, tek repoda admin — en az yetki ilkesinin kendisi.
+
+Aynı katmanda iki yol varsa GitHub **en yükseği** uygular
+(bkz. [`teams.tf`](terraform/teams.tf) yorumu). Org owner hepsini ezer.
+
+**Sonuç kural:** `people` yalnızca kimlik + **org kapsamlı** rol taşır
+(`org_role`, `head-of-engineering`). `mentor`/`developer` oraya **asla yazılmaz** —
+onlar repo dosyalarının işi. [`organization.example.yml`](terraform/config/organization.example.yml)
+bunu zaten böyle tarif ediyor, canlı config bu kurala uydurulmalı.
+
+**Yapılacaklar:**
+- [ ] `github_membership` ile org üyeliğini `people`'dan üret:
+  ```hcl
+  locals {
+    # Break-glass: en az bir org owner Terraform dışında kalmalı.
+    unmanaged_people = ["uslanozan"]
+  }
+
+  resource "github_membership" "people" {
+    for_each = { for u, c in local.org_config.people : u => c
+                 if !contains(local.unmanaged_people, u) }
+
+    username             = each.key
+    role                 = each.value.org_role
+    downgrade_on_destroy = true
+  }
+  ```
+- [ ] `platform-admins` üyeliğini de elle değil `people.roles`'tan üret — böylece
+      offboarding tek satır YAML silmeye iner (bugün iki `.tf` dosyası düzenlemek gerekti):
+  ```hcl
+  resource "github_team_membership" "platform_admins" {
+    for_each = toset([for u, c in local.org_config.people : u
+                      if contains(try(c.roles, []), "head-of-engineering")])
+
+    team_id  = github_team.platform_admins.id
+    username = each.value
+    role     = "maintainer"
+  }
+  ```
+- [ ] Tamamlanınca `org-membership.tf` istisna dosyasını kaldır (state'te `moved` ile taşı)
+- [ ] `people.roles` doğrulaması ekle — repo kapsamlı rol (`mentor`/`developer`) yazılırsa
+      `precondition` ile hata ver; sessiz çelişki üretmesin
 - [ ] ⚠️ **Riskli:** mevcut owner yetkilerini etkileyebilir. Önce `plan`'ı dikkatle
       incele, gerekirse `import` ile mevcut üyelikleri state'e al.
+- [ ] ⚠️ `organization.example.yml`'i **asla** `for_each`'e sokma — içindeki `mentor-a`,
+      `dev-1` gibi örnek kişilere gerçek org daveti gider
 - [ ] `docs/onboarding.md`'deki "davet otomatik gelir" iddiası artık doğru
 
 ### 🧩 Dashboard desteği

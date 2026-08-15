@@ -8,13 +8,19 @@
 # terraform/config/ altındaki konfigürasyondan üretilir.
 # =============================================================================
 
-resource "github_team_membership" "emre_admin" {
-  team_id  = github_team.platform_admins.id
-  username = "paitblack"
-  role     = "maintainer"
-}
+# 2026-08-15 — `paitblack` (Emre) bu takımdan ÇIKARILDI. Projeden ayrıldı ve artık
+# yalnızca `developer` rolünde: repo config'lerindeki `developers` listelerinden gelen
+# `<repo>-devs` takımı (push) tek erişimi.
+#
+# Neden önemliydi: bu takım head-of-engineering rolünün taşıyıcısı (bkz. teams.tf).
+# Üyelik durduğu sürece kişi HER repo'da admin oluyordu; `enforce_admins = false`
+# olduğu için de korumalı dallara doğrudan push atıp PR onay kuralını atlayabiliyordu.
+# Yani "direct push yasağı" ona hiç uygulanmıyordu — kural değil, rol atamasıydı sorun.
+#
+# Org seviyesindeki üyelik ayrıca org-membership.tf içinde `member`a sabitlendi;
+# org owner kalsaydı bu takımdan çıkmak tek başına yetmezdi.
 
-# Config'de her ikisi de head-of-engineering rolünde; takım üyeliği de bunu yansıtmalı.
+# Config'de head-of-engineering rolünde; takım üyeliği de bunu yansıtmalı.
 resource "github_team_membership" "ozan_admin" {
   team_id  = github_team.platform_admins.id
   username = "uslanozan"

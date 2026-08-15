@@ -51,8 +51,11 @@ people:
     org_role: admin
     roles: [head-of-engineering]
 
+  # 2026-08-15 — projeden ayrıldı, head-of-engineering'den developer'a indirildi.
+  # Bu bölüm tüketilmediği için asıl zorlayıcı beyan org-membership.tf'dedir.
   paitblack:
     org_role: member
+    roles: [developer]
 
 # -----------------------------------------------------------------------------
 # VARSAYILANLAR — Her repo bunları miras alır, repo bazında ezilebilir.
