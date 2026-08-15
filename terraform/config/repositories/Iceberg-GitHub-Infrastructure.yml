@@ -1,5 +1,5 @@
 description: "Infrastructure as Code for managing the Tidyorg organization"
-language: t
+language: typescript
 mentors:
   - uslanozan
 developers:
