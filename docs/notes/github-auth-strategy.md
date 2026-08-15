@@ -1,9 +1,10 @@
 # Not: Terraform → GitHub Kimlik Doğrulama Stratejisi
 
-> **Durum:** Tartışmaya açık öneri — karar verilmedi
-> **Yazan:** Ozan · **Tarih:** 2026-08-05
-> **İlgili:** Emre (uygulayacak kişi)
-> **Sonrasında:** Karar netleşince [ADR-002](../adr/002-terraform-for-github.md)'ye bölüm olarak taşınmalı
+> **Durum:** Karar verildi ve uygulandı (2026-08-15)
+> **Yazan:** Ozan · **Tarih:** 2026-08-05 (Güncelleme: 2026-08-15)
+> **İlgili:** Ozan & Medine
+> **Sonrasında:** Karar netleştiği için [ADR-002](../adr/002-terraform-for-github.md)'ye taşındı / güncellendi.
+
 
 ---
 

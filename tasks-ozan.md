@@ -327,6 +327,7 @@ Dashboard'un PR açması ancak bu döngü varsa anlamlı — plan çıktısı bu
 
 > **Not:** Emre'nin ayrılmasıyla Faz 4 (GitHub App) bu haftaya eklendi.
 > Medine bu hafta config'i okuyup projeleri gösteren ekranları yazıyor — bağımsız.
+> **Faz 4 (GitHub App) 2026-08-15'te tamamlandı.** Şablon dağıtımı (Faz 2) sırada.
 
 ### 📦 Faz 2 — `templates/` klasörünü canlıya çıkar
 - [ ] Config şemasına `files` ve `workflows` alanlarını ekle
@@ -362,19 +363,9 @@ Dashboard'un PR açması ancak bu döngü varsa anlamlı — plan çıktısı bu
 
 - [ ] ✅ **Hafta Sonu Sync:** App devreye girince dağıtımı yeni kimlikle test et
 
-### 🔐 Faz 4 — GitHub App _(Emre'den devralındı)_
-
-Şu an tüm otomasyon kişisel token'a bağlı ve Terraform commit'leri `paitblack` adına
-görünüyor. Kişi ayrılırsa sistem durur. Bu fazda Terraform bot kimliğine geçer.
-
-- [ ] Org'da GitHub App oluştur: `tidyorg-infra-bot`
-  - [ ] İzinler: `administration: write`, `contents: write`, `members: write`, `metadata: read`
-  - [ ] Organizasyon geneli kurulum
-- [ ] Private key'i HCP Terraform'a ve GitHub Secrets'a koy
-- [ ] Terraform provider'ı App kimliğine geçir (`app_auth` bloğu)
-- [ ] Doğrula: yeni `apply` sonrası commit'ler bot adına görünmeli
-- [ ] [`docs/notes/github-auth-strategy.md`](docs/notes/github-auth-strategy.md)'yi
-      "uygulandı" olarak güncelle
+- [x] Doğrula: yeni `apply` sonrası commit'ler bot adına görünmeli (2026-08-15)
+- [x] [`docs/notes/github-auth-strategy.md`](docs/notes/github-auth-strategy.md)'yi
+      "uygulandı" olarak güncelle (2026-08-15)
 
 **Dashboard için ayrı App gerekmez.** Dashboard kullanıcının kendi kimliğiyle çalışır
 (Device Flow). Bu App yalnızca Terraform içindir.
