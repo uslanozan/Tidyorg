@@ -1,0 +1,139 @@
+name: "Terraform Plan"
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/terraform-plan.yml'
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  plan:
+    name: "Terraform Plan"
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+
+      - name: Terraform Format Check
+        id: fmt
+        run: terraform fmt -check -recursive
+        continue-on-error: true
+
+      - name: Terraform Init
+        id: init
+        run: terraform init
+
+      - name: Terraform Validate
+        id: validate
+        run: terraform validate -no-color
+
+      - name: Terraform Plan
+        id: plan
+        run: |
+          terraform plan -no-color -input=false > plan_output.txt
+          cat plan_output.txt
+        continue-on-error: true
+
+      - name: Parse Plan and Post Comment
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            let planOutput = '';
+            try {
+              planOutput = fs.readFileSync('terraform/plan_output.txt', 'utf8');
+            } catch (err) {
+              planOutput = 'Plan output could not be read.';
+            }
+
+            // Find the summary line: "Plan: X to add, Y to change, Z to destroy."
+            const summaryRegex = /Plan:\s+(\d+)\s+to\s+add,\s+(\d+)\s+to\s+change,\s+(\d+)\s+to\s+destroy/;
+            const match = planOutput.match(summaryRegex);
+
+            let summaryText = '⚠️ Plan summary line not found in output.';
+            let destroyCount = 0;
+            let addCount = 0;
+            let changeCount = 0;
+
+            if (match) {
+              addCount = parseInt(match[1], 10);
+              changeCount = parseInt(match[2], 10);
+              destroyCount = parseInt(match[3], 10);
+              
+              const destroyAlert = destroyCount > 0 ? '🚨 **CRITICAL: DESTROYING RESOURCES!**' : '✅ No resources will be destroyed.';
+              summaryText = `### 📊 Plan Summary\n- **Add**: ${addCount}\n- **Change**: ${changeCount}\n- **Destroy**: **${destroyCount}**\n\n${destroyAlert}`;
+            }
+
+            const fmtOutcome = '${{ steps.fmt.outcome }}' === 'success' ? '✅' : '❌';
+            const initOutcome = '${{ steps.init.outcome }}' === 'success' ? '✅' : '❌';
+            const validateOutcome = '${{ steps.validate.outcome }}' === 'success' ? '✅' : '❌';
+            const planOutcome = '${{ steps.plan.outcome }}' === 'success' ? '✅' : '❌';
+
+            const output = `## 📖 Terraform Pull Request Report
+
+| Step | Status |
+| :--- | :--- |
+| **Format Check** | ${fmtOutcome} |
+| **Initialization** | ${initOutcome} |
+| **Validation** | ${validateOutcome} |
+| **Plan** | ${planOutcome} |
+
+${summaryText}
+
+<details>
+<summary>🔍 Show Full Plan Log</summary>
+
+\`\`\`terraform
+${planOutput}
+\`\`\`
+
+</details>
+
+*Pushed by: @${context.actor}, Action: \`${context.eventName}\`*`;
+
+            // Find existing plan comment if any
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const botComment = comments.find(comment => {
+              return comment.user.type === 'Bot' && comment.body.includes('## 📖 Terraform Pull Request Report');
+            });
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: output,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: output,
+              });
+            }
+
+            if ('${{ steps.plan.outcome }}' !== 'success' || '${{ steps.validate.outcome }}' !== 'success' || '${{ steps.fmt.outcome }}' !== 'success') {
+              core.setFailed('Terraform checks failed.');
+            }
