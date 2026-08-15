@@ -1,0 +1,228 @@
+# =============================================================================
+# CI — Continuous Integration
+# =============================================================================
+# Multi-language template. Language jobs run only when the corresponding
+# manifest file is present, so the same file can be dropped into a Go, Python,
+# TypeScript or PHP repository without editing.
+#
+# IMPORTANT — the final job is deliberately named "ci/test". Branch protection
+# requires a status check with exactly this name (see config/organization.yml,
+# `require_status_checks`). If you rename this job, protected branches will wait
+# forever for a check that never reports.
+# =============================================================================
+
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop]
+
+# Only one run per branch; superseded runs are cancelled to save minutes.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Decide which language jobs are relevant for this repository.
+  # ---------------------------------------------------------------------------
+  detect:
+    name: Detect stack
+    runs-on: ubuntu-latest
+    outputs:
+      go: ${{ steps.check.outputs.go }}
+      python: ${{ steps.check.outputs.python }}
+      typescript: ${{ steps.check.outputs.typescript }}
+      php: ${{ steps.check.outputs.php }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: check
+        shell: bash
+        run: |
+          has() { [ -e "$1" ] && echo true || echo false; }
+
+          {
+            echo "go=$(has go.mod)"
+            echo "typescript=$(has package.json)"
+            echo "php=$(has composer.json)"
+          } >> "$GITHUB_OUTPUT"
+
+          if [ -e pyproject.toml ] || [ -e requirements.txt ]; then
+            echo "python=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "python=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Summary
+        shell: bash
+        run: |
+          echo "Detected stack:" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Go: ${{ steps.check.outputs.go }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Python: ${{ steps.check.outputs.python }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- TypeScript: ${{ steps.check.outputs.typescript }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- PHP: ${{ steps.check.outputs.php }}" >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------------------------------------------------------------------
+  # Go
+  # ---------------------------------------------------------------------------
+  go:
+    name: Go
+    needs: detect
+    if: needs.detect.outputs.go == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          # Caches ~/go/pkg/mod and the build cache; no manual cache step needed.
+          cache: true
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+
+      - name: Test
+        run: go test ./... -race -coverprofile=coverage.out
+
+      - name: Build
+        run: go build ./...
+
+  # ---------------------------------------------------------------------------
+  # Python
+  # ---------------------------------------------------------------------------
+  python:
+    name: Python
+    needs: detect
+    if: needs.detect.outputs.python == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          # Caches ~/.cache/pip
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f pyproject.toml ]; then pip install -e ".[dev]" || pip install -e .; fi
+          pip install ruff pytest
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Test
+        run: pytest
+
+  # ---------------------------------------------------------------------------
+  # TypeScript / JavaScript
+  # ---------------------------------------------------------------------------
+  typescript:
+    name: TypeScript
+    needs: detect
+    if: needs.detect.outputs.typescript == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          # Caches the npm download cache, keyed on the lockfile.
+          cache: npm
+
+      - name: Install dependencies
+        # `npm ci` requires a lockfile; fall back for repos that don't have one yet.
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+      - name: Lint
+        run: npx --no-install eslint . || echo "::warning::eslint is not configured yet"
+
+      - name: Format check
+        run: npx --no-install prettier --check . || echo "::warning::prettier is not configured yet"
+
+      - name: Type check
+        run: |
+          if [ -f tsconfig.json ]; then npx --no-install tsc --noEmit; fi
+
+      - name: Test
+        run: npm test --if-present
+
+  # ---------------------------------------------------------------------------
+  # PHP / Laravel
+  # ---------------------------------------------------------------------------
+  php:
+    name: PHP
+    needs: detect
+    if: needs.detect.outputs.php == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          coverage: none
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/composer
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Static analysis
+        run: |
+          if [ -f vendor/bin/phpstan ]; then vendor/bin/phpstan analyse; fi
+
+      - name: Format check
+        run: |
+          if [ -f vendor/bin/pint ]; then vendor/bin/pint --test; fi
+
+      - name: Test
+        run: |
+          if [ -f vendor/bin/phpunit ]; then vendor/bin/phpunit; fi
+
+  # ---------------------------------------------------------------------------
+  # Aggregate gate — this is the check branch protection waits for.
+  #
+  # It runs even when language jobs are skipped, so a repository that contains
+  # only Go code still reports "ci/test" as successful. Skipped dependencies are
+  # treated as success; failed or cancelled ones fail the gate.
+  # ---------------------------------------------------------------------------
+  ci-test:
+    name: ci/test
+    if: always()
+    needs: [detect, go, python, typescript, php]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Evaluate job results
+        shell: bash
+        run: |
+          results="${{ join(needs.*.result, ' ') }}"
+          echo "Job results: $results"
+
+          for result in $results; do
+            case "$result" in
+              success|skipped) ;;
+              *) echo "::error::A required job reported '$result'"; exit 1 ;;
+            esac
+          done
+
+          echo "All required jobs passed."
