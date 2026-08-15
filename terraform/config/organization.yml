@@ -108,3 +108,9 @@ repositories:
     language: typescript
     mentors: [uslanozan]
     developers: [paitblack]
+
+  pilot-intern-api:
+    description: "Pilot project for testing branch protections"
+    language: go
+    mentors: [uslanozan]
+    developers: [paitblack]
