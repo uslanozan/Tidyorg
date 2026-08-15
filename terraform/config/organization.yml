@@ -4,12 +4,15 @@
 # Bu dosya Terraform tarafından okunur (terraform/repositories.tf).
 # Burada yapılan her değişiklik, apply sonrası GitHub'a yansır.
 #
+# Bu dosya YALNIZCA organizasyon düzeyindeki ayarları içerir:
+# roller, varsayılanlar, kişiler, org_admin_team.
+#
+# Repo tanımları ayrı dosyalardadır: config/repositories/<repo-adı>.yml
+# Yeni repo eklemek için bu dosyaya dokunulmaz; config/repositories/ altına
+# yeni bir .yml dosyası eklenir.
+#
 # Şemanın tüm alanları ve örnekleri için: config/organization.example.yml
 # Modelin gerekçeleri için: ACCESS-MODEL.md
-#
-# Pilot aşama: yalnızca tek repo yönetilmektedir. Emre'nin
-# terraform/branch-protection.tf içinde elle tanımladığı `pilot-intern-api`
-# repo'su BU DOSYADAN YÖNETİLMEZ — çakışmayı önlemek için ayrı tutulmuştur.
 # =============================================================================
 
 version: 1
@@ -49,8 +52,7 @@ people:
     roles: [head-of-engineering]
 
   paitblack:
-    org_role: admin
-    roles: [head-of-engineering]
+    org_role: member
 
 # -----------------------------------------------------------------------------
 # VARSAYILANLAR — Her repo bunları miras alır, repo bazında ezilebilir.
@@ -98,13 +100,3 @@ defaults:
     - { name: "status: ready", color: "0e8a16", description: "Başlanabilir" }
     - { name: "good first issue", color: "7057ff", description: "Yeni katılanlar için" }
     - { name: "help wanted", color: "008672", description: "Yardım aranıyor" }
-
-# -----------------------------------------------------------------------------
-# REPO'LAR
-# -----------------------------------------------------------------------------
-repositories:
-  pilot-intern-web:
-    description: "Pilot proje — repository modülünün uçtan uca doğrulanması"
-    language: typescript
-    mentors: [uslanozan]
-    developers: [paitblack]

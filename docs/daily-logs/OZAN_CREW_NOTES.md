@@ -8,7 +8,121 @@ Resmî dokümantasyon değil — düşünce sürecinin kaydı. Hafta 4'teki sunu
 
 ---
 
+## 2026-08-15 — Faz 0 tamamlandı, Faz 1 tamamlandı
+
+## 2026-08-15 — Faz 0, Faz 1, Faz 3 ve Dogfooding tamamlandı
+
+### Faz 3 — GitOps Workflows & Dogfooding (Altyapı Reposunu Yönetme)
+
+"PR → plan → apply" GitOps döngüsünü otomatikleştirmek için iki workflow yazıldı:
+1. **`.github/workflows/terraform-plan.yml`**: PR açıldığında çalışır. `terraform fmt`, `terraform validate` ve `terraform plan` çalıştırır. Plan çıktısını ayrıştırarak kaç kaynağın ekleneceğini, değiştirileceğini ve silineceğini PR yorumu olarak ekler. `destroy` sayısı 0'dan büyükse büyük bir kırmızı alarm verir.
+2. **`.github/workflows/terraform-apply.yml`**: PR `main` branch'ine merge edildiğinde çalışır ve `terraform apply -auto-approve` ile canlıya yansıtır. Concurrency grubu ile paralel apply'lar engellenmiştir.
+
+**Dogfooding (Altyapı Reposunun Kendini Yönetmesi):**
+Sistemin kendini yönetmesi için `Tidyorg` reposu da config-driven yapıya dahil edildi:
+1. `config/repositories/Tidyorg.yml` oluşturuldu. Default branch olarak `main` set edildi.
+2. `terraform/imports.tf` dosyası oluşturuldu ve mevcut reposunun node/isim id'si üzerinden `github_repository` kaynağı modüle import edildi:
+   ```hcl
+   import {
+     to = module.repositories["Tidyorg"].github_repository.this
+     id = "Tidyorg"
+   }
+   ```
+3. `terraform apply` çalıştırılarak reposunun branch korumaları, CODEOWNERS dosyası, label'ları ve `Tidyorg-mentors` / `-devs` takımları otomatik oluşturuldu.
+
+---
+
+### config/repositories/ Altında Örnek Dosya Krizi ve prevent_destroy / state rm Deneyimi
+
+Faz 1'i yaparken taslak şemaları göstermek adına `repository.example.yml` dosyasını `config/repositories/` altına eklemiştik. Ancak `repositories.tf` içindeki `fileset()` fonksiyonu bu dizindeki her `.yml` dosyasını gerçek bir repo sandığı için, `terraform apply` sırasında `repository.example` adında bir dummy repository oluşturdu!
+
+Bu kaza, tasarladığımız güvenlik mekanizmalarını ve sorun giderme akışlarımızı canlı olarak test etmemizi sağladı:
+
+1. **Drift ve Yıkım Engeli (prevent_destroy):**
+   Dosyayı `config/repositories/` altından `config/` dizininin bir üst seviyesine taşıdık. `terraform plan` çalıştırdığımızda, modüldeki `prevent_destroy = true` ayarından dolayı Terraform planı hata vererek durdurdu: `Error: Instance cannot be destroyed`. Bu, config'den yanlışlıkla silinen repoların yok olmasını engelleyen can kurtaran mekanizmanın çalıştığını ispatladı.
+2. **Geçici Bypass ve Manuel Müdahale:**
+   Dummy repoyu temizlemek için modüldeki `prevent_destroy` ayarını geçici olarak `false` yaptık.
+3. **Default Branch Silme Hatası (422):**
+   `apply` esnasında default branch olan `develop` silinmeye çalışıldığı için GitHub API 422 hatası verdi: `Cannot delete the default branch`.
+   - **Çözüm:** Default branch'i silme kısıtını aşmak için Terraform state'inden branch kaynaklarını sildik (`terraform state rm` ile `github_branch.default[0]` ve `github_branch_default.this[0]` kaldırıldı).
+   - Böylece Terraform branch silme aşamasını atlayıp doğrudan repository'nin kendisini sildi (repo silindiğinde branch'ler de otomatik yok oldu).
+4. **Kurtarma Sonrası Durum:**
+   `repository.example` tamamen temizlendi. Modüldeki `prevent_destroy` ayarı yeniden `true` konumuna getirilerek kilitlendi. `terraform plan` şu an temiz (`0 to add, 0 to destroy`).
+
+---
+
+### Faz 0 — `pilot-intern-api` modüle taşındı
+
+`branch-protection.tf` içinde ham `github_repository` + iki `github_branch_protection`
+bloğu olarak yaşayan `pilot-intern-api` reposu, `terraform state mv` ile
+`module.repositories["pilot-intern-api"]` altına taşındı.
+
+**Süreç:**
+1. `config/repositories/pilot-intern-api.yml` oluşturuldu — description, language,
+   mentors, developers tanımlandı.
+2. `terraform plan` çalıştırıldı: **0 to destroy**, 14 to add (yeni modül kaynakları),
+   1 to change. Repo silinmiyor — sadece state adresi değişecek.
+3. Dört `state mv` komutu:
+   - `github_repository.pilot_project` → `module.repositories["pilot-intern-api"].github_repository.this`
+   - `github_branch.develop` → `module.repositories["pilot-intern-api"].github_branch.default[0]`
+   - `github_branch_protection.main_protection` → `.github_branch_protection.this["main"]`
+   - `github_branch_protection.develop_protection` → `.github_branch_protection.this["develop"]`
+   PowerShell `[` ve `"` karakterlerini yiyor; `cmd /c` ile çözüldü.
+4. `branch-protection.tf` boşaltıldı (açıklayıcı yorum bırakıldı).
+5. Apply: takımlar (`pilot-intern-api-mentors`, `-devs`), üyelikler, CODEOWNERS,
+   label'lar, branch protection güncellendi. **0 destroyed.**
+
+**Ek sorun — labels 403:**
+`github_issue_labels` kaynağı GitHub'ın default `bug` label'ını silerken
+`403 Resource not accessible by integration` aldı. Sebep: `tidyorg-infra-bot`
+App'ine `issues` izni verilmemişti. Kullanıcı GitHub App ayarlarından
+`Issues: Read and write` ekledi, org installation'ı onayladı.
+İkinci apply başarılı: **1 added, 2 changed, 0 destroyed.**
+
+`app-manifest.json`'a `"issues": "write"` eklendi — ileride App yeniden
+oluşturulursa referans olarak kalsın.
+
+Artık her iki repo da aynı modülden, aynı config yapısından yönetiliyor.
+Tek yönetim biçimi, sıfır çelişki.
+
+---
+
+### Faz 1 — Config repo başına dosyaya bölündü
+
+`organization.yml`'daki `repositories:` bölümü kaldırıldı.
+Her repo kendi dosyasına taşındı:
+
+```
+terraform/config/
+├── organization.yml              # Yalnızca org ayarları: roller, defaults, people
+└── repositories/
+    ├── pilot-intern-web.yml
+    └── pilot-intern-api.yml
+```
+
+`repositories.tf` `fileset()` ile yeniden yazıldı:
+```hcl
+repos = {
+  for f in fileset("${path.module}/config/repositories", "*.yml") :
+  trimsuffix(f, ".yml") => yamldecode(file(...))
+}
+```
+
+Dosya adı = repo adı. Yeni repo eklemek için `organization.yml`'a dokunulmaz;
+`config/repositories/<isim>.yml` oluşturulur.
+
+`terraform validate` temiz. `terraform plan`: `0 to add, 2 to change, 0 to destroy`.
+2 change kalıcı drift (team membership role bounce) — refactoring'le ilgisiz,
+önceden de vardı. Davranış değişmedi → refactor başarılı.
+
+**Neden önemli:** Dashboard aynı anda iki farklı reponun config dosyasını
+güncellemek isterse tek dosyada conflict yaşanmazdı, artık tamamen bağımsız.
+Her mentör yalnızca kendi repo'sunun dosyasına dokunur.
+
+---
+
 ## 2026-08-15 — Emre ayrıldı, Medine geldi, GitHub App geçişi tamamlandı
+
 
 ### Ekip değişikliği ve görev yeniden dağılımı
 

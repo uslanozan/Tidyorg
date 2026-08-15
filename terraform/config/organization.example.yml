@@ -5,6 +5,9 @@
 # Dashboard bu dosyayı düzenleyip PR açar; Terraform bunu okuyup GitHub'a uygular.
 # Terraform kodu (HCL) bu dosyaya bakar; dashboard HCL'e asla dokunmaz.
 #
+# Bu dosya YALNIZCA organizasyon geneli ayarları tanımlar.
+# Tekil repo tanımları için bkz: config/repositories/repository.example.yml
+#
 # Tasarım ilkesi: KURALLAR ROLE BAĞLIDIR, KİŞİYE DEĞİL.
 # Kişi değiştiğinde kural değişmez; sadece rol ataması değişir.
 #
@@ -108,75 +111,6 @@ defaults:
     - { name: "good first issue", color: "7057ff" }
     - { name: "help wanted", color: "008672" }
 
-# -----------------------------------------------------------------------------
-# REPO'LAR — Dashboard'un asıl yazdığı bölüm.
-# Yalnızca varsayılandan FARKLI olan alanlar yazılır.
-# -----------------------------------------------------------------------------
-repositories:
-  # --- Varsayılanlarla yetinen repo: 5 satır ---
-  payments-api:
-    description: "Ödeme servisi"
-    language: go
-    mentors: [mentor-a]
-    developers: [dev-1, dev-2]
-
-  # --- Kuralı ezen repo ---
-  billing-web:
-    description: "Faturalandırma arayüzü"
-    language: typescript
-    mentors: [mentor-a] # Aynı mentör iki repo'da (4 mentör × 2 repo)
-    developers: [dev-2, dev-3] # dev-2 iki projede — many-to-many
-    protected_branches:
-      main:
-        required_reviews: 3 # Yalnızca farklı olan alan yazılır
-
-    # OPSİYONEL — yalnızca içinde gerçekten ayrışma olan repo'larda (monorepo vb.)
-    # yazılır. Yazılmazsa CODEOWNERS "*  @<repo>-devs" olarak üretilir.
-    #
-    # DİKKAT: Bu merge YETKİSİNİ kısıtlamaz. GitHub'da write yetkisi daima repo
-    # geneline verilir, dosya yoluna göre daraltılamaz. Buradaki tanım yalnızca
-    # "şu yol değişmişse şu kişinin ONAYI gerekir" anlamına gelir ve ancak
-    # require_code_owner_review: true iken zorlayıcıdır.
-    code_owners:
-      "/backend/": [dev-2]
-      "/frontend/": [dev-3]
-
-  # --- Küçük ekip: mentör onayı zorunlu değil ---
-  internal-tools:
-    description: "İç araçlar"
-    language: python
-    mentors: [mentor-b]
-    developers: [dev-1]
-    protected_branches:
-      main:
-        required_reviews: 1
-        require_code_owner_review: false # 2 kişilik projede mentör darboğaz olmasın
-
-  # --- Hızlı geliştirme / prototip repo'su ---
-  # code_owners yazılmaz -> CODEOWNERS "*  @rapid-prototype-devs" olur.
-  # Gevşetilen şey onay kuralları; branch koruması yine de kalkmaz.
-  rapid-prototype:
-    description: "Hızlı deneme projesi"
-    language: typescript
-    mentors: [mentor-b]
-    developers: [dev-1, dev-3]
-    protected_branches:
-      main:
-        required_reviews: 1 # 2 yerine 1
-        require_code_owner_review: false # Mentör beklemeye gerek yok
-      develop:
-        required_reviews: 0 # Onaysız merge serbest
-        require_status_checks: [] # CI beklemeden merge
-        # push_allowed_roles ezilmedi: developer yine de doğrudan push atamaz,
-        # katkı PR üzerinden gelir. Sadece onay/CI beklentisi kalkmış olur.
-
-  # --- Arşivlenmiş repo: silinmez, dondurulur ---
-  legacy-api:
-    description: "Kullanımdan kalkan servis"
-    language: php
-    archived: true
-    mentors: [mentor-b]
-    developers: []
 # =============================================================================
 # AÇIK NOKTALAR
 # =============================================================================
@@ -189,3 +123,5 @@ repositories:
 #   alan olarak eklenebilir (kırıcı değişiklik değil).
 # - Format YAML seçildi (PR'da okunabilirlik için). Dashboard JSON üretmeyi
 #   tercih ederse Terraform tarafında yamldecode -> jsondecode değişimi yeterli.
+# - Repo konfigürasyonları config/repositories/<repo-name>.yml altında tekil
+#   dosyalar olarak saklanır. Örnek şema için: config/repository.example.yml

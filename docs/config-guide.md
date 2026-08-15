@@ -1,15 +1,14 @@
 # Konfigürasyon Rehberi
 
-Organizasyondaki her repo, takım ve yetki tek bir dosyadan yönetilir:
+Organizasyonundaki her repo, takım ve yetki iki farklı yapı altında yönetilir:
 
-```
-terraform/config/organization.yml
-```
+1. **Global Ayarlar**: `terraform/config/organization.yml` (Roller, varsayılanlar, takımlar)
+2. **Repo Tanımları**: `terraform/config/repositories/<repo-adı>.yml` (Mentörler, developer'lar, projeye özel ayarlar)
 
-Bu doküman o dosyanın nasıl okunacağını, nasıl değiştirileceğini ve değişikliğin
+Bu doküman bu dosyaların nasıl okunacağını, nasıl değiştirileceğini ve değişikliğin
 GitHub'a nasıl yansıdığını anlatır.
 
-> **Kimin için:** mentörler ve head-of-engineering. Developer'ların bu dosyaya
+> **Kimin için:** mentörler ve head-of-engineering. Developer'ların bu dosyalara
 > dokunması gerekmez.
 
 ---
@@ -21,14 +20,16 @@ Sistem iki katmandan oluşur:
 | Katman | Dosyalar | İçerik | Kim değiştirir | Sıklık |
 | :--- | :--- | :--- | :--- | :--- |
 | **Kod** | `terraform/modules/repository/*.tf` | "Repo nasıl kurulur, kural nasıl uygulanır" | Platform ekibi | Nadiren |
-| **Veri** | `terraform/config/organization.yml` | "Hangi repo var, kimde hangi yetki var" | Mentör | Sık |
+| **Veri (Global)** | `terraform/config/organization.yml` | Roller, varsayılan branch korumaları, genel ayarlar | Head of Engineering | Nadiren |
+| **Veri (Repo)** | `terraform/config/repositories/*.yml` | "Hangi repo var, kimde hangi yetki var" | Mentör | Sık |
 
-Yeni bir repo eklemek için Terraform kodu yazılmaz — config'e birkaç satır eklenir.
-İleride bu satırları bir dashboard yazacak; o zaman da değişen şey yalnızca bu dosya
+Yeni bir repo eklemek için Terraform kodu yazılmaz — `config/repositories/` altına yeni bir dosya eklenir.
+İleride bu dosyaları bir dashboard yazacak; o zaman da değişen şey yalnızca bu veri dosyaları
 olacak.
 
 Şema referansı ve tüm alanların örnekleri:
-[`organization.example.yml`](../terraform/config/organization.example.yml).
+- [`organization.example.yml`](../terraform/config/organization.example.yml)
+- [`repository.example.yml`](../terraform/config/repository.example.yml)
 Modelin gerekçeleri: [`ACCESS-MODEL.md`](../ACCESS-MODEL.md).
 
 ---
@@ -118,15 +119,15 @@ yalnızca farklı olan alanı kendi bloğunda yazar.
 Bu bölümün amacı şudur: yeni bir repo hiçbir güvenlik ayarı yazılmadan da **güvenli
 varsayılanlarla** doğsun. Repo açan kişinin branch protection bilmesi gerekmez.
 
-### 2.4 `repositories` — Repo'lar
+### 2.4 Repo Bazlı Konfigürasyonlar (`config/repositories/<repo-adı>.yml`)
+
+Her projenin tanımı, kendi ismiyle oluşturulan bir `.yml` dosyasında saklanır. Örneğin, `payments-api` reposu için `config/repositories/payments-api.yml` dosyası:
 
 ```yaml
-repositories:
-  payments-api:
-    description: "Ödeme servisi"
-    language: go
-    mentors: [mentor-a]
-    developers: [dev-1, dev-2]
+description: "Ödeme servisi"
+language: go
+mentors: [mentor-a]
+developers: [dev-1, dev-2]
 ```
 
 | Alan | Zorunlu | Açıklama |
@@ -135,11 +136,12 @@ repositories:
 | `language` | ✅ | `go` · `python` · `typescript` · `php` |
 | `mentors` | — | Mentörlerin kullanıcı adları (liste; bugün tek eleman) |
 | `developers` | — | Projede çalışan developer'lar (many-to-many) |
-| `visibility` | — | Varsayılanı ezer |
+| `visibility` | — | Varsayılanı ezer (`public` \| `private`) |
 | `archived` | — | `true` ise repo dondurulur |
-| `protected_branches` | — | Dal kurallarını ezer |
+| `protected_branches` | — | Dal kurallarını ezer (bkz. Bölüm 3) |
 | `code_owners` | — | Yol bazlı review yönlendirmesi |
 | `labels` | — | Label setini tamamen değiştirir |
+| `workflows` | — | Dağıtılacak CI/CD workflow'ları (ci, release, dependabot) |
 
 ---
 
@@ -148,6 +150,7 @@ repositories:
 Repo yalnızca **farklı olan alanı** yazar; geri kalanı `defaults`'tan gelir.
 
 ```yaml
+# defaults (organization.yml)
 defaults:
   protected_branches:
     main:
@@ -155,11 +158,10 @@ defaults:
       require_code_owner_review: true
       dismiss_stale_reviews: true
 
-repositories:
-  billing-web:
-    protected_branches:
-      main:
-        required_reviews: 3      # Yalnızca bu alan farklı
+# billing-web.yml (config/repositories/billing-web.yml)
+protected_branches:
+  main:
+    required_reviews: 3      # Yalnızca bu alan farklı
 ```
 
 Sonuç: `billing-web` için `main` dalı **3 onay** ister, ama `require_code_owner_review`
@@ -173,16 +175,16 @@ Birleştirme dal bazında yapılır — bir dalı ezmek o dalın diğer alanlar�
 
 ### Yeni repo eklemek
 
+`config/repositories/yeni-servis.yml` adında yeni bir dosya oluşturup içine şunları yazın:
+
 ```yaml
-repositories:
-  yeni-servis:
-    description: "Kısa açıklama"
-    language: go
-    mentors: [mentor-a]
-    developers: [dev-1, dev-2]
+description: "Kısa açıklama"
+language: go
+mentors: [mentor-a]
+developers: [dev-1, dev-2]
 ```
 
-Beş satır yeterli. Dallar, korumalar, takımlar, label'lar, CODEOWNERS otomatik oluşur.
+Dosya oluştuktan sonra dallar, korumalar, takımlar, label'lar ve CODEOWNERS otomatik oluşur.
 
 ### Projeye developer eklemek
 
@@ -224,12 +226,11 @@ PR üzerinden gelmeye devam eder — sadece bekleme kalkar.
 ### Repo'yu kapatmak
 
 ```yaml
-repositories:
-  legacy-api:
-    archived: true
+# config/repositories/legacy-api.yml
+archived: true
 ```
 
-**Config'den satırı silmeyin.** Silmek Terraform'a "bu repo'yu yok et" demektir;
+**Config dosyasını dizinden silmeyin.** Silmek Terraform'a "bu repo'yu yok et" demektir;
 `prevent_destroy` koruması devreye girip `apply`'ı durdurur:
 
 ```
@@ -243,13 +244,13 @@ Doğru yol arşivlemektir: repo dondurulur, içerik korunur, kimse yazamaz.
 ## 5. Değişiklik Nasıl Yürürlüğe Girer
 
 ```
-config/organization.yml değişir
+config/repositories/*.yml veya organization.yml değişir
         ↓
-   Pull Request
+    Pull Request
         ↓
 CI: terraform plan  →  plan çıktısı PR'a yorum olarak düşer
         ↓
-   Review + Merge
+    Review + Merge
         ↓
    terraform apply  →  GitHub'da yetkiler güncellenir
 ```
@@ -306,10 +307,34 @@ private'a geçişte plan yükseltmesi gerekecek.
 
 ---
 
-## 7. İlgili Dokümanlar
+## 7. CI/CD Otomasyonu ve Token Yapılandırması
+
+GitHub Actions workflow'larının (`terraform-plan` ve `terraform-apply`) HCP Terraform Cloud backend'i ile kimlik doğrulaması yapabilmesi için organizasyon seviyesinde bir **Team API Token** kullanılması gerekir.
+
+### 7.1 Team API Token Oluşturma (HCP Terraform)
+
+1. HCP Terraform'da organizasyon ayarlarına gidin:
+   `https://app.terraform.io/app/tidyorg-infra/settings/organization-tokens`
+2. **Team Tokens** sekmesini seçin.
+3. Workspace üzerinde `Admin` veya `Write` yetkisi olan bir takımı seçin (örn: `owners` takımı).
+4. **"Generate a team token"** butonuna basın, açıklama yazın ve oluşturun.
+5. Oluşturulan token'ı kopyalayın.
+
+### 7.2 GitHub Secrets Konfigürasyonu
+
+1. GitHub'da `Tidyorg` reposunun ayarlarına (**Settings**) gidin.
+2. Sol menüden **Secrets and variables** -> **Actions** yolunu izleyin.
+3. **"New repository secret"** butonuna tıklayın.
+4. İsim alanına **`TF_API_TOKEN`** yazın.
+5. Değer alanına kopyaladığınız Team API Token'ı yapıştırın ve kaydedin.
+
+---
+
+## 8. İlgili Dokümanlar
 
 - [`workflow-guide.md`](workflow-guide.md) — İş akışlarının genel görünümü
 - [`rbac-and-permissions.md`](rbac-and-permissions.md) — Roller ve yetki matrisi
 - [`runbook.md`](runbook.md) — Operasyonel senaryolar
 - [`../ACCESS-MODEL.md`](../ACCESS-MODEL.md) — Modelin gerekçeleri ve verilen kararlar
 - [`../terraform/config/organization.example.yml`](../terraform/config/organization.example.yml) — Tam şema örneği
+- [`../terraform/config/repository.example.yml`](../terraform/config/repository.example.yml) — Repo şema örneği

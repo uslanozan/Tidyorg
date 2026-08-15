@@ -9,6 +9,7 @@
   "default_permissions": {
     "administration": "write",
     "contents": "write",
+    "issues": "write",
     "metadata": "read",
     "members": "write"
   },
