@@ -53,9 +53,19 @@ people:
 
   # 2026-08-15 — projeden ayrıldı, head-of-engineering'den developer'a indirildi.
   # Bu bölüm tüketilmediği için asıl zorlayıcı beyan org-membership.tf'dedir.
+  #
+  # NOT: Buraya `roles: [developer]` YAZILMAZ. `roles` yalnızca org kapsamlı rolleri
+  # taşır (head-of-engineering). mentor/developer repo kapsamlıdır ve
+  # config/repositories/*.yml içinde yaşar — ikisini karıştırmak, config'in sessizce
+  # yalan söylediği duruma yol açar.
   paitblack:
     org_role: member
-    roles: [developer]
+
+  # 2026-08-16 — dashboard geliştiricisi. Repo yetkisi
+  # config/repositories/Tidyorg.yml içinde `developers` olarak
+  # veriliyor; burada yalnızca org rolü beyan ediliyor.
+  medine2906:
+    org_role: member
 
 # -----------------------------------------------------------------------------
 # VARSAYILANLAR — Her repo bunları miras alır, repo bazında ezilebilir.

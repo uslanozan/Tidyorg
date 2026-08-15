@@ -26,3 +26,19 @@ resource "github_membership" "emre" {
   # `member`a düşürülür. Gerçekten çıkarmak gerekirse bilinçli bir adım olmalı.
   downgrade_on_destroy = true
 }
+
+# 2026-08-16 — Medine projeye katıldı, dashboard'u yazacak.
+#
+# Org rolü burada `member` olarak BEYAN ediliyor. Takıma eklenmek zaten otomatik org
+# daveti üretiyor ve varsayılan rol `member` oluyor — ama varsayılana güvenmek ile
+# beyan etmek aynı şey değil. Beyan edilmezse biri arayüzden owner'a yükseltirse hiçbir
+# plan bunu yakalamaz; bu oturumun tamamı o dersin üzerineydi.
+#
+# Repo yetkisi buradan gelmez: config/repositories/Tidyorg.yml
+# içinde `developers` listesinde — yalnızca o repo'da push. Pilot repo'lara erişimi yok.
+resource "github_membership" "medine" {
+  username = "medine2906"
+  role     = "member"
+
+  downgrade_on_destroy = true
+}
