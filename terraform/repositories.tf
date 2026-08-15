@@ -1,28 +1,27 @@
 # =============================================================================
-# Repo'lar — konfigürasyondan üretilir
+# Repo'lar — konfigürasyondan üretilir (repo başına ayrı dosya)
 # =============================================================================
-# Bu dosyada hiçbir repo adı, kişi adı veya kural değeri yazmaz. Hepsi
-# config/organization.yml içinden gelir. Yeni bir repo eklemek için buraya
-# dokunulmaz; config'e bir satır eklenir.
+# Bu dosyada hiçbir repo adı, kişi adı veya kural değeri yazmaz.
+# Yeni bir repo eklemek için: config/repositories/<repo-adı>.yml oluştur.
+# Dosya adı = repo adı. Benzersizlik doğal olarak garanti edilir.
 #
 # Bkz. ACCESS-MODEL.md — "Kod katmanı / veri katmanı ayrımı"
+# Bkz. ROADMAP.md — Faz 1 (config yapısını böl)
 # =============================================================================
 
-# Config, Terraform'un çalışma dizini içinde durmalıdır. HCP Terraform'da CLI ile
-# başlatılan run'larda yalnızca çalışma dizini paketlenip yüklenir; üst dizindeki
-# bir dosya uzak tarafta bulunamaz. Config ileride ayrı bir repo'ya taşınırsa,
-# CI bu dosyayı apply'dan önce buraya yerleştirmelidir.
-variable "config_file" {
-  type        = string
-  description = "Organizasyon konfigürasyon dosyasının yolu"
-  default     = "config/organization.yml"
-}
-
 locals {
-  org_config = yamldecode(file("${path.module}/${var.config_file}"))
+  org_config = yamldecode(file("${path.module}/config/organization.yml"))
+
+  # Her .yml dosyasını oku; dosya adının .yml uzantısını at → repo adı olur.
+  # config/repositories/pilot-intern-web.yml → "pilot-intern-web"
+  repos = {
+    for f in fileset("${path.module}/config/repositories", "*.yml") :
+    trimsuffix(f, ".yml") => yamldecode(
+      file("${path.module}/config/repositories/${f}")
+    )
+  }
 
   repo_defaults = local.org_config.defaults
-  repos         = local.org_config.repositories
 
   # Rol adı → GitHub repo yetkisi. Yetkinin anlamı config'de tanımlıdır.
   role_permissions = {
