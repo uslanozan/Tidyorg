@@ -1,0 +1,66 @@
+# =============================================================================
+# Dependabot
+# =============================================================================
+# Weekly dependency updates for every ecosystem we support. Ecosystems whose
+# manifest is absent are simply ignored by Dependabot, so this single file works
+# unchanged across Go, Python, TypeScript and PHP repositories.
+#
+# Reviewed by the repository mentor — see docs/security-policy.md.
+# =============================================================================
+
+version: 2
+
+updates:
+  - package-ecosystem: gomod
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels: ["type: chore"]
+    commit-message:
+      prefix: "chore(deps)"
+
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels: ["type: chore"]
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      # Patch and minor bumps arrive as one PR to keep review load manageable.
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels: ["type: chore"]
+    commit-message:
+      prefix: "chore(deps)"
+
+  - package-ecosystem: composer
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels: ["type: chore"]
+    commit-message:
+      prefix: "chore(deps)"
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels: ["type: chore"]
+    commit-message:
+      prefix: "chore(ci)"
