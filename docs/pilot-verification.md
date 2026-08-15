@@ -356,7 +356,18 @@ sistem en sağlıklı olduğu anda uyarı üretiyordu; birkaç hafta sonra biri 
 
 Düzeltme: `No changes` için ayrı bir dal eklendi. Ayrıca `Drift detected` satırları
 sayılıp özete not olarak konuldu — log'daki duvarın kozmetik olduğunu açıklıyor
-(bkz. 7.3). Her iki senaryo da sahte plan çıktılarıyla render edilerek doğrulandı.
+(bkz. 7.3). Her iki senaryo önce sahte plan çıktılarıyla render edilerek, ardından
+**aynı PR'da canlı olarak** doğrulandı:
+
+```
+📊 Plan Summary
+✅ No changes. Infrastructure matches the configuration.
+
+26 × Drift detected — kozmetik, apply gerektirmez.
+```
+
+Aynı PR bu yüzden iki kez değerli oldu: hem döngünün çalıştığını gösterdi, hem de
+düzeltmenin kendisini doğrulayan test ortamı oldu.
 
 ### 7.3 Drift gürültüsü — beklenen davranış
 
@@ -368,6 +379,11 @@ formatta geri döndürüyor (ör. takım açıklamasında boşluk normalleşmesi
 kayıt sayıyor, apply sırasında fark görmeyince geçiyor.
 
 Tehlikesiz ama **gerçek değişiklikleri gölgeliyor** — bu yüzden özete sayı olarak eklendi.
+
+> **Kozmetik olduğunun doğrudan kanıtı:** `medine2906` erişimi verildikten ~10 dakika
+> sonra çalışan plan'da `github_membership.medine: Drift detected (update)` satırı çıktı.
+> Kaynak yeni oluşturulmuştu ve o aralıkta kimse ona dokunmadı — sapma gerçek olsaydı
+> mümkün değildi. Provider'ın okuduğu format ile gönderdiği format farklı, hepsi bu.
 
 ### 7.4 Kanıtlanan bir tasarım kararı — `develop`'a merge hiçbir şey uygulamaz
 
