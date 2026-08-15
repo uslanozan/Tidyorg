@@ -1,0 +1,69 @@
+# =============================================================================
+# TASLAK — Tekil Repository Konfigürasyon Şeması (v0, henüz uygulanmadı)
+# =============================================================================
+# Bu dosya, config/repositories/ dizini altındaki her bir repo dosyasının (.yml)
+# alabileceği tüm alanları ve örneklerini gösterir.
+# Dosyanın adı = Repo adı (GitHub'da oluşacak repo ismi).
+#
+# Yalnızca varsayılandan FARKLI olan alanlar yazılır. Boş bırakılan alanlar
+# config/organization.yml içindeki "defaults" bölümünden miras alınır.
+#
+# Bkz. ACCESS-MODEL.md & docs/config-guide.md
+# =============================================================================
+
+# Repo'nun açıklaması (Zorunlu)
+description: "Ödeme geçidi entegrasyon servisi"
+
+# Projenin yazıldığı ana programlama dili (Zorunlu)
+# Değerler: go | python | typescript | php
+language: go
+
+# Projeden sorumlu mentörlerin GitHub kullanıcı adları (Liste)
+# En az 1 mentör atanmalıdır. Mentörler repo'da 'admin' yetkisine sahip olur.
+mentors:
+  - mentor-a
+
+# Projede katkı sağlayacak geliştiricilerin GitHub kullanıcı adları (Liste)
+# Geliştiriciler repo'da 'push' (yazma) yetkisine sahip olur, ancak branch protection kurallarına tabidir.
+developers:
+  - dev-1
+  - dev-2
+
+# Repo görünürlüğü (Opsiyonel)
+# Değerler: public | private
+# Belirtilmezse organization.yml'daki defaults.visibility değeri kullanılır.
+visibility: private
+
+# Arşivlenme durumu (Opsiyonel)
+# true yapılırsa repo dondurulur (read-only olur). Silmek yerine bu kullanılmalıdır.
+archived: false
+
+# GitHub özellik ayarları (Opsiyonel, belirtilmezse defaults kullanılır)
+has_issues: true
+has_projects: false
+has_wiki: false
+auto_init: true
+default_branch: develop
+
+# Dal koruması kurallarını ezmek için (Opsiyonel)
+# Yalnızca varsayılan kurallardan farklı olan alanlar yazılır (örn: onay sayısı artırma veya CI devre dışı bırakma)
+protected_branches:
+  main:
+    required_reviews: 3 # Varsayılan 2 onay yerine 3 onay ister
+  develop:
+    required_reviews: 0 # Hızlı deneme için develop onaysız merge edilebilir
+    require_status_checks: [] # CI kontrolü beklemeden merge edilebilir
+
+# Yol bazlı review yönlendirmesi (CODEOWNERS) (Opsiyonel)
+# DİKKAT: Bu merge YETKİSİNİ kısıtlamaz, sadece PR aşamasında onay zorunluluğu ekler.
+# require_code_owner_review: true iken zorlayıcıdır.
+code_owners:
+  "/backend/": [dev-1]
+  "/frontend/": [dev-2]
+
+# Harici olarak dağıtılacak workflow'lar (Faz 2 kapsamında uygulanacaktır)
+# Değerler: ci | release | dependabot
+workflows:
+  - ci
+  - release
+  - dependabot

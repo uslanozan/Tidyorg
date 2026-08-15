@@ -275,19 +275,21 @@
 > Medine bu hafta dashboard iskeletini ve giriş akışını kuruyor — bağımsız.
 
 ### 🧹 Faz 0 — Kalan temizlik
-- [ ] **`pilot-intern-api`'yi modüle taşı**
-  - [ ] Repo'yu `config/repositories/pilot-intern-api.yml` olarak tanımla
-  - [ ] `terraform state mv` ile kaydı modül altına taşı — **silme/yeniden yaratma yok**
-  - [ ] `branch-protection.tf`'teki ham `github_repository` ve iki `github_branch_protection`
+- [x] **`pilot-intern-api`'yi modüle taşı** _(2026-08-15)_
+  - [x] Repo'yu `config/repositories/pilot-intern-api.yml` olarak tanımla
+  - [x] `terraform state mv` ile kaydı modül altına taşı — **silme/yeniden yaratma yok**
+  - [x] `branch-protection.tf`'teki ham `github_repository` ve iki `github_branch_protection`
         bloğunu kaldır
-  - [ ] `plan` → `No changes` görülmeli
+  - [x] `plan` → 0 destroy, yalnızca yeni modül kaynakları (takımlar, labels, CODEOWNERS)
+  - [x] _(ek)_ GitHub App'e `issues:write` izni eklendi — labels 403 hatası giderildi
+  - [x] Apply tamamlandı: 1 added, 2 changed, 0 destroyed
 - [ ] **Bekleyen üç branch'i push et ve PR aç** _(dogfooding)_
   - [ ] `feat/repository-module`
   - [ ] `docs/engineering-standards-fixes`
   - [ ] `feat/branch-protection-fixes`
 
-### 🔧 Faz 1 — Config yapısını repo başına dosyaya böl
-- [ ] Dizin yapısını kur:
+### 🔧 Faz 1 — Config yapısını repo başına dosyaya böl _(2026-08-15)_
+- [x] Dizin yapısını kur:
   ```
   terraform/config/
   ├── organization.yml          # roller, defaults, people
@@ -295,10 +297,10 @@
       ├── pilot-intern-web.yml
       └── pilot-intern-api.yml
   ```
-- [ ] `repositories.tf`'i `fileset()` + `yamldecode` ile besle — dosya adı = repo adı
-- [ ] `organization.example.yml`'i yeni yapıya göre güncelle
-- [ ] `plan` çıktısının **değişmediğini** doğrula _(bu bir refactor; davranış değişmemeli)_
-- [ ] [`docs/config-guide.md`](docs/config-guide.md)'yi yeni yapıya göre güncelle
+- [x] `repositories.tf`'i `fileset()` + `yamldecode` ile besle — dosya adı = repo adı
+- [x] `organization.example.yml`'i yeni yapıya göre güncelle
+- [x] `plan` çıktısının **değişmediğini** doğrula — `0 to add, 2 to change (kalıcı drift), 0 to destroy`
+- [x] [`docs/config-guide.md`](docs/config-guide.md)'yi yeni yapıya göre güncelle
 
 **Neden:** Dashboard'un ön koşulu. İki mentör aynı anda düzenlediğinde tek dosyada
 çakışırlar, ayrı dosyalarda çakışmazlar.
@@ -308,15 +310,15 @@
 Dokümanların anlattığı "PR → plan → apply" akışı şu an elle çalışıyor. Otomatikleşmeli.
 Dashboard'un PR açması ancak bu döngü varsa anlamlı — plan çıktısı buradan gelecek.
 
-- [ ] `.github/workflows/terraform-plan.yml` — PR tetikli
-  - [ ] `terraform fmt -check -recursive`
-  - [ ] `terraform validate`
-  - [ ] `terraform plan`
-  - [ ] Plan çıktısını PR yorumu olarak yaz — **`destroy` sayısı görünür olmalı**
-- [ ] `.github/workflows/terraform-apply.yml` — `main` merge tetikli
+- [x] `.github/workflows/terraform-plan.yml` — PR tetikli _(2026-08-15)_
+  - [x] `terraform fmt -check -recursive`
+  - [x] `terraform validate`
+  - [x] `terraform plan`
+  - [x] Plan çıktısını PR yorumu olarak yaz — **`destroy` sayısı görünür olmalı**
+- [x] `.github/workflows/terraform-apply.yml` — `main` merge tetikli _(2026-08-15)_
 - [ ] GitHub Secrets: `TF_API_TOKEN` _(HCP team token)_
-- [ ] Concurrency grubu — iki apply aynı anda çalışmasın
-- [ ] Bu repo'nun kendi branch protection'ını config'den yönet (dogfooding)
+- [x] Concurrency grubu — iki apply aynı anda çalışmasın _(2026-08-15)_
+- [x] Bu repo'nun kendi branch protection'ını config'den yönet (dogfooding) _(2026-08-15)_
 
 - [ ] ✅ **Hafta Sonu Sync:** Config bölünmesi sonrası CODEOWNERS kurallarını yaz;
       GitOps'u Medine ile birlikte test et (dashboard PR açıyor mu, plan yorumu düşüyor mu?)
