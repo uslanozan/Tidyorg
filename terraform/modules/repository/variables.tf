@@ -189,3 +189,40 @@ variable "manage_codeowners_file" {
   EOT
   default     = true
 }
+
+# --- Şablon dağıtımı -------------------------------------------------------
+
+variable "files" {
+  type        = map(string)
+  description = <<-EOT
+    Mantıksal dosya adı → dağıtım modu.
+
+      strict → Terraform içeriği sahiplenir; elle değişiklik apply'da geri alınır
+      seed   → yalnızca ilk oluşturmada yazılır, repo sonra değiştirebilir
+      none   → hiç yazılmaz
+
+    Mantıksal adların hangi dosyaya karşılık geldiği modüldeki `file_catalog`
+    yerel değişkeninde tanımlıdır. Config'de dosya yolu yazılmaz — böylece şablon
+    ağacı değiştiğinde config'e dokunmak gerekmez.
+  EOT
+  default     = {}
+
+  validation {
+    condition     = alltrue([for mode in values(var.files) : contains(["strict", "seed", "none"], mode)])
+    error_message = "files içindeki her değer 'strict', 'seed' veya 'none' olmalı."
+  }
+}
+
+variable "workflows" {
+  type        = list(string)
+  description = <<-EOT
+    Repo'ya dağıtılacak workflow adları (uzantısız). Kaynak:
+    templates/.github/workflows/<ad>.yml
+
+    Workflow'lar daima `strict` modda yazılır — yönetişim dosyasıdır.
+
+    DİKKAT: Listede `ci` yoksa o repo'da `ci/test` status check'i hiç raporlanmaz.
+    protected_branches içinde `ci/test` zorunluysa modül `precondition` ile hata verir.
+  EOT
+  default     = []
+}

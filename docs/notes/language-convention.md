@@ -9,7 +9,7 @@
 | Dosya türü | Dil | Gerekçe |
 |---|---|---|
 | `docs/**/*.md` | **Türkçe** | Okunan içerik. Ekip ve stajyerler Türkçe konuşuyor; giriş bariyerini düşürüyor. Tek kaynak → drift yok. |
-| `templates/.github/**` (issue formları, PR template) | **Tek dosya içinde iki dilli, English first** (`EN · TR`) | Doldurulan içerik. İki ayrı dosya yapmak drift üretir; PR template'te GitHub zaten tek dosyaya izin veriyor. |
+| `terraform/templates/.github/**` (issue formları, PR template) | **Tek dosya içinde iki dilli, English first** (`EN · TR`) | Doldurulan içerik. İki ayrı dosya yapmak drift üretir; PR template'te GitHub zaten tek dosyaya izin veriyor. |
 | Terraform kodu, HCL yorumları | **İngilizce** | Kod. `variable`/`output` `description` alanları `terraform-docs` çıktısına giriyor. |
 | GitHub Actions workflow'ları | **İngilizce** | Kod. Log çıktıları ve action isimleri İngilizce. |
 | Commit mesajları, branch adları, PR başlıkları | **İngilizce** | Conventional Commits konvansiyonu; changelog üretimine giriyor. |
@@ -49,5 +49,5 @@ bu dokümanları okuyamaz. Şu an dış paydaş yok, o yüzden sorun değil; iht
 
 - [ ] **Emre:** Hafta 3 dokümanlarını (`branching-strategy.md`, `commit-convention.md`,
       `security-policy.md`, `rbac-and-permissions.md`) **Türkçe** yaz
-- [ ] **Emre:** `templates/CONTRIBUTING.md`, `SECURITY.md`, `CODEOWNERS` yorumları → **iki dilli**
+- [ ] **Emre:** `terraform/templates/CONTRIBUTING.md`, `SECURITY.md`, `CODEOWNERS` yorumları → **iki dilli**
 - [ ] **Ozan:** README.md taslağını yazarken bu konvansiyonu README'de de belirt

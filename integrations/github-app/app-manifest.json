@@ -11,7 +11,8 @@
     "contents": "write",
     "issues": "write",
     "metadata": "read",
-    "members": "write"
+    "members": "write",
+    "workflows": "write"
   },
   "default_events": []
 }

@@ -11,7 +11,7 @@ Son güncelleme: 2026-08-08
 ## 🔥 YARIN KONUŞULACAK — GitHub tarafı implementasyonu
 
 **Durum:** Dokümanlar hedef durumu anlatıyor ama birkaç parçası kurulu değil.
-En göze batanı: **`templates/` klasörünün tamamı atıl.** Issue template'leri, PR
+En göze batanı: **`terraform/templates/` klasörünün tamamı atıl.** Issue template'leri, PR
 template'i, CONTRIBUTING, SECURITY, `.editorconfig`, workflow'lar — hiçbiri hiçbir
 repo'ya ulaşmıyor. Modül yalnızca CODEOWNERS yazıyor.
 
@@ -53,7 +53,7 @@ Kaynak: [Creating a default community health file — GitHub Docs](https://docs.
 ## 🟡 Tek başına yapılabilir — sıradaki iş
 
 - [ ] **CI tetiklenme testi** — pilot repo'ya `.github/workflows/ci.yml` ekle
-      ([`templates/.github/workflows/ci.yml`](templates/.github/workflows/ci.yml)
+      ([`terraform/templates/.github/workflows/ci.yml`](terraform/templates/.github/workflows/ci.yml)
       dosyasından kopyala), PR aç.
       Doğrulanacaklar: PR template görünüyor mu, `ci/test` check'i raporlanıyor mu,
       dil job'ları `skipped` geçiyor mu.

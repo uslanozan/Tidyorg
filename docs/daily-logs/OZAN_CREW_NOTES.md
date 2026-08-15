@@ -8,6 +8,168 @@ Resmî dokümantasyon değil — düşünce sürecinin kaydı. Hafta 4'teki sunu
 
 ---
 
+## 2026-08-16 — Direct push yasağı "çalışmadı", meğer çalışıyormuş
+
+15'inin gecesi başlayıp bugüne sarkan bir iş. Emre projeden ayrılmışken hazır fırsat
+varken direct push yasağını test etmesini istedim. **Push geçti.**
+
+İlk düşüncem "kural bozuk" oldu. Değilmiş. Kural doğruydu, **kuralın kime uygulandığı
+görünmüyordu.**
+
+### Neden geçti — tek hata değil, üç sebep üst üste
+
+1. Emre `platform-admins` takımındaydı. O takım `org_admin_team`, yani
+   `head-of-engineering` rolünün taşıyıcısı, ve modül ona **her repoda admin** veriyor.
+   Config'de `developers: [paitblack]` yazması hiçbir şey ifade etmiyordu — GitHub yetkiyi
+   toplayıp en yükseğini uyguluyor, `push` ile `admin` yan yana gelince `admin` kazanıyor.
+2. `enforce_admins = false` o admin'i dokunulmaz yapıyordu. Bu ayarı ben bilerek kapalı
+   bırakmıştım (mentörler push atabilsin diye) ama "mentör" derken kastettiğim ile
+   pratikte kapsadığı aynı şey değilmiş.
+3. Üstüne `push_allowed_roles: [mentor, head-of-engineering]` onu allowlist'e ayrıca
+   yazıyordu. Yani birinci sebebi düzeltsem bile bu tek başına yeterdi.
+
+### Kök sebep — bunu yazmam lazım
+
+GitHub'da yetkinin **iki bağımsız düzlemi** var: org düzlemi ve repo düzlemi. Bizim config
+sadece repo düzlemini modelliyordu.
+
+`config/repositories/*.yml` repo düzlemini yönetiyor, güzel. Ama `head-of-engineering`
+ataması config'de değil, elle yazılmış HCL'de (`team-memberships.tf`) duruyordu. Yani
+**org düzlemindeki en güçlü rol, veri katmanında hiç görünmüyordu.** `people` bölümünde
+`org_role: member` yazıyordu ama onu da kimse okumuyor.
+
+İki kaynak, sessiz çelişki. Config'e bakıp "Emre developer" diyordum, gerçek
+"Emre head-of-engineering"di.
+
+Bu, projenin kendi iddiasının ihlaliydi: **"kim" sorusunun cevabı daima veri katmanında
+olmalı.** Bir atama `.tf` içine yazıldığı anda config yalan söylemeye başlıyor.
+
+### Yapılan
+
+- `github_team_membership.emre_admin` kaldırıldı — `platform-admins` üyeliği bitti
+- `terraform/org-membership.tf` eklendi — org rolü `member`a **beyana bağlandı**.
+  Takımdan çıkarmak tek başına yetmezdi: org owner branch protection dahil her şeyi ezer.
+  `downgrade_on_destroy = true` koydum, kaynak koddan kalkarsa org'dan atılmaz.
+  `uslanozan` bilerek yönetim dışında — tek org owner'ı Terraform'a bağlamak lockout riski.
+- Repo tarafında değişiklik gerekmedi; üç repoda da zaten `developers: [paitblack]`.
+- Apply: **1 added, 0 changed, 1 destroyed.** Doğrulama planı `No changes`.
+
+**Yan tespit:** silinen üyeliğin GitHub'daki gerçek rolü `member`'dı, kodda `maintainer`
+yazıyordu. O üyelik bir ara arayüzden elle değiştirilmiş. Drift'in bir örneği daha.
+
+### En sevdiğim kısım — ret tarafı ilk kez doğrulandı
+
+Rapordaki Bölüm 6.3 aylardır boştu. Sebebi bendim: bu org'da hem mentörüm hem
+`platform-admins` üyesiyim hem owner'ım, dolayısıyla kuralların **engelleme** tarafını
+test edemiyordum. `TODO.md`'ye "ikinci bir hesap lazım" diye yazmıştım.
+
+Emre'nin indirilmesi o hesabı yarattı. Aynı push tekrar denendi:
+
+```
+remote: error: GH006: Protected branch update failed for refs/heads/develop.
+remote: - Changes must be made through a pull request.
+remote: - Required status check "ci/test" is expected.
+remote: - You're not authorized to push to this branch.
+```
+
+Üçüncü satır önemli: **`restrict_pushes` free plan + public repo'da fiilen zorlanıyor.**
+Hafta 2'de "plan aşamasında doğrulanamıyor, apply'da patlarsa `push_allowed_roles`
+boşaltılacak" diye açık madde bırakmıştım — gerek kalmadı, olumlu kapandı.
+
+PR tarafı da beklendiği gibi: "Review required", "Merging is blocked", kullanıcı adının
+yanında `Member` rozeti. Ekran görüntüleri `pilot-verification.md` Bölüm 6.3–6.4'e işlendi.
+
+6.2 ile 6.3'ü yan yana koyunca güzel duruyor: aynı dal, aynı kural, farklı rol. Mentör
+"kurallar bypass ediliyor" uyarısıyla geçiyor, developer `GH006` ile duruyor. Sunumda bunu
+kullanacağım.
+
+### Bedeli — `ci/test` blokajı görünür oldu
+
+Aynı ekranda `ci/test · Expected — Waiting for status to be reported` satırı `Required`
+etiketiyle duruyor. Bu check hiçbir repoda üretilmiyor (`templates/` hâlâ atıl), yani
+**developer onay alsa bile PR'ı merge edemez.**
+
+Bugüne kadar fark edilmemesinin sebebi yine bendim: admin bypass'ıyla geçiyordum. Normal
+developer akışı ilk kez devreye girince ortaya çıktı. `TODO.md`'de bu bağımlılığı zaten
+yazmışım ("`workflows` içinde `ci` yoksa `require_status_checks` da boşaltılmalı") ama
+teorik bir uyarı sanıyordum. Değilmiş.
+
+Şimdilik dokunmama kararı verdim — kalıcı çözüm Faz 2, şablon dağıtımı.
+
+### `enforce_admins` — önerim reddedildi, doğru bulundu
+
+`main` için `true` yapmayı önerdim. Reddedildi: mentörler ve üstü her zaman hızlı karar
+alabilmeli. Kabul ediyorum, ama bunu **bilinçli taviz** olarak dokümana yazdım ki altı ay
+sonra "burası neden açık" diye sorulduğunda cevabı olsun.
+
+Uygulasaydık iki tuzak vardı, ikisini de önceden yakaladım:
+1. `ci/test` karşılıksızken `enforce_admins = true` demek **herkesin** merge yolunu
+   kapatmak demekti — ben dahil.
+2. Modül CODEOWNERS'ı default branch'e App kimliğiyle yazıyor ve bunu bugün admin
+   muafiyetiyle yapıyor. `true` olsaydı App'i `push_allowances`'a eklemek zorundaydık,
+   yoksa GitOps döngüsü kendi kendini kilitlerdi.
+
+Kararın sonucu şu: muafiyet kalıcıysa geriye tek kontrol olarak **görünürlük** kalıyor.
+"Şu an kim bypass edebiliyor?" sorusunun cevabı bugün ancak `.tf` okunarak bulunuyor —
+olayın fark edilmeme sebebi de tam olarak bu. Bir output olarak yazılması artık "güzel
+olurdu" değil, gerekli.
+
+### Kendime iki ders
+
+**1. Yazdığım raporu okumamışım.** `default_repository_permission` değerini bilmiyorum
+diye açık madde yazdım. Meğer cevap kendi raporumun içindeymiş —
+`04-collaborators-teams.png` ekran görüntüsünde **"Base role: Read"** yazıyor. Yazma
+deliği yok ama izolasyon da yok: yeni gelen bir stajyer ilk günden tüm repo'ları görür.
+`None` olmalı mı, karar vermem lazım.
+
+**2. "Tamamlandı" işaretlemeden önce çalıştığını görmek lazım.** `tasks-ozan.md`'de Faz 3'ü
+tamamlandı diye işaretlemişim ama `terraform-plan.yml` **bir kez bile çalışmamış** —
+91-109. satırlar `script: |` blok skalerinin dışına düşmüş, dosya YAML olarak geçersiz.
+`terraform-apply.yml` temiz, sorun sadece plan'da. Bu, Bölüm 6'yı bilerek "doğrulanmadı"
+bırakma disiplinimin kod tarafında uygulanmamış hâli.
+
+### `rbac-and-permissions.md` baştan yazıldı
+
+Rolleri konuşurken karıştığı ortaya çıktı — haklıymış. Dokümana bakınca sebebi gördüm:
+hem `develop`'taki hem `docs/engineering-standards-fixes` branch'indeki sürüm hâlâ
+**silinmiş dokuz takımı** (`core-engineering`, `tech-leads`, `interns-2026`,
+`backend-team`…) anlatıyor ve onboarding'i `team-memberships.tf` üzerinden tarif ediyor.
+Günlüğüme "rbac'ı baştan yazdım" diye not düşmüşüm ama o yazı bir yere commit edilmemiş.
+
+Baştan yazdım, dört mermaid diyagramla: iki düzlem, etkin yetki akışı (üç muafiyet
+kapısıyla birlikte), dosya haritası, stajyer senaryosu.
+
+En faydalı bulduğum bölüm en başa koyduğum tespit: **"rol" kelimesi beş ayrı şeyi
+anlatıyor.** Rol tanımı (`roles:` bloğu — bir sözlük), org rolü (owner/member), org
+kapsamlı rol (head-of-engineering), repo rolü (mentor/developer), rol etiketi
+(backend/frontend — bugün yok ve geri gelirse **yetki taşımamalı**). En sık karışan ikisi
+birinci ile dördüncü: `roles:` bloğu "developer ne demek" der, *kimin* developer olduğunu
+repo dosyaları söyler.
+
+### Stajyer sorusu
+
+"Yeni bir stajyeri repoya eklemek için org'a elle eklemem gerekir mi?" — Hayır.
+`config/repositories/<repo>.yml` içindeki `developers:` listesine yazmak yeterli, org
+daveti **otomatik** gidiyor (GitHub takıma ekleme işlemini davetle karşılıyor).
+
+Ama kişi org üyesi **olur** — takım tabanlı erişim org üyeliği olmadan çalışmıyor. Bu
+sorun değil, çünkü org üyeliği tek başına repo erişimi vermiyor… base permission `None`
+olduğu sürece. Bizde `Read`. Yani stajyer bugün tüm repo'ları görebilir.
+
+Gerçekten org'a hiç girmeden erişim istenirse tek yol *outside collaborator* — takımsız,
+repo'ya doğrudan bağlı. Dış danışman için doğru araç, stajyer için değil.
+
+### Sırada
+
+Bugün ortaya çıkan işler, önem sırasıyla:
+1. `terraform-plan.yml`'i düzelt + `TF_API_TOKEN` secret'ını doğrula — GitOps hiç
+   çalışmamış, bu PR onun ilk gerçek testi olacak
+2. Faz 2 — şablon dağıtımı; `ci/test` blokajını da bu çözüyor
+3. Faz 6 — `people` → Terraform; `org-membership.tf` istisna dosyası o zaman kalkacak
+4. Base permission kararı (`Read` → `None`?) ve bypass görünürlük raporu
+
+---
+
 ## 2026-08-15 — Faz 0 tamamlandı, Faz 1 tamamlandı
 
 ## 2026-08-15 — Faz 0, Faz 1, Faz 3 ve Dogfooding tamamlandı

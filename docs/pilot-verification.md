@@ -1,8 +1,12 @@
 # Pilot Doğrulama Raporu — `pilot-intern-web`
 
 **Tarih:** 2026-08-07
+**Güncellemeler:** 2026-08-15 → Bölüm 6.3–6.4 (ret tarafı doğrulandı) ·
+2026-08-16 → Bölüm 7 (GitOps döngüsü uçtan uca doğrulandı)
 **Kapsam:** `terraform/modules/repository` modülünün uçtan uca doğrulanması
 **Repo:** https://github.com/your-org/pilot-intern-web
+_(Bölüm 6.3–6.4 testleri `Tidyorg` reposunda yapıldı; aynı modülden
+aynı kurallarla üretildiği için sonuçlar tüm repo'lar için geçerlidir.)_
 
 Bu rapor, konfigürasyondan repo üretme zincirinin gerçekten çalıştığını kanıtlar.
 Sunumda "çalışıyor" demek yerine gösterilecek kayıt budur.
@@ -129,6 +133,10 @@ Bölüm 4.2'de anlatılan düzeltmeyle eklendi.
 Pilotun asıl değeri burada. İki gerçek kusur yalnızca canlı bir repo oluşturulunca
 ortaya çıktı; ikisi de modülde kalıcı olarak düzeltildi.
 
+> **Toplam dört kusur bulundu.** Bu bölümdeki ikisi **modülde**, Bölüm 7.2'deki ikisi
+> **GitOps katmanında** — ve dördü de yalnızca sistem gerçekten çalıştırılınca ortaya
+> çıktı. Hiçbiri kod okuyarak fark edilemezdi.
+
 ### 4.1 Label çakışması (422 already_exists)
 
 **Belirti:** İlk apply'da 23 kaynak oluştu, `good first issue` ve `help wanted`
@@ -224,21 +232,67 @@ diye açıkça bildiriyor. [`ACCESS-MODEL.md`](../ACCESS-MODEL.md)'de tanımlana
 > vermek, onun elle yaptığı değişikliklerin bir sonraki `apply` ile geri alınması pahasına
 > geliyor. Kalıcı değişikliğin tek yolu konfigürasyondur.
 
-### 6.3 Henüz doğrulanmayanlar
+### 6.3 Developer'ın korumalı dala doğrudan push'u — ✅ Reddedildi
 
-**Tek kullanıcıyla test edilemeyenler.** Ozan bu repo'da hem `pilot-intern-web-mentors`
-hem `platform-admins` üyesi ve organizasyon sahibi. `enforce_admins: false` olduğu için
-kurallar ona uygulanmıyor — dolayısıyla kuralların **engelleme** tarafı yalnızca
-`developer` rolüne sahip ayrı bir hesapla doğrulanabilir:
+**Tarih:** 2026-08-15 · **Repo:** `Tidyorg` · **Hesap:** `paitblack`
 
-- [ ] Developer'ın `develop`'a doğrudan push'unun reddedilmesi
-- [ ] Onay olmadan merge'in engellenmesi
-- [ ] `main`'de code owner (mentör) onayının zorunlu kılınması
-- [ ] `restrict_pushes` kuralının mevcut GitHub plan seviyesinde fiilen uygulanması
+Raporun bu bölümü aylardır boştu; sebebi tek bir hesapla test edilememesiydi (bkz. 6.5).
+Emre projeden ayrılınca `platform-admins` üyeliği kaldırıldı ve org rolü `member`a
+sabitlendi — böylece elimizde ilk kez **gerçek bir `developer` hesabı** oldu. Aynı push
+tekrar denendi:
 
-**Diğer bekleyenler:**
+![Failed to push — GH006 Protected branch update failed, üç ayrı ret gerekçesi listeleniyor](images/pilot-verification/09-developer-push-rejected.jpeg)
 
-- [ ] CI workflow tetiklenmesi ve `ci/test` status check'inin raporlanması
+```
+remote: error: GH006: Protected branch update failed for refs/heads/develop.
+remote: - Changes must be made through a pull request.
+remote: - Required status check "ci/test" is expected.
+remote: - You're not authorized to push to this branch.
+```
+
+**Kanıtladığı — üç ayrı şey:**
+
+1. **PR zorunluluğu çalışıyor.** *"Changes must be made through a pull request."*
+2. **`restrict_pushes` mevcut plan seviyesinde fiilen uygulanıyor.** *"You're not authorized
+   to push to this branch."* Bu satır, açık kalan en önemli sorunun cevabıdır: free plan +
+   public repo'da push izin listesi **gerçekten zorlanıyor**, sessizce yok sayılmıyor.
+   Hafta 2'de "apply sırasında patlayabilir, patlarsa `push_allowed_roles` boşaltılacak"
+   diye not düşülmüştü — gerek kalmadı.
+3. **Aynı kullanıcı bir gün önce bu push'u başarıyla atmıştı.** Değişen tek şey rol
+   ataması. Kural baştan doğruydu; kimin ondan muaf olduğu görünmüyordu.
+
+> Karşılaştırma için 6.2'ye bakın: aynı dal, aynı kural, farklı rol. Mentör "kurallar
+> bypass ediliyor" uyarısıyla geçiyor, developer `GH006` ile duruyor. İki ekran görüntüsü
+> yan yana, `enforce_admins: false` tasarımının tam olarak amaçlandığı gibi çalıştığını
+> gösteriyor.
+
+### 6.4 Onay olmadan merge — ✅ Engellendi
+
+**Tarih:** 2026-08-15 · **PR:** `Test4` #10 → `develop`
+
+Push reddedilince aynı hesap kural gereği PR açtı:
+
+![PR #10 — Review required, ci/test bekliyor, Merging is blocked](images/pilot-verification/10-developer-merge-blocked.jpeg)
+
+- [x] **Review required** — *"At least 1 approving review is required by reviewers with
+      write access."* `required_reviews: 1` canlıda zorlanıyor.
+- [x] **Merging is blocked** — merge düğmesi kapalı; kullanıcı kendi PR'ını onaylayamıyor.
+- [x] Kullanıcı adının yanındaki **`Member`** rozeti org rolünün `member` olduğunu
+      doğruluyor — `github_membership` kaynağı yerleşmiş.
+- [x] PR açma yetkisi korunmuş: developer engellenmiyor, **doğru kanala yönlendiriliyor.**
+
+**Ayrıca görünen — `ci/test` blokajı:** *"ci/test · Expected — Waiting for status to be
+reported"* satırı `Required` etiketiyle duruyor. Bu check hiçbir repoda üretilmiyor
+(`terraform/templates/` henüz dağıtılmıyor), dolayısıyla **onay alınsa bile bu PR merge edilemez.**
+Mentör admin muafiyetiyle geçtiği için bugüne kadar fark edilmedi; ilk kez normal developer
+akışında görünür oldu. Kalıcı çözüm şablon dağıtımıdır — [`ROADMAP.md`](../ROADMAP.md) Faz 2.
+
+### 6.5 Henüz doğrulanmayanlar
+
+- [ ] `main`'de code owner (mentör) onayının zorunlu kılınması — 6.3/6.4 testleri
+      `develop` üzerinde yapıldı, `main` akışı ayrıca denenmeli
+- [ ] CI workflow tetiklenmesi ve `ci/test` status check'inin **raporlanması**
+      _(zorunlu olduğu doğrulandı, üretildiği doğrulanmadı — bkz. 6.4)_
 - [ ] Force push denemesinin sonucu (admin bypass'ının force push'u kapsayıp kapsamadığı
       bilinmiyor)
 
@@ -250,7 +304,111 @@ Takip: [`TODO.md`](../TODO.md)
 
 ---
 
-## 7. Doğrulamayı Tekrarlamak
+## 7. GitOps Döngüsü — Uçtan Uca Doğrulama
+
+**Tarih:** 2026-08-16 · **PR:** `feat/gitops-templates` → `develop` · **Repo:** `Tidyorg`
+
+`terraform-plan.yml` yazıldığından beri **bir kez bile çalışmamıştı** — dosya YAML olarak
+geçersizdi (bkz. 7.2). Düzeltildikten sonra açılan ilk PR, döngünün ilk gerçek testi oldu.
+
+### 7.1 Plan workflow'u tetiklendi ve yorum düştü — ✅
+
+![PR yorumu — Terraform Pull Request Report tablosu, dört adım da yeşil](images/pilot-verification/12-gitops-plan-comment.png)
+
+- [x] `pull_request` tetikleyicisi çalıştı — `paths` filtresi `terraform/**` ile eşleşti
+- [x] Dört adım da geçti: **Format Check ✅ · Initialization ✅ · Validation ✅ · Plan ✅**
+- [x] Plan **HCP Terraform'da uzaktan** koştu, çıktısı PR'a yorum olarak yazıldı
+- [x] `Terraform Plan (pull_request) — Successful in 45s`
+
+![Plan sonu — No changes, Review required, ci/test bekliyor](images/pilot-verification/14-gitops-plan-no-changes.png)
+
+- [x] `No changes. Your infrastructure matches the configuration.` — elle yapılan apply ile
+      kod birebir uyumlu
+- [x] `Review required` kırmızı, `ci/test` **Expected — Waiting for status to be reported**
+- [x] Alt bilgi doğru: `Pushed by: @uslanozan, Action: pull_request`
+
+### 7.2 Bulunan iki kusur
+
+Bölüm 4'teki iki kusur modülde bulunmuştu; bu ikisi GitOps katmanında çıktı.
+
+**a) `terraform-plan.yml` geçersiz YAML'dı — dosya hiç çalışmamıştı**
+
+91–109. satırlar `script: |` blok skalerinin dışına, sütun 0'a düşmüştü; YAML ayrıştırıcı
+markdown tablosunun `| Step | Status |` satırını üst düzey anahtar sanıyordu.
+
+**Kök sebep düşünüldüğünden ilginç:** satırları yalnızca içeri almak da çözmüyor — JS
+template literal'in içindeki 12 boşluk string'e dahil olup markdown tablosunu kod bloğuna
+çeviriyor. İki gereksinim çakışıyordu (YAML girinti ister, markdown istemez). Dosyayı yazan
+kişi muhtemelen bu yüzden sola yaslamış. Çözüm: satır dizisi + `join('\n')`.
+
+**Öğrenilen:** `tasks-ozan.md`'de Faz 3 "tamamlandı" işaretliydi. Bir workflow'un
+**yazılmış olması çalıştığı anlamına gelmiyor** — Bölüm 6'yı bilerek "doğrulanmadı"
+bırakma disiplininin kod tarafında uygulanmamış hâli.
+
+**b) Temiz plan "özet bulunamadı" uyarısı veriyordu**
+
+Yukarıdaki ekran görüntüsünde görünüyor: `⚠️ Plan summary line not found in output.`
+
+Sebep: özet regex'i yalnızca `Plan: X to add, Y to change, Z to destroy` satırını arıyordu.
+**Terraform o satırı değişiklik yokken hiç yazmıyor** — sadece `No changes.` diyor. Yani
+sistem en sağlıklı olduğu anda uyarı üretiyordu; birkaç hafta sonra biri buna bakıp
+"bir şey bozuldu" diye düşünecekti.
+
+Düzeltme: `No changes` için ayrı bir dal eklendi. Ayrıca `Drift detected` satırları
+sayılıp özete not olarak konuldu — log'daki duvarın kozmetik olduğunu açıklıyor
+(bkz. 7.3). Her iki senaryo önce sahte plan çıktılarıyla render edilerek, ardından
+**aynı PR'da canlı olarak** doğrulandı:
+
+```
+📊 Plan Summary
+✅ No changes. Infrastructure matches the configuration.
+
+26 × Drift detected — kozmetik, apply gerektirmez.
+```
+
+Aynı PR bu yüzden iki kez değerli oldu: hem döngünün çalıştığını gösterdi, hem de
+düzeltmenin kendisini doğrulayan test ortamı oldu.
+
+### 7.3 Drift gürültüsü — beklenen davranış
+
+![Plan log'unda ardışık Drift detected satırları](images/pilot-verification/13-gitops-plan-log-drift.png)
+
+Her `plan` çıktısında onlarca `Drift detected (update)` satırı çıkıyor ve hiçbiri gerçek
+değişiklik üretmiyor. Sebep: GitHub API bazı alanları provider'ın gönderdiğinden farklı
+formatta geri döndürüyor (ör. takım açıklamasında boşluk normalleşmesi). Provider bunu
+kayıt sayıyor, apply sırasında fark görmeyince geçiyor.
+
+Tehlikesiz ama **gerçek değişiklikleri gölgeliyor** — bu yüzden özete sayı olarak eklendi.
+
+> **Kozmetik olduğunun doğrudan kanıtı:** `medine2906` erişimi verildikten ~10 dakika
+> sonra çalışan plan'da `github_membership.medine: Drift detected (update)` satırı çıktı.
+> Kaynak yeni oluşturulmuştu ve o aralıkta kimse ona dokunmadı — sapma gerçek olsaydı
+> mümkün değildi. Provider'ın okuduğu format ile gönderdiği format farklı, hepsi bu.
+
+### 7.4 Kanıtlanan bir tasarım kararı — `develop`'a merge hiçbir şey uygulamaz
+
+`terraform-apply.yml` yalnızca `main`'e push'ta tetikleniyor. Bu PR `develop`'a açıldığı
+için **merge sonrası hiçbir apply çalışmadı** — beklenen davranış, çünkü değişiklikler
+zaten elle apply edilmişti.
+
+Ama bu tam olarak `develop`'un ürettiği sorunun canlı hâli: **kod merge görünüyor, canlıda
+karşılığı yok.** Kontrol düzlemi repolarının trunk-based çalışması kararının
+([`ROADMAP.md`](../ROADMAP.md) Karar F) dayandığı gözlem budur.
+
+![PR açıklaması — üç commit, üç ayrı konu](images/pilot-verification/11-gitops-pr-description.png)
+
+### 7.5 Yan tespit — PR şablonu gelmedi
+
+PR açarken açıklama alanı **boş geldi.** `terraform/templates/.github/PULL_REQUEST_TEMPLATE.md`
+yazılmış durumda ama hiçbir repo'ya dağıtılmıyor; GitHub şablonu repo'nun **kendi**
+`.github/` klasöründen okur ve orada yalnızca `workflows/` var.
+
+[`docs/onboarding.md`](onboarding.md)'deki *"PR şablonu otomatik dolar"* iddiasının neden
+hâlâ yanlış olduğunun doğrudan kanıtı. Faz 2 (şablon dağıtımı) bunu kapatacak.
+
+---
+
+## 8. Doğrulamayı Tekrarlamak
 
 ```powershell
 terraform -chdir=terraform plan
