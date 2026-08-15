@@ -269,14 +269,13 @@
 
 ---
 
-## Hafta 4 — Temizlik & Config Yapısı
+## Hafta 4 — Temizlik, Config Yapısı & GitOps
 
-> **Paralel:** Emre bu hafta GitOps döngüsünü kuruyor (Faz 3). İki iş birbirinden
-> bağımsız; yalnızca hafta sonunda birleşiyor.
+> **Not:** Emre'nin ayrılmasıyla Faz 3 (GitOps döngüsü) bu haftaya eklendi.
+> Medine bu hafta dashboard iskeletini ve giriş akışını kuruyor — bağımsız.
 
 ### 🧹 Faz 0 — Kalan temizlik
-- [ ] **`pilot-intern-api`'yi modüle taşı** _(Emre ile ortak — onun `branch-protection.tf`'i,
-      senin modülün)_
+- [ ] **`pilot-intern-api`'yi modüle taşı**
   - [ ] Repo'yu `config/repositories/pilot-intern-api.yml` olarak tanımla
   - [ ] `terraform state mv` ile kaydı modül altına taşı — **silme/yeniden yaratma yok**
   - [ ] `branch-protection.tf`'teki ham `github_repository` ve iki `github_branch_protection`
@@ -284,8 +283,8 @@
   - [ ] `plan` → `No changes` görülmeli
 - [ ] **Bekleyen üç branch'i push et ve PR aç** _(dogfooding)_
   - [ ] `feat/repository-module`
-  - [ ] `docs/engineering-standards-fixes` → Emre'nin PR'ına
-  - [ ] `feat/branch-protection-fixes` → Emre'nin PR'ına
+  - [ ] `docs/engineering-standards-fixes`
+  - [ ] `feat/branch-protection-fixes`
 
 ### 🔧 Faz 1 — Config yapısını repo başına dosyaya böl
 - [ ] Dizin yapısını kur:
@@ -302,17 +301,32 @@
 - [ ] [`docs/config-guide.md`](docs/config-guide.md)'yi yeni yapıya göre güncelle
 
 **Neden:** Dashboard'un ön koşulu. İki mentör aynı anda düzenlediğinde tek dosyada
-çakışırlar, ayrı dosyalarda çakışmazlar. Ayrıca CODEOWNERS ile mentör bazlı review
-yönlendirmesi ancak ayrı dosyalarla mümkün.
+çakışırlar, ayrı dosyalarda çakışmazlar.
 
-- [ ] ✅ **Hafta Sonu Sync:** Emre'nin GitOps workflow'larını review et; config bölünmesi
-      sonrası CODEOWNERS kurallarını birlikte yaz
+### 🔄 Faz 3 — GitOps döngüsü _(Emre'den devralındı)_
+
+Dokümanların anlattığı "PR → plan → apply" akışı şu an elle çalışıyor. Otomatikleşmeli.
+Dashboard'un PR açması ancak bu döngü varsa anlamlı — plan çıktısı buradan gelecek.
+
+- [ ] `.github/workflows/terraform-plan.yml` — PR tetikli
+  - [ ] `terraform fmt -check -recursive`
+  - [ ] `terraform validate`
+  - [ ] `terraform plan`
+  - [ ] Plan çıktısını PR yorumu olarak yaz — **`destroy` sayısı görünür olmalı**
+- [ ] `.github/workflows/terraform-apply.yml` — `main` merge tetikli
+- [ ] GitHub Secrets: `TF_API_TOKEN` _(HCP team token)_
+- [ ] Concurrency grubu — iki apply aynı anda çalışmasın
+- [ ] Bu repo'nun kendi branch protection'ını config'den yönet (dogfooding)
+
+- [ ] ✅ **Hafta Sonu Sync:** Config bölünmesi sonrası CODEOWNERS kurallarını yaz;
+      GitOps'u Medine ile birlikte test et (dashboard PR açıyor mu, plan yorumu düşüyor mu?)
 
 ---
 
-## Hafta 5 — Şablon & Workflow Dağıtımı
+## Hafta 5 — Şablon Dağıtımı & GitHub App
 
-> **Paralel:** Emre bu hafta GitHub App'i kuruyor (Faz 4). Bağımsız.
+> **Not:** Emre'nin ayrılmasıyla Faz 4 (GitHub App) bu haftaya eklendi.
+> Medine bu hafta config'i okuyup projeleri gösteren ekranları yazıyor — bağımsız.
 
 ### 📦 Faz 2 — `templates/` klasörünü canlıya çıkar
 - [ ] Config şemasına `files` ve `workflows` alanlarını ekle
@@ -348,11 +362,35 @@ yönlendirmesi ancak ayrı dosyalarla mümkün.
 
 - [ ] ✅ **Hafta Sonu Sync:** App devreye girince dağıtımı yeni kimlikle test et
 
+### 🔐 Faz 4 — GitHub App _(Emre'den devralındı)_
+
+Şu an tüm otomasyon kişisel token'a bağlı ve Terraform commit'leri `paitblack` adına
+görünüyor. Kişi ayrılırsa sistem durur. Bu fazda Terraform bot kimliğine geçer.
+
+- [ ] Org'da GitHub App oluştur: `tidyorg-infra-bot`
+  - [ ] İzinler: `administration: write`, `contents: write`, `members: write`, `metadata: read`
+  - [ ] Organizasyon geneli kurulum
+- [ ] Private key'i HCP Terraform'a ve GitHub Secrets'a koy
+- [ ] Terraform provider'ı App kimliğine geçir (`app_auth` bloğu)
+- [ ] Doğrula: yeni `apply` sonrası commit'ler bot adına görünmeli
+- [ ] [`docs/notes/github-auth-strategy.md`](docs/notes/github-auth-strategy.md)'yi
+      "uygulandı" olarak güncelle
+
+**Dashboard için ayrı App gerekmez.** Dashboard kullanıcının kendi kimliğiyle çalışır
+(Device Flow). Bu App yalnızca Terraform içindir.
+
+### 🔑 Dashboard için OAuth App (Device Flow)
+
+- [ ] Device Flow destekleyen bir GitHub OAuth App oluştur
+  - Yalnızca `client_id` gerekir; `client_secret` saklanmayacak
+  - Ayarlarda **"Enable Device Flow"** işaretli olmalı
+- [ ] `client_id`'yi Medine ile paylaş (`VITE_GITHUB_CLIENT_ID` env değişkeni olarak)
+
 ---
 
 ## Hafta 6 — Güvenlik Ayarları & Dashboard Desteği
 
-> **Paralel:** Emre dashboard'un okuma modunu ve PR yazma akışını yazıyor (Faz 5a–5b).
+> **Paralel:** Medine bu hafta dashboard yazma modunu kuruyor (PR akışı). Bağımsız.
 
 ### 🔒 Repo güvenlik ayarları
 - [ ] Modüle `vulnerability_alerts` ekle _(Dependabot uyarıları)_
@@ -363,14 +401,14 @@ yönlendirmesi ancak ayrı dosyalarla mümkün.
 ### 👤 `people` → organizasyon üyeliği
 - [ ] `github_membership` ile org üyeliğini config'den yönet
 - [ ] ⚠️ **Riskli:** mevcut owner yetkilerini etkileyebilir. Önce `plan`'ı dikkatle
-      incele, gerekirse `import` ile mevcut üyelikleri state'e al. **Emre review etsin.**
+      incele, gerekirse `import` ile mevcut üyelikleri state'e al.
 - [ ] `docs/onboarding.md`'deki "davet otomatik gelir" iddiası artık doğru
 
 ### 🧩 Dashboard desteği
 - [ ] Config için JSON Schema yaz — dashboard kaydetmeden önce doğrulama yapabilsin
   - _YAML ayrıştırıldığında JSON ile aynı veri modeline dönüştüğü için aynı şema her
     ikisini de doğrular. Depoda saklanan format her zaman YAML; dönüştürme yok._
-  - _Emre ihtiyaç duyarsa şemayı değiştirebilir._
+  - _Medine ihtiyaç duyarsa şemayı değiştirebilir._
 - [ ] Anlamsal kuralları tanımla: her repo'nun tam bir mentörü olmalı, arşiv repo'ya
       developer eklenemez, `required_reviews` developer sayısını aşamaz
 - [ ] **Dosya sahipliği ayrımını uygula** _(ACCESS-MODEL Karar 16)_
@@ -383,22 +421,22 @@ yönlendirmesi ancak ayrı dosyalarla mümkün.
 - [ ] İkinci hesapla engelleme testleri _(bkz. [`TODO.md`](TODO.md))_
 - [ ] Sonuçları [`docs/pilot-verification.md`](docs/pilot-verification.md) Bölüm 6'ya işle
 
-- [ ] ✅ **Hafta Sonu Sync:** Dashboard'un okuma modunu birlikte gözden geçir
+- [ ] ✅ **Hafta Sonu Sync:** Medine ile dashboard okuma + yazma modunu birlikte gözden geçir
 
 ---
 
 ## Hafta 7 — Finalizasyon
 
-> **Paralel:** Emre dashboard'u tamamlıyor (Faz 5c–5d).
+> **Paralel:** Medine bu hafta plan önizleme ekranını ve UX parlatmayı yapıyor.
 
-- [ ] **README.md** — Emre review etsin
+- [ ] **README.md** — Medine review etsin
   - [ ] Proje açıklaması, hızlı başlangıç, klasör yapısı, katkı linki
   - [ ] Mimari özet: kod katmanı / veri katmanı ayrımı
 - [ ] **Doküman bakımı**
-  - [ ] Cross-reference'ları tamamla — Emre'nin dokümanlarından seninkilere link
+  - [ ] Cross-reference'ları tamamla — dokümanlar arası tutarlı linkler
   - [ ] `ROADMAP.md` ve `TODO.md`'yi güncelle
   - [ ] Değişen davranışları dokümanlara yansıt
-- [ ] **Uçtan uca pilot test** _(Emre ile ortak)_
+- [ ] **Uçtan uca pilot test** _(Medine ile ortak)_
   - [ ] Config'den sıfırdan yeni repo aç
   - [ ] Şablonlar geldi mi, CI tetiklendi mi, label'lar doğru mu?
   - [ ] Dashboard'dan bir kişi ekle → PR → plan → apply → GitHub'da gör
@@ -454,7 +492,8 @@ yönlendirmesi ancak ayrı dosyalarla mümkün.
 ---
 
 ## Her Hafta Tekrarlanan Görevler
-- [ ] Emre'nin PR'larını review et
+- [ ] Medine'nin PR'larını review et (dashboard PR'ları)
 - [ ] Kendi değişikliklerini PR ile yap (dogfooding)
+- [ ] Terraform kodlarını `terraform fmt` ile formatla
 - [ ] Dokümanlar arası internal linkler ekle (cross-referencing)
-- [ ] Hafta sonu sync toplantısı
+- [ ] Hafta sonu sync toplantısı (Medine ile)

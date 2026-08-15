@@ -1,3 +1,10 @@
+> [!CAUTION]
+> **[DEPRECATED]** Emre projeden ayrılmıştır. Bu dosya tarihsel kayıt olarak saklanmaktadır.
+> Dashboard kısmı `tasks-medine.md` dosyasına taşınmıştır. Geri kalan fazlar (GitOps, GitHub App vb.) Ozan tarafından üstlenilecektir.
+> Son güncelleme: 2026-08-15
+
+---
+
 # 🔧 Emre — Organizasyon & Kurallar
 
 **Rol:** Organizasyonun iskeletini kurar — takımlar, yetkiler, dal korumaları, güvenlik politikaları  
