@@ -1,6 +1,8 @@
 # Pilot Doğrulama Raporu — `pilot-intern-web`
 
-**Tarih:** 2026-08-07 · **Güncelleme:** 2026-08-15 (Bölüm 6.3–6.4 — ret tarafı doğrulandı)
+**Tarih:** 2026-08-07
+**Güncellemeler:** 2026-08-15 → Bölüm 6.3–6.4 (ret tarafı doğrulandı) ·
+2026-08-16 → Bölüm 7 (GitOps döngüsü uçtan uca doğrulandı)
 **Kapsam:** `terraform/modules/repository` modülünün uçtan uca doğrulanması
 **Repo:** https://github.com/your-org/pilot-intern-web
 _(Bölüm 6.3–6.4 testleri `Tidyorg` reposunda yapıldı; aynı modülden
@@ -130,6 +132,10 @@ Bölüm 4.2'de anlatılan düzeltmeyle eklendi.
 
 Pilotun asıl değeri burada. İki gerçek kusur yalnızca canlı bir repo oluşturulunca
 ortaya çıktı; ikisi de modülde kalıcı olarak düzeltildi.
+
+> **Toplam dört kusur bulundu.** Bu bölümdeki ikisi **modülde**, Bölüm 7.2'deki ikisi
+> **GitOps katmanında** — ve dördü de yalnızca sistem gerçekten çalıştırılınca ortaya
+> çıktı. Hiçbiri kod okuyarak fark edilemezdi.
 
 ### 4.1 Label çakışması (422 already_exists)
 
@@ -298,7 +304,95 @@ Takip: [`TODO.md`](../TODO.md)
 
 ---
 
-## 7. Doğrulamayı Tekrarlamak
+## 7. GitOps Döngüsü — Uçtan Uca Doğrulama
+
+**Tarih:** 2026-08-16 · **PR:** `feat/gitops-templates` → `develop` · **Repo:** `Tidyorg`
+
+`terraform-plan.yml` yazıldığından beri **bir kez bile çalışmamıştı** — dosya YAML olarak
+geçersizdi (bkz. 7.2). Düzeltildikten sonra açılan ilk PR, döngünün ilk gerçek testi oldu.
+
+### 7.1 Plan workflow'u tetiklendi ve yorum düştü — ✅
+
+![PR yorumu — Terraform Pull Request Report tablosu, dört adım da yeşil](images/pilot-verification/12-gitops-plan-comment.png)
+
+- [x] `pull_request` tetikleyicisi çalıştı — `paths` filtresi `terraform/**` ile eşleşti
+- [x] Dört adım da geçti: **Format Check ✅ · Initialization ✅ · Validation ✅ · Plan ✅**
+- [x] Plan **HCP Terraform'da uzaktan** koştu, çıktısı PR'a yorum olarak yazıldı
+- [x] `Terraform Plan (pull_request) — Successful in 45s`
+
+![Plan sonu — No changes, Review required, ci/test bekliyor](images/pilot-verification/14-gitops-plan-no-changes.png)
+
+- [x] `No changes. Your infrastructure matches the configuration.` — elle yapılan apply ile
+      kod birebir uyumlu
+- [x] `Review required` kırmızı, `ci/test` **Expected — Waiting for status to be reported**
+- [x] Alt bilgi doğru: `Pushed by: @uslanozan, Action: pull_request`
+
+### 7.2 Bulunan iki kusur
+
+Bölüm 4'teki iki kusur modülde bulunmuştu; bu ikisi GitOps katmanında çıktı.
+
+**a) `terraform-plan.yml` geçersiz YAML'dı — dosya hiç çalışmamıştı**
+
+91–109. satırlar `script: |` blok skalerinin dışına, sütun 0'a düşmüştü; YAML ayrıştırıcı
+markdown tablosunun `| Step | Status |` satırını üst düzey anahtar sanıyordu.
+
+**Kök sebep düşünüldüğünden ilginç:** satırları yalnızca içeri almak da çözmüyor — JS
+template literal'in içindeki 12 boşluk string'e dahil olup markdown tablosunu kod bloğuna
+çeviriyor. İki gereksinim çakışıyordu (YAML girinti ister, markdown istemez). Dosyayı yazan
+kişi muhtemelen bu yüzden sola yaslamış. Çözüm: satır dizisi + `join('\n')`.
+
+**Öğrenilen:** `tasks-ozan.md`'de Faz 3 "tamamlandı" işaretliydi. Bir workflow'un
+**yazılmış olması çalıştığı anlamına gelmiyor** — Bölüm 6'yı bilerek "doğrulanmadı"
+bırakma disiplininin kod tarafında uygulanmamış hâli.
+
+**b) Temiz plan "özet bulunamadı" uyarısı veriyordu**
+
+Yukarıdaki ekran görüntüsünde görünüyor: `⚠️ Plan summary line not found in output.`
+
+Sebep: özet regex'i yalnızca `Plan: X to add, Y to change, Z to destroy` satırını arıyordu.
+**Terraform o satırı değişiklik yokken hiç yazmıyor** — sadece `No changes.` diyor. Yani
+sistem en sağlıklı olduğu anda uyarı üretiyordu; birkaç hafta sonra biri buna bakıp
+"bir şey bozuldu" diye düşünecekti.
+
+Düzeltme: `No changes` için ayrı bir dal eklendi. Ayrıca `Drift detected` satırları
+sayılıp özete not olarak konuldu — log'daki duvarın kozmetik olduğunu açıklıyor
+(bkz. 7.3). Her iki senaryo da sahte plan çıktılarıyla render edilerek doğrulandı.
+
+### 7.3 Drift gürültüsü — beklenen davranış
+
+![Plan log'unda ardışık Drift detected satırları](images/pilot-verification/13-gitops-plan-log-drift.png)
+
+Her `plan` çıktısında onlarca `Drift detected (update)` satırı çıkıyor ve hiçbiri gerçek
+değişiklik üretmiyor. Sebep: GitHub API bazı alanları provider'ın gönderdiğinden farklı
+formatta geri döndürüyor (ör. takım açıklamasında boşluk normalleşmesi). Provider bunu
+kayıt sayıyor, apply sırasında fark görmeyince geçiyor.
+
+Tehlikesiz ama **gerçek değişiklikleri gölgeliyor** — bu yüzden özete sayı olarak eklendi.
+
+### 7.4 Kanıtlanan bir tasarım kararı — `develop`'a merge hiçbir şey uygulamaz
+
+`terraform-apply.yml` yalnızca `main`'e push'ta tetikleniyor. Bu PR `develop`'a açıldığı
+için **merge sonrası hiçbir apply çalışmadı** — beklenen davranış, çünkü değişiklikler
+zaten elle apply edilmişti.
+
+Ama bu tam olarak `develop`'un ürettiği sorunun canlı hâli: **kod merge görünüyor, canlıda
+karşılığı yok.** Kontrol düzlemi repolarının trunk-based çalışması kararının
+([`ROADMAP.md`](../ROADMAP.md) Karar F) dayandığı gözlem budur.
+
+![PR açıklaması — üç commit, üç ayrı konu](images/pilot-verification/11-gitops-pr-description.png)
+
+### 7.5 Yan tespit — PR şablonu gelmedi
+
+PR açarken açıklama alanı **boş geldi.** `templates/.github/PULL_REQUEST_TEMPLATE.md`
+yazılmış durumda ama hiçbir repo'ya dağıtılmıyor; GitHub şablonu repo'nun **kendi**
+`.github/` klasöründen okur ve orada yalnızca `workflows/` var.
+
+[`docs/onboarding.md`](onboarding.md)'deki *"PR şablonu otomatik dolar"* iddiasının neden
+hâlâ yanlış olduğunun doğrudan kanıtı. Faz 2 (şablon dağıtımı) bunu kapatacak.
+
+---
+
+## 8. Doğrulamayı Tekrarlamak
 
 ```powershell
 terraform -chdir=terraform plan

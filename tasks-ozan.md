@@ -329,6 +329,14 @@ Dashboard'un PR açması ancak bu döngü varsa anlamlı — plan çıktısı bu
       olup markdown tablosunu kod bloğuna çeviriyor. Satır dizisi + `join('\n')` ile
       çözüldü, 65536 karakter limiti için kısaltma eklendi.
       _Kendime ders: "tamamlandı" işaretlemeden önce çalıştığını görmek lazım._
+- [x] **İlk canlı çalıştırma ikinci bir bug çıkardı** _(2026-08-16)_ — temiz plan
+      `⚠️ Plan summary line not found` uyarısı veriyordu. Özet regex'i yalnızca
+      `Plan: X to add...` satırını arıyor, Terraform ise değişiklik yokken o satırı hiç
+      yazmıyor. Yani sistem **en sağlıklı olduğu anda** uyarı üretiyordu.
+      `No changes` dalı eklendi; `Drift detected` satırları da sayılıp özete not düşülüyor.
+- [x] **GitOps döngüsü uçtan uca doğrulandı** _(2026-08-16)_ — plan tetiklendi, yorum
+      düştü, `Successful in 45s`. Kanıtlar:
+      [`docs/pilot-verification.md`](docs/pilot-verification.md) **Bölüm 7**
 
 ### 🔐 Erişim düzeltmesi — Emre `developer` rolüne indirildi _(2026-08-15, plan dışı)_
 
