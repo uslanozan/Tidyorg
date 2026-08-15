@@ -78,6 +78,37 @@ defaults:
   auto_init: true
   default_branch: develop
 
+  # ---------------------------------------------------------------------------
+  # ŞABLON DAĞITIMI
+  # ---------------------------------------------------------------------------
+  # Kaynak dosyalar: terraform/templates/ — ağaç yapısı repo içindeki hedef yolu
+  # birebir yansıtır, yani ayrı bir hedef yolu tanımlamaya gerek yoktur.
+  #
+  # Modlar:
+  #   strict → Terraform içeriği sahiplenir. Elle yapılan değişiklik bir sonraki
+  #            apply'da geri alınır. Yönetişim dosyaları için.
+  #   seed   → Yalnızca ilk oluşturmada yazılır (`ignore_changes = [content]`);
+  #            repo sonradan kendine göre değiştirebilir. İçerik dosyaları için.
+  #   none   → Hiç yazılmaz.
+  #
+  # Mod tablosunun gerekçesi: ROADMAP.md → K1
+  files:
+    contributing: seed
+    security: seed
+    editorconfig: seed
+    pr_template: strict
+    issue_templates: strict
+    dependabot: strict
+
+  # Dağıtılacak workflow'lar. Kaynak: terraform/templates/.github/workflows/<ad>.yml
+  # Workflow'lar daima `strict` — yönetişim dosyasıdır, elle değiştirilemez.
+  #
+  # DİKKAT: `ci` buradan çıkarılırsa o repo'da `ci/test` status check'i hiç
+  # raporlanmaz. `protected_branches.*.require_status_checks` içinde `ci/test`
+  # duruyorsa PR'lar sonsuza kadar bekler. Modül bu tutarsızlığı `precondition`
+  # ile hata olarak verir — sessizce geçmez.
+  workflows: [ci]
+
   protected_branches:
     main:
       required_reviews: 2

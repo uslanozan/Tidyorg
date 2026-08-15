@@ -1,7 +1,7 @@
 # Release Süreci
 
 Sürüm çıkarmak elle yapılan bir iş değildir. `main` dalına merge edildiği anda
-[`release.yml`](../templates/.github/workflows/release.yml) workflow'u devreye girer:
+[`release.yml`](../terraform/templates/.github/workflows/release.yml) workflow'u devreye girer:
 sürüm numarasını commit mesajlarından hesaplar, tag atar ve changelog'lu bir GitHub
 Release yayınlar.
 
@@ -192,4 +192,4 @@ atlanır.
 - [`commit-convention.md`](commit-convention.md) — Sürümü belirleyen commit formatı
 - [`branching-strategy.md`](branching-strategy.md) — Release ve hotfix dal akışı
 - [`workflow-guide.md`](workflow-guide.md) — Genel iş akışı
-- [`release.yml`](../templates/.github/workflows/release.yml) — Workflow'un kendisi
+- [`release.yml`](../terraform/templates/.github/workflows/release.yml) — Workflow'un kendisi

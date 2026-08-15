@@ -53,11 +53,21 @@ Formu doldur:
 
 **Repository permissions:**
 
-| İzin | Değer |
-| :--- | :--- |
-| Administration | Read and write |
-| Contents | Read and write |
-| Metadata | Read-only (otomatik) |
+| İzin | Değer | Neden |
+| :--- | :--- | :--- |
+| Administration | Read and write | Repo ayarları, branch protection, takım erişimleri |
+| Contents | Read and write | CODEOWNERS ve şablon dosyalarını repo'ya yazmak |
+| Issues | Read and write | `github_issue_labels` — label seti yönetimi |
+| Workflows | Read and write | `.github/workflows/*` dosyalarını yazmak |
+| Metadata | Read-only (otomatik) | — |
+
+> ⚠️ **Son iki satır sonradan, hata alınarak eklendi — atlama.**
+>
+> - **Issues** yoksa label senkronizasyonu `403 Resource not accessible by integration`
+>   ile patlar (2026-08-15'te yaşandı).
+> - **Workflows** yoksa `.github/workflows/` altına dosya yazmak 403 verir.
+>   GitHub bu yolu ayrı bir izne bağlamıştır; `Contents: write` **tek başına yetmez.**
+>   Şablon dağıtımı (Faz 2) bu izin olmadan çalışmaz.
 
 **Organization permissions:**
 

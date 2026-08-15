@@ -36,6 +36,47 @@ locals {
     ],
     [""],
   ))
+
+  # --- Şablon dağıtımı -----------------------------------------------------
+
+  # Şablon ağacı hedef ağacı birebir yansıtır: templates/CONTRIBUTING.md dosyası
+  # repo'da CONTRIBUTING.md olur. Bu yüzden ayrı bir "kaynak → hedef" eşlemesi
+  # yok; anahtar hem şablondaki hem repo'daki yoldur.
+  #
+  # Katalog config'de değil burada: config'de dosya yolu yazmak, şablon ağacı her
+  # değiştiğinde config'e dokunmayı gerektirirdi. Config yalnızca "hangi grup,
+  # hangi modda" der.
+  templates_root = "${path.module}/../../templates"
+
+  file_catalog = {
+    "CONTRIBUTING.md"                            = "contributing"
+    "SECURITY.md"                                = "security"
+    ".editorconfig"                              = "editorconfig"
+    ".github/PULL_REQUEST_TEMPLATE.md"           = "pr_template"
+    ".github/dependabot.yml"                     = "dependabot"
+    ".github/ISSUE_TEMPLATE/bug_report.yml"      = "issue_templates"
+    ".github/ISSUE_TEMPLATE/feature_request.yml" = "issue_templates"
+    ".github/ISSUE_TEMPLATE/config.yml"          = "issue_templates"
+  }
+
+  # Repo yolu → mod. "none" olanlar ve arşiv repo'lar elenir.
+  managed_files = local.active ? {
+    for repo_path, group in local.file_catalog :
+    repo_path => lookup(var.files, group, "none")
+    if lookup(var.files, group, "none") != "none"
+  } : {}
+
+  seed_paths = toset([for p, mode in local.managed_files : p if mode == "seed"])
+
+  # Workflow'lar daima strict — yönetişim dosyası (ROADMAP.md K1).
+  workflow_paths = local.active ? toset([
+    for name in var.workflows : ".github/workflows/${name}.yml"
+  ]) : toset([])
+
+  strict_paths = setunion(
+    toset([for p, mode in local.managed_files : p if mode == "strict"]),
+    local.workflow_paths,
+  )
 }
 
 # --- Repo ------------------------------------------------------------------
@@ -211,6 +252,51 @@ resource "github_repository_file" "codeowners" {
   depends_on = [github_branch.default]
 }
 
+# --- Şablon dağıtımı -------------------------------------------------------
+# İki ayrı kaynak, çünkü `lifecycle` bloğu DİNAMİK OLAMAZ: `ignore_changes`
+# değişkenden gelemez, `for_each` ile moda göre seçilemez. strict/seed ayrımını
+# tek kaynakta yapmanın yolu yok — bu, Terraform'un bilinen bir kısıtıdır.
+#
+# `file()` kullanılıyor, `templatefile()` DEĞİL. Sebep: workflow şablonlarında
+# GitHub Actions ifadeleri var (`${{ matrix.go-version }}` gibi) ve Terraform
+# bunları kendi template sözdizimi sanıp ayrıştırma hatası verir. Şablonlar
+# birebir kopyalanır; değişken enjekte edilmez.
+
+# strict — Terraform içeriği sahiplenir. Elle yapılan değişiklik bir sonraki
+# apply'da geri alınır. Yönetişim dosyaları ve tüm workflow'lar buradan geçer.
+resource "github_repository_file" "strict" {
+  for_each = local.strict_paths
+
+  repository          = github_repository.this.name
+  branch              = var.default_branch
+  file                = each.value
+  content             = file("${local.templates_root}/${each.value}")
+  commit_message      = "chore(github): sync ${each.value} from templates"
+  overwrite_on_create = true
+
+  depends_on = [github_branch.default]
+}
+
+# seed — yalnızca ilk oluşturmada yazılır. Repo sonrasında içeriği kendine göre
+# değiştirebilir; Terraform bir daha dokunmaz. İçerik dosyaları için.
+resource "github_repository_file" "seed" {
+  for_each = local.seed_paths
+
+  repository          = github_repository.this.name
+  branch              = var.default_branch
+  file                = each.value
+  content             = file("${local.templates_root}/${each.value}")
+  commit_message      = "chore(github): seed ${each.value} from templates"
+  overwrite_on_create = true
+
+  lifecycle {
+    # Dosya repo'ya devredildi. İçerik sürüklenmesi drift sayılmaz.
+    ignore_changes = [content]
+  }
+
+  depends_on = [github_branch.default]
+}
+
 # --- Dal koruması ----------------------------------------------------------
 
 resource "github_branch_protection" "this" {
@@ -248,6 +334,29 @@ resource "github_branch_protection" "this" {
         for role in each.value.push_allowed_roles :
         local.role_actors[role] if contains(keys(local.role_actors), role)
       ]
+    }
+  }
+
+  lifecycle {
+    # Tutarlılık kilidi. `ci/test` check'ini üreten şey templates/.github/workflows/ci.yml
+    # içindeki toplayıcı job'dır; o workflow repo'ya dağıtılmazsa check HİÇ raporlanmaz
+    # ve PR'lar sonsuza kadar bekler.
+    #
+    # Bu teorik bir uyarı değil: 2026-08-15'te erişim düzeltmesinden sonra normal
+    # developer akışı devreye girdiğinde tam olarak bu yaşandı — onaylanmış PR bile
+    # merge edilemedi (bkz. docs/pilot-verification.md Bölüm 6.4). Sessizce geçmemesi
+    # için plan aşamasında hata veriyor.
+    precondition {
+      condition = (
+        !contains(each.value.require_status_checks, "ci/test")
+        || contains(var.workflows, "ci")
+      )
+      error_message = join(" ", [
+        "Repo '${var.name}': '${each.key}' dalı 'ci/test' status check'ini zorunlu kılıyor",
+        "ama workflows listesinde 'ci' yok — bu check hiçbir zaman raporlanmayacak ve",
+        "PR'lar merge edilemeyecek. Ya config'de workflows listesine 'ci' ekleyin,",
+        "ya da require_status_checks içinden 'ci/test' değerini çıkarın.",
+      ])
     }
   }
 

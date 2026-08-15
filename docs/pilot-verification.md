@@ -283,7 +283,7 @@ Push reddedilince aynı hesap kural gereği PR açtı:
 
 **Ayrıca görünen — `ci/test` blokajı:** *"ci/test · Expected — Waiting for status to be
 reported"* satırı `Required` etiketiyle duruyor. Bu check hiçbir repoda üretilmiyor
-(`templates/` henüz dağıtılmıyor), dolayısıyla **onay alınsa bile bu PR merge edilemez.**
+(`terraform/templates/` henüz dağıtılmıyor), dolayısıyla **onay alınsa bile bu PR merge edilemez.**
 Mentör admin muafiyetiyle geçtiği için bugüne kadar fark edilmedi; ilk kez normal developer
 akışında görünür oldu. Kalıcı çözüm şablon dağıtımıdır — [`ROADMAP.md`](../ROADMAP.md) Faz 2.
 
@@ -399,7 +399,7 @@ karşılığı yok.** Kontrol düzlemi repolarının trunk-based çalışması k
 
 ### 7.5 Yan tespit — PR şablonu gelmedi
 
-PR açarken açıklama alanı **boş geldi.** `templates/.github/PULL_REQUEST_TEMPLATE.md`
+PR açarken açıklama alanı **boş geldi.** `terraform/templates/.github/PULL_REQUEST_TEMPLATE.md`
 yazılmış durumda ama hiçbir repo'ya dağıtılmıyor; GitHub şablonu repo'nun **kendi**
 `.github/` klasöründen okur ve orada yalnızca `workflows/` var.
 

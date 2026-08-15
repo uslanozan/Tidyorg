@@ -170,7 +170,7 @@ sürümlenir.
 1. `develop`'tan `release/vX.Y.Z` dalı açılır
 2. Bu dalda yeni özellik geliştirilmez; yalnızca sürüm hazırlığı yapılır
 3. Dal hem `main`'e hem `develop`'a merge edilir
-4. `main`'e merge, [`release.yml`](../templates/.github/workflows/release.yml)
+4. `main`'e merge, [`release.yml`](../terraform/templates/.github/workflows/release.yml)
    workflow'unu tetikler: sürüm numarası commit'lerden türetilir, tag atılır,
    changelog'lu bir GitHub Release yayınlanır
 
@@ -196,7 +196,7 @@ Adım adım komutlar: [`branching-strategy.md`](branching-strategy.md), Bölüm 
 ### `ci/test` job adı değiştirilemez
 
 Branch protection kuralları `ci/test` adında bir status check bekler. Bu ad
-[`ci.yml`](../templates/.github/workflows/ci.yml) içindeki toplayıcı job'un adıyla
+[`ci.yml`](../terraform/templates/.github/workflows/ci.yml) içindeki toplayıcı job'un adıyla
 birebir eşleşmek zorundadır.
 
 Job adını değiştirirsen korumalı dallardaki tüm PR'lar hiç raporlanmayacak bir check'i

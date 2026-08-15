@@ -21,13 +21,13 @@
   ```
   Tidyorg/
   ├── terraform/
-  │   └── modules/
-  │       ├── repository/
-  │       └── team/
-  ├── templates/
-  │   └── .github/
-  │       ├── ISSUE_TEMPLATE/
-  │       └── workflows/
+  │   ├── modules/
+  │   │   ├── repository/
+  │   │   └── team/
+  │   └── templates/              # 2026-08-16'da repo kökünden buraya taşındı
+  │       └── .github/            # sebep: HCP yalnızca working directory'yi paketliyor
+  │           ├── ISSUE_TEMPLATE/
+  │           └── workflows/
   ├── integrations/
   │   ├── linear/
   │   ├── clickup/
@@ -61,7 +61,7 @@
 - [x] İlk commit: `chore(repo): initialize project structure`
 
 ### 📝 Issue Templates (YAML Forms)
-- [x] `templates/.github/ISSUE_TEMPLATE/bug_report.yml`
+- [x] `terraform/templates/.github/ISSUE_TEMPLATE/bug_report.yml`
   - [x] Bug description (zorunlu, textarea)
   - [x] Steps to reproduce (zorunlu, textarea, pre-filled template)
   - [x] Expected behavior (zorunlu, textarea)
@@ -71,7 +71,7 @@
   - [x] Screenshots / Logs (opsiyonel, textarea)
   - [x] Auto-label: `type: bug`
 
-- [x] `templates/.github/ISSUE_TEMPLATE/feature_request.yml`
+- [x] `terraform/templates/.github/ISSUE_TEMPLATE/feature_request.yml`
   - [x] Feature description (zorunlu)
   - [x] Motivation / business value (zorunlu)
   - [x] Acceptance criteria (zorunlu)
@@ -79,14 +79,14 @@
   - [x] Design notes / mockups (opsiyonel)
   - [x] Auto-label: `type: feature`
 
-- [x] `templates/.github/ISSUE_TEMPLATE/config.yml`
+- [x] `terraform/templates/.github/ISSUE_TEMPLATE/config.yml`
   - [x] `blank_issues_enabled: false`
   - [x] Discussions linki
   - [x] Documentation linki
   - [x] _(ek)_ Security policy linki
 
 ### 📝 PR Template
-- [x] `templates/.github/PULL_REQUEST_TEMPLATE.md`
+- [x] `terraform/templates/.github/PULL_REQUEST_TEMPLATE.md`
   - [x] "What does this PR do?" bölümü → _"What changed?"_ olarak yazıldı
   - [x] "Why is this change needed?" bölümü + `Closes #` linki → _"Why?"_
   - [x] "How was this tested?" bölümü → _"Testing / Validation"_ + Validation notes alanı
@@ -163,7 +163,7 @@
       _(bkz. `docs/pilot-verification.md`)_
 
 ### 📝 CI/CD Workflow Templates
-- [x] `templates/.github/workflows/ci.yml` — Temel CI pipeline
+- [x] `terraform/templates/.github/workflows/ci.yml` — Temel CI pipeline
   - [x] Tetikleyici: `pull_request` + `push to develop`
   - [x] Concurrency grubu (aynı branch'te çoklu run engelleme)
   - [x] _(ek)_ `detect` job'u — dil job'ları yalnızca ilgili manifest varsa çalışıyor
@@ -191,13 +191,13 @@
     - [x] `pint --test` ile format
     - [x] `phpunit` ile test
 
-- [x] `templates/.github/workflows/release.yml` — Release workflow
+- [x] `terraform/templates/.github/workflows/release.yml` — Release workflow
   - [x] Tetikleyici: main'e push veya manual dispatch
   - [x] Semantic version tag oluşturma (otomatik, Conventional Commits'ten türetiliyor)
   - [x] GitHub Release oluşturma (auto-generated changelog)
   - [x] Docker build & push step (opsiyonel, koşullu — yalnızca `Dockerfile` varsa)
 
-- [x] `templates/.github/dependabot.yml` — Dependabot config
+- [x] `terraform/templates/.github/dependabot.yml` — Dependabot config
   - [x] Go modules: haftalık
   - [x] npm: haftalık
   - [x] pip: haftalık
@@ -398,7 +398,7 @@ yazıyordu. O üyelik bir ara arayüzden elle değiştirilmiş — drift'in bir 
 > pin + kullanım). Şemayı tek repoda dondurup sonra bölmek, bölüp sonra şema değiştirmekten
 > çok daha ucuz.
 
-### 📦 Faz 2 — `templates/` klasörünü canlıya çıkar
+### 📦 Faz 2 — `terraform/templates/` klasörünü canlıya çıkar
 - [ ] Config şemasına `files` ve `workflows` alanlarını ekle
   ```yaml
   defaults:

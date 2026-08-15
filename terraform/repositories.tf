@@ -74,4 +74,16 @@ module "repositories" {
 
   protected_branches = local.protected_branches[each.key]
   labels             = try(each.value.labels, local.repo_defaults.labels)
+
+  # `files` düz bir harita (mantıksal ad → mod), o yüzden sığ merge doğru:
+  # repo yalnızca değiştirmek istediği anahtarı yazar, gerisi defaults'tan gelir.
+  # protected_branches'teki dal bazında birleştirme derdi burada yok.
+  files = merge(
+    try(local.repo_defaults.files, {}),
+    try(each.value.files, {}),
+  )
+
+  # `workflows` bir liste — repo yazarsa tamamen ezer, kısmi birleştirme yok.
+  # "ci'yi çıkar ama release'i ekle" gibi bir ara durum anlamsız olurdu.
+  workflows = try(each.value.workflows, local.repo_defaults.workflows, [])
 }

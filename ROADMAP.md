@@ -31,7 +31,7 @@ Son güncelleme: 2026-08-16
 
 **Çalışmıyor / eksik:**
 
-1. `templates/` klasörünün tamamı atıl — hiçbir repo'ya ulaşmıyor _(Faz 2)_
+1. `terraform/templates/` klasörünün tamamı atıl — hiçbir repo'ya ulaşmıyor _(Faz 2)_
 2. **`ci/test` karşılıksız** — required check hiçbir repoda üretilmiyor, `developer`
    rolündeki biri onay alsa bile merge edemez _(Faz 2 çözüyor)_
 3. `people` bölümü Terraform tarafından okunmuyor — `org-membership.tf` tek kişilik
