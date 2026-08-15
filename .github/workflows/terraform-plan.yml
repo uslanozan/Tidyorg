@@ -1,0 +1,168 @@
+name: "Terraform Plan"
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/terraform-plan.yml'
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  plan:
+    name: "Terraform Plan"
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+
+      - name: Terraform Format Check
+        id: fmt
+        run: terraform fmt -check -recursive
+        continue-on-error: true
+
+      - name: Terraform Init
+        id: init
+        run: terraform init
+
+      - name: Terraform Validate
+        id: validate
+        run: terraform validate -no-color
+
+      - name: Terraform Plan
+        id: plan
+        run: |
+          terraform plan -no-color -input=false > plan_output.txt
+          cat plan_output.txt
+        continue-on-error: true
+
+      - name: Parse Plan and Post Comment
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            let planOutput = '';
+            try {
+              planOutput = fs.readFileSync('terraform/plan_output.txt', 'utf8');
+            } catch (err) {
+              planOutput = 'Plan output could not be read.';
+            }
+
+            // Terraform iki farklı özet üretir:
+            //   değişiklik varsa → "Plan: X to add, Y to change, Z to destroy."
+            //   plan temizse     → "No changes. Your infrastructure matches the configuration."
+            // İkinci durumda özet satırı HİÇ yazılmaz. Yalnızca ilkini aramak, sistemin en
+            // sağlıklı olduğu anda "özet bulunamadı" uyarısı vermesine yol açıyordu —
+            // 2026-08-16'daki ilk canlı çalıştırmada görüldü.
+            const summaryRegex = /Plan:\s+(\d+)\s+to\s+add,\s+(\d+)\s+to\s+change,\s+(\d+)\s+to\s+destroy/;
+            const noChangesRegex = /No changes\.\s+Your infrastructure matches the configuration\./;
+            const match = planOutput.match(summaryRegex);
+
+            // Kozmetik drift: GitHub API bazı alanları provider'ın gönderdiğinden farklı
+            // formatta geri döndürüyor, bu yüzden her plan'da onlarca "Drift detected"
+            // satırı çıkıyor ve gerçek değişiklikleri gölgeliyor. Sayıyı özete koymak
+            // log'daki duvarı açıklıyor (bkz. docs/daily-logs/OZAN_CREW_NOTES.md).
+            const driftCount = (planOutput.match(/Drift detected/g) || []).length;
+            const driftNote = driftCount > 0
+              ? `\n\n_${driftCount} × \`Drift detected\` — kozmetik, apply gerektirmez._`
+              : '';
+
+            let summaryText = '⚠️ Plan summary line not found in output — check the full log below.';
+
+            if (match) {
+              const addCount = parseInt(match[1], 10);
+              const changeCount = parseInt(match[2], 10);
+              const destroyCount = parseInt(match[3], 10);
+
+              const destroyAlert = destroyCount > 0
+                ? '🚨 **CRITICAL: DESTROYING RESOURCES!**'
+                : '✅ No resources will be destroyed.';
+              summaryText = `### 📊 Plan Summary\n- **Add**: ${addCount}\n- **Change**: ${changeCount}\n- **Destroy**: **${destroyCount}**\n\n${destroyAlert}${driftNote}`;
+            } else if (noChangesRegex.test(planOutput)) {
+              summaryText = `### 📊 Plan Summary\n\n✅ **No changes.** Infrastructure matches the configuration.${driftNote}`;
+            }
+
+            const fmtOutcome = '${{ steps.fmt.outcome }}' === 'success' ? '✅' : '❌';
+            const initOutcome = '${{ steps.init.outcome }}' === 'success' ? '✅' : '❌';
+            const validateOutcome = '${{ steps.validate.outcome }}' === 'success' ? '✅' : '❌';
+            const planOutcome = '${{ steps.plan.outcome }}' === 'success' ? '✅' : '❌';
+
+            // GitHub yorumları 65536 karakterle sınırlı. Uzun plan çıktısı sona doğru
+            // kesilir; özet ve tablo yorumun başında olduğu için okunabilirliği bozmaz.
+            const MAX_LOG = 55000;
+            const planLog = planOutput.length > MAX_LOG
+              ? planOutput.slice(0, MAX_LOG) + '\n\n... (çıktı kısaltıldı — tamamı için Actions log)'
+              : planOutput;
+
+            // DİKKAT: Bu blok bir YAML block scalar'ın (`script: |`) içindedir; her satır
+            // girintili olmak ZORUNDA. Çok satırlı template literal kullanılırsa girinti
+            // string'e dahil olup markdown tablosunu kod bloğuna çevirir. Bu yüzden
+            // satırlar dizi olarak kurulup join ediliyor.
+            const output = [
+              '## 📖 Terraform Pull Request Report',
+              '',
+              '| Step | Status |',
+              '| :--- | :--- |',
+              `| **Format Check** | ${fmtOutcome} |`,
+              `| **Initialization** | ${initOutcome} |`,
+              `| **Validation** | ${validateOutcome} |`,
+              `| **Plan** | ${planOutcome} |`,
+              '',
+              summaryText,
+              '',
+              '<details>',
+              '<summary>🔍 Show Full Plan Log</summary>',
+              '',
+              '```terraform',
+              planLog,
+              '```',
+              '',
+              '</details>',
+              '',
+              `*Pushed by: @${context.actor}, Action: \`${context.eventName}\`*`,
+            ].join('\n');
+
+            // Find existing plan comment if any
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const botComment = comments.find(comment => {
+              return comment.user.type === 'Bot' && comment.body.includes('## 📖 Terraform Pull Request Report');
+            });
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: output,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: output,
+              });
+            }
+
+            if ('${{ steps.plan.outcome }}' !== 'success' || '${{ steps.validate.outcome }}' !== 'success' || '${{ steps.fmt.outcome }}' !== 'success') {
+              core.setFailed('Terraform checks failed.');
+            }

@@ -1,0 +1,8 @@
+description: "Infrastructure as Code for managing the Tidyorg organization"
+language: typescript
+mentors:
+  - uslanozan
+developers:
+  - paitblack
+  - medine2906
+default_branch: main
