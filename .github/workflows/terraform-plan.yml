@@ -86,27 +86,40 @@ jobs:
             const validateOutcome = '${{ steps.validate.outcome }}' === 'success' ? '✅' : '❌';
             const planOutcome = '${{ steps.plan.outcome }}' === 'success' ? '✅' : '❌';
 
-            const output = `## 📖 Terraform Pull Request Report
+            // GitHub yorumları 65536 karakterle sınırlı. Uzun plan çıktısı sona doğru
+            // kesilir; özet ve tablo yorumun başında olduğu için okunabilirliği bozmaz.
+            const MAX_LOG = 55000;
+            const planLog = planOutput.length > MAX_LOG
+              ? planOutput.slice(0, MAX_LOG) + '\n\n... (çıktı kısaltıldı — tamamı için Actions log)'
+              : planOutput;
 
-| Step | Status |
-| :--- | :--- |
-| **Format Check** | ${fmtOutcome} |
-| **Initialization** | ${initOutcome} |
-| **Validation** | ${validateOutcome} |
-| **Plan** | ${planOutcome} |
-
-${summaryText}
-
-<details>
-<summary>🔍 Show Full Plan Log</summary>
-
-\`\`\`terraform
-${planOutput}
-\`\`\`
-
-</details>
-
-*Pushed by: @${context.actor}, Action: \`${context.eventName}\`*`;
+            // DİKKAT: Bu blok bir YAML block scalar'ın (`script: |`) içindedir; her satır
+            // girintili olmak ZORUNDA. Çok satırlı template literal kullanılırsa girinti
+            // string'e dahil olup markdown tablosunu kod bloğuna çevirir. Bu yüzden
+            // satırlar dizi olarak kurulup join ediliyor.
+            const output = [
+              '## 📖 Terraform Pull Request Report',
+              '',
+              '| Step | Status |',
+              '| :--- | :--- |',
+              `| **Format Check** | ${fmtOutcome} |`,
+              `| **Initialization** | ${initOutcome} |`,
+              `| **Validation** | ${validateOutcome} |`,
+              `| **Plan** | ${planOutcome} |`,
+              '',
+              summaryText,
+              '',
+              '<details>',
+              '<summary>🔍 Show Full Plan Log</summary>',
+              '',
+              '```terraform',
+              planLog,
+              '```',
+              '',
+              '</details>',
+              '',
+              `*Pushed by: @${context.actor}, Action: \`${context.eventName}\`*`,
+            ].join('\n');
 
             // Find existing plan comment if any
             const { data: comments } = await github.rest.issues.listComments({
