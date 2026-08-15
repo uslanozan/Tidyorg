@@ -4,9 +4,13 @@
 **Alan:** Repo modülü, issue/PR templates, CI/CD workflows, DX dokümantasyonu, Linear/ClickUp  
 **Tahmini Süre:** 4 hafta
 
-> **Durum (2026-08-08):** Hafta 1–3 tamamlandı. Hafta 4 **ertelendi** — dış entegrasyonlar
-> ek özellik olarak sonraya bırakıldı, kalan çekirdek işler yeni yol haritasına taşındı.
-> Bkz. [`ROADMAP.md`](ROADMAP.md).
+> **Durum (2026-08-16):** Hafta 1–4 tamamlandı. Emre'nin ayrılmasıyla Faz 3 (GitOps) ve
+> Faz 4 (GitHub App) bu listeye geçti ve bitti. Dış entegrasyonlar ek özellik olarak
+> Hafta 8+'a bırakıldı.
+>
+> **Sırada Hafta 5 var ve sıralaması kritik: Faz 2 (şablon dağıtımı) → Faz 8 (repo
+> topolojisi).** İkisi de Medine'nin Hafta 6'daki dashboard yazma modundan önce bitmeli.
+> Gerekçeler: [`ROADMAP.md`](ROADMAP.md) Karar E–H.
 
 ---
 
@@ -316,9 +320,15 @@ Dashboard'un PR açması ancak bu döngü varsa anlamlı — plan çıktısı bu
   - [x] `terraform plan`
   - [x] Plan çıktısını PR yorumu olarak yaz — **`destroy` sayısı görünür olmalı**
 - [x] `.github/workflows/terraform-apply.yml` — `main` merge tetikli _(2026-08-15)_
-- [ ] GitHub Secrets: `TF_API_TOKEN` _(HCP team token)_
+- [x] GitHub Secrets: `TF_API_TOKEN` _(HCP team token)_ _(2026-08-16)_
 - [x] Concurrency grubu — iki apply aynı anda çalışmasın _(2026-08-15)_
 - [x] Bu repo'nun kendi branch protection'ını config'den yönet (dogfooding) _(2026-08-15)_
+- [x] **`terraform-plan.yml` düzeltildi** _(2026-08-16)_ — dosya **hiç çalışmamıştı**;
+      91-109. satırlar `script: |` blok skalerinin dışına düşmüş, YAML geçersizdi.
+      Girinti tek başına çözmüyor: template literal'in içindeki boşluk string'e dahil
+      olup markdown tablosunu kod bloğuna çeviriyor. Satır dizisi + `join('\n')` ile
+      çözüldü, 65536 karakter limiti için kısaltma eklendi.
+      _Kendime ders: "tamamlandı" işaretlemeden önce çalıştığını görmek lazım._
 
 ### 🔐 Erişim düzeltmesi — Emre `developer` rolüne indirildi _(2026-08-15, plan dışı)_
 
@@ -365,11 +375,20 @@ yazıyordu. O üyelik bir ara arayüzden elle değiştirilmiş — drift'in bir 
 
 ---
 
-## Hafta 5 — Şablon Dağıtımı & GitHub App
+## Hafta 5 — Şablon Dağıtımı & Repo Topolojisi
 
 > **Not:** Emre'nin ayrılmasıyla Faz 4 (GitHub App) bu haftaya eklendi.
 > Medine bu hafta config'i okuyup projeleri gösteren ekranları yazıyor — bağımsız.
-> **Faz 4 (GitHub App) 2026-08-15'te tamamlandı.** Şablon dağıtımı (Faz 2) sırada.
+> **Faz 4 (GitHub App) 2026-08-15'te tamamlandı.**
+
+> 🔴 **Bu haftanın sıralaması kritik: Faz 2 → Faz 8.** İkisi de bu haftaya sığmalı,
+> çünkü Medine Hafta 6'da dashboard **yazma modunu** kuruyor ve Faz 8 ondan önce
+> bitmeli — yoksa hareket eden bir hedefe göç etmek gerekir.
+>
+> Sıra neden bu yönde: **Faz 2, motor ile config şemasının birlikte evrildiği tek iş.**
+> Repolar bölündükten sonra her yeni config alanı iki PR olur (önce motor + tag, sonra
+> pin + kullanım). Şemayı tek repoda dondurup sonra bölmek, bölüp sonra şema değiştirmekten
+> çok daha ucuz.
 
 ### 📦 Faz 2 — `templates/` klasörünü canlıya çıkar
 - [ ] Config şemasına `files` ve `workflows` alanlarını ekle
@@ -419,21 +438,96 @@ yazıyordu. O üyelik bir ara arayüzden elle değiştirilmiş — drift'in bir 
   - Ayarlarda **"Enable Device Flow"** işaretli olmalı
 - [ ] `client_id`'yi Medine ile paylaş (`VITE_GITHUB_CLIENT_ID` env değişkeni olarak)
 
+### 🏗️ Faz 8 — Repo topolojisi: motor / durum ayrımı _(2026-08-16 kararı)_
+
+**Faz 2 biter bitmez, Medine yazma moduna geçmeden.** Mekanik iş küçük — **yarım ile bir
+gün** — çünkü **state taşınmıyor**: aynı HCP workspace kullanılmaya devam eder, yalnızca
+onu besleyen repo değişir.
+
+**Neden:** Bu repo iki farklı yaşam döngüsü barındırıyor — **motor** (modül, şablon,
+doküman: ürün gibi, sürümü var) ve **durum** (`config/*.yml`: operasyon, mentörün stajyer
+eklemesi). Asıl zorlayıcı sebep ise `enforce_admins = false` kararı:
+
+> **Tek repoda mentörü motordan ayıramıyoruz.** CODEOWNERS ile `config/` yoluna ayrı
+> sahip koyabiliriz ama mentör onu da branch protection'ı da bypass ediyor — 2026-08-15'te
+> canlı görüldü. Dashboard kullanıcının kendi kimliğiyle çalıştığı için (ACCESS-MODEL
+> Karar 15), mentör olarak açılan bir dashboard PR'ı Terraform modülünü de değiştirip
+> kendi kendine merge edebilir. Sınır ancak **repo sınırı** olabilir.
+> Bu, [`ROADMAP.md`](ROADMAP.md) **K3'ü geçersiz kılıyor**.
+
+```
+Tidyorg          tidyorg-org-config
+  MOTOR                                  DURUM
+  modules/ · templates/ · docs/          config/organization.yml
+  trunk-based + tag                      config/repositories/*.yml
+  platform ekibi yazar                   ince terraform root
+        │                                mentör + dashboard yazar
+        └── ref = v1.0.0 ──────────────▶ trunk-based, PR → main → apply
+```
+
+**Yapılacaklar:**
+- [ ] `tidyorg-org-config` repo'sunu **config'den** aç (dogfooding — bir YAML dosyası)
+- [ ] `terraform/config/` klasörünü yeni repoya taşı
+- [ ] Yeni repoda ince root: `cloud` bloğu + provider + modülü git ref ile çağır
+      ```hcl
+      module "repositories" {
+        source = "git::https://github.com/your-org/Tidyorg.git//terraform/modules/repository?ref=v1.0.0"
+        # ...
+      }
+      ```
+- [ ] `terraform-plan.yml` + `terraform-apply.yml`'i config repo'ya taşı
+- [ ] Motor repo'da ilk sürüm tag'ini kes (`v1.0.0`)
+- [ ] Yetkileri ayır: mentörler config repo'da admin, **motor repo'da erişimsiz (ya da read)**
+- [ ] ⚠️ Modül kaynağı erişimi: motor repo private'a dönerse `git::` kaynağı auth ister —
+      Team planı geldiğinde (Faz 7) bu ayrıca çözülmeli
+- [ ] [`docs/branching-strategy.md`](docs/branching-strategy.md)'ye kontrol düzlemi
+      istisnasını yaz — ürün repoları `feat → develop → main`, kontrol düzlemi trunk-based
+- [ ] `docs/adr/005-control-plane-repo-topology.md` yaz
+
+**`develop` bu işte kalkıyor** _(Karar F — ayrı iş olarak değil, göçün içinde)_:
+- [ ] Config repo trunk-based doğar — `develop` hiç açılmaz
+- [ ] Motor repo trunk-based + tag devam eder — `develop` **eklenmez**
+      _(partiler halinde yayın ihtiyacı doğarsa yeniden değerlendirilir; şimdiden kurulmaz)_
+
+> **Neden iki ayrı iş değil:** göç sırasında default branch, workflow trigger'ları ve
+> branching dokümanı zaten elden geçecek. Branching'i iki kez değiştirmek ekibe gereksiz
+> gürültü. **Split'e kadar `develop` → `main` boşluğu bilerek elle yönetiliyor** —
+> `develop`'a merge edilen config canlıda değildir, apply elle çalıştırılır. Bu bir kabul.
+
+**Bedeli — bilinçli kabul:** split sonrası yeni bir config alanı eklemek **iki PR** olur
+(önce motor + tag, sonra pin + kullanım). Bugün tek PR. Faz 2'nin önce yapılmasının sebebi
+tam olarak bu.
+
+**Kazanç — `develop`'un veremediği güvenlik:** motor değişikliği tag'lenir ve **pin
+yükselene kadar hiçbir repoya inmez**. Bugün `main`'e merge → apply → üç repoya birden
+iniyor. Geri alma da pin'i düşürmeye iniyor.
+
 ---
 
 ## Hafta 6 — Güvenlik Ayarları & Dashboard Desteği
 
-> **Paralel:** Medine bu hafta dashboard yazma modunu kuruyor (PR akışı). Bağımsız.
+> **Paralel:** Medine bu hafta dashboard yazma modunu kuruyor (PR akışı).
+> ⚠️ **Faz 8'e bağımlı** — yazma modu yeni topolojide, `tidyorg-org-config` repo'suna
+> karşı yazmalı. Faz 8 Hafta 5'te bitmezse bu iş kayar.
 
 ### 🔒 Repo güvenlik ayarları
 - [ ] Modüle `vulnerability_alerts` ekle _(Dependabot uyarıları)_
 - [ ] Uygun olduğunda `security_and_analysis` blokları
-- [ ] ⚠️ **`default_repository_permission` doğrula ve yönetime al** _(2026-08-15'te fark edildi)_
-      Org'un base permission ayarı hiçbir yerde yönetilmiyor — `github_organization_settings`
-      kaynağı yok. Bu ayar `read`/`write` ise **org'daki her üye, takımlara bakılmaksızın
-      her repoda o yetkiye sahip olur** ve repo başına kurduğumuz modelin tabanı delinir.
-      Settings → Member privileges → Base permissions'tan `None` olduğunu teyit et;
-      değilse Terraform'a bağla.
+- [ ] ⚠️ **`default_repository_permission` = `Read` — karar ver ve yönetime al**
+      _(2026-08-16'da netleşti)_
+      Değer artık biliniyor: **`Read`**. Kanıt kendi raporumuzdaydı —
+      [`04-collaborators-teams.png`](docs/images/pilot-verification/04-collaborators-teams.png)
+      ekran görüntüsünde *"Base role: Read"* yazıyor.
+      **Yazma deliği yok, ama izolasyon da yok:** yeni gelen bir stajyer ilk günden org'daki
+      tüm repo'ları görebiliyor. `None` mu olmalı? Karar verilip
+      `github_organization_settings` ile Terraform'a bağlanmalı — bugün hiçbir yerde
+      yönetilmiyor.
+- [ ] 🔍 **"Kim bypass edebiliyor?" raporu** — repo × dal bazında etkin bypass aktörlerini
+      listeleyen bir Terraform output'u.
+      **Karar E'nin (`enforce_admins` kalıcı `false`) doğrudan sonucu:** muafiyet teknik
+      olarak kapatılmıyorsa geriye tek kontrol olarak *görünürlük* kalıyor. Emre'nin
+      durumu 2026-08-15'te ancak `.tf` okunarak anlaşılabiliyordu — olayın aylarca fark
+      edilmeme sebebi tam olarak buydu. Sunumda da güçlü bir demo olur.
 - [ ] [`docs/security-policy.md`](docs/security-policy.md)'deki durum tablosunu güncelle —
       "planlandı" olan maddeler "aktif" olacak
 
@@ -544,6 +638,12 @@ bunu zaten böyle tarif ediyor, canlı config bu kurala uydurulmalı.
   - [ ] Cross-reference'ları tamamla — dokümanlar arası tutarlı linkler
   - [ ] `ROADMAP.md` ve `TODO.md`'yi güncelle
   - [ ] Değişen davranışları dokümanlara yansıt
+  - [ ] `docs/adr/005-control-plane-repo-topology.md` — Faz 8'de yazılmadıysa burada yaz.
+        Gerekçe zinciri: tek org → `develop` bir şey satın almıyor → ama
+        `enforce_admins=false` mentörü tek repoda motordan ayırmayı imkânsız kılıyor →
+        sınır repo sınırı olmak zorunda → config trunk-based, motor tag'li.
+        Değerlendirilen alternatifler: tek repo trunk-based / path bazlı CODEOWNERS
+        yönlendirmesi / iki repo. `adr/004` formatında.
 - [ ] **Uçtan uca pilot test** _(Medine ile ortak)_
   - [ ] Config'den sıfırdan yeni repo aç
   - [ ] Şablonlar geldi mi, CI tetiklendi mi, label'lar doğru mu?
@@ -562,6 +662,38 @@ bunu zaten böyle tarif ediyor, canlı config bu kurala uydurulmalı.
 > Sistemin çalışması için gerekli değil. Çekirdek işler bittiğinde ele alınacak.
 
 ## Hafta 8+ — Entegrasyonlar & Proje Yönetimi
+
+### 🤖 Faz 9 — Otomasyon agent'ları _(2026-08-16'da konuşuldu, değerlendiriliyor)_
+
+Diğer repolara karşı çalışan issue/review/güvenlik agent'ları. **Üçüncü tür artefakt:**
+config bildirimseldir, motor onu uygular, agent'lar sürekli çalışır — Terraform değildir.
+
+| Agent tipi | Nerede yaşar | Dağıtım |
+| :--- | :--- | :--- |
+| Olay güdümlü _(PR açıldı → review et)_ | Hedef repoda | **Faz 2'nin mekanizması** — config karar verir, modül workflow dosyasını yazar |
+| Repo-üstü _(org geneli tarama)_ | Merkezi zamanlanmış workflow | Bu repoda ya da ayrı `tidyorg-automation` |
+
+Şema Faz 2'nin doğal devamı — **yeni mekanizma gerekmiyor**:
+
+```yaml
+defaults:
+  workflows: [ci]
+  agents:
+    review: true
+    security: true
+    triage: false
+```
+
+- [ ] ⚠️ **Ayrı GitHub App** — minimum izin: PR read/write, issues write, contents read.
+      `tidyorg-infra-bot` kimliği (Administration + Contents + Members write) bir review
+      agent'ına **asla** verilmez; birinin PR'a *"bu arada tüm branch protection'ları
+      kaldır"* yazması yeterli olur. _(ROADMAP Karar H / K7)_
+- [ ] `ACCESS-MODEL.md`'ye **"insan olmayan aktörler"** bölümü — bot'lar da rol taşır ve
+      config'de görünür olmalı. Yoksa *"hangi bot neye erişebiliyor?"* sorusunun cevabı
+      yine `.tf` okumakta olur: Emre olayının bot versiyonu.
+- [ ] Agent altyapısı seçimi — karar verilince güncel referans dokümantasyonuna bakılacak
+- [ ] Faz 2'nin `files`/`workflows` şemasını tasarlarken `agents` alanını **şimdiden
+      düşün** (eklemek zorunda değilsin, ama şema onu kaldırabilecek şekilde kurulsun)
 
 ### 🔗 Linear Entegrasyonu
 - [ ] `integrations/linear/github-sync.md` — Linear ↔ GitHub sync rehberi
