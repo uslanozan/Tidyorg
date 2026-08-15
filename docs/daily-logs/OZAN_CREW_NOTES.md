@@ -8,7 +8,94 @@ Resmî dokümantasyon değil — düşünce sürecinin kaydı. Hafta 4'teki sunu
 
 ---
 
-## 2026-08-08 — İlk apply, iki gerçek hata, pilot doğrulandı, Hafta 3 dokümanları
+## 2026-08-15 — Emre ayrıldı, Medine geldi, GitHub App geçişi tamamlandı
+
+### Ekip değişikliği ve görev yeniden dağılımı
+
+**Emre projeden ayrıldı.** Emre'nin listesindeki dashboard harici işler (`tasks-ozan.md`'ye)
+ve dashboard kısmı (`tasks-medine.md`'ye) taşındı. `tasks-emre.md` deprecated işaretlendi.
+
+**Medine projeye katıldı.** 
+`tasks-medine.md` sıfırdan yazıldı: Terraform'dan bağımsız, sadece `dashboard/` klasörünü kapsıyor.
+
+Dashboard mimarisini netleştirdim: dashboard **Terraform'u doğrudan çağırmıyor**.
+`terraform/config/repositories/*.yml` dosyalarını GitHub Contents API üzerinden güncelliyor,
+bu bir PR açıyor, PR merge edilince GitOps workflow Terraform'u tetikliyor. Backend yok —
+kullanıcı GitHub Device Flow ile kendi token'ıyla giriş yapıyor.
+
+Ozan'ın yeni görev listesine Emre'den devralan iki faz eklendi:
+- Faz 3: GitOps workflow'ları (`terraform-plan.yml`, `terraform-apply.yml`)
+- Faz 4: GitHub App kurulumu + dashboard için OAuth App
+
+### GitHub App geçişi — Faz 4 tamamlandı
+
+Bugüne kadar Terraform, Emre'nin kişisel token'ıyla çalışıyordu. Token silindi/geçersizdi,
+sistem durmuştu. Token'ı geçici olarak yenilemek yerine direkt GitHub App'e geçmeye karar verdim
+— zaten roadmap'te vardı, köprü yol yapmaya gerek yok.
+
+**`tidyorg-infra-bot` GitHub App oluşturuldu.**
+
+| Alan | Değer |
+| :--- | :--- |
+| App ID | `4600282` |
+| Installation ID | `153844579` |
+| İzinler | Administration + Contents (write), Metadata (read), Members (write) |
+
+Private key üretildi, indirilen `.pem` dosyası PowerShell scriptiyle tek satıra çevrildi
+(RSA özel anahtarının satır sonları `\n` olarak encode edildi), HCP Terraform workspace'ine
+`github_app_pem_file` değişkeni olarak girildi. Sensitive olarak işaretlendi.
+
+**`terraform/main.tf` güncellendi:** `token = var.github_token` kaldırıldı, yerine:
+
+```hcl
+app_auth {
+  id              = var.github_app_id
+  installation_id = var.github_app_installation_id
+  pem_file        = var.github_app_pem_file
+}
+```
+
+**`terraform/variables.tf` güncellendi:** `github_token` değişkeni silindi, üç yeni değişken eklendi.
+
+HCP Terraform'a üç Terraform category değişkeni girildi:
+`github_app_id`, `github_app_installation_id`, `github_app_pem_file`.
+İlk denemede `TF_VAR_` prefix'li girdim — bu prefix yalnızca "Environment variable"
+kategorisinde geçerli, "terraform" kategorisinde variable adının kendisi oluyor ve
+Terraform'da tanımlı olmadığı için uyarı veriyor. Prefix kaldırılınca temizlendi.
+
+**İlk apply başarılı.** Gerçek değişiklik: `paitblack`'in `pilot-intern-web-devs`
+takımındaki rolü `maintainer → member`. Bu drift muhtemelen elle yapılmış bir değişiklikten
+kaynaklanıyordu — tam olarak Terraform'un var olma sebebi.
+
+### Dokümantasyon
+
+`integrations/github-app/README.md` yazıldı — 8 adımlı kurulum kılavuzu:
+app oluşturma, private key üretme, PEM formatı dönüşümü, installation ID bulma,
+HCP değişkenleri, provider konfigürasyonu, test adımları, sorun giderme.
+
+`integrations/github-app/app-manifest.json` eklendi — gelecekte app'i yeniden
+oluşturmak gerekirse referans manifest.
+
+### Terraform login nüansı
+
+`terraform login` iki farklı kimlik doğrulama katmanı:
+1. **HCP Terraform CLI token** — `credentials.tfrc.json`'a kaydedilir, laptop başına bir kez yapılır
+2. **GitHub App PEM** — HCP workspace'inde env variable, her `plan/apply`'da otomatik kullanılır
+
+İkisi birbirine karışınca zaman harcandı. Token yapıştırma sırası da önemli:
+önce `yes`, sonra token — aynı prompt'ta birini atlayınca login iptal oluyor.
+
+### Drift uyarıları hakkında
+
+Her `plan`'da onlarca `Drift detected (update)` satırı çıkıyor ama bunların hiçbiri
+gerçek değişikliğe yol açmıyor. GitHub API bazı alanları read back ettiğinde provider'ın
+gönderdiğinden farklı format dönüyor (ör: takım description boşluk normalleşmesi).
+Provider bunu kayıt sayıyor ama apply sırasında fark görmeyince geçiyor. Endişe vermiyor,
+ama `plan` çıktısını okurken gerçek değişiklikler arasında kaybolabiliyor — dikkatli olmak lazım.
+
+---
+
+
 
 ### Yapılanlar
 
