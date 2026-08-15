@@ -1,0 +1,98 @@
+name: ✨ Feature Request · Özellik Talebi
+description: Propose a new capability or an improvement · Yeni bir yetenek ya da iyileştirme öner
+title: "[Feature]: "
+labels: ["type: feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **EN** — The two fields that decide whether a feature gets picked up are **Motivation**
+        and **Acceptance criteria**. A proposal without a clear "why" and a testable "done" is
+        hard to prioritise, so please spend most of your time there. Please
+        [search existing issues](../issues?q=is%3Aissue+label%3A%22type%3A+feature%22) first to avoid duplicates.
+
+        **TR** — Bir özelliğin ele alınıp alınmayacağını belirleyen iki alan **Motivasyon** ve
+        **Kabul kriterleri**. Net bir "neden" ve test edilebilir bir "bitti" tanımı olmayan talebi
+        önceliklendirmek zor, o yüzden vaktinin çoğunu bu ikisine harca. Mükerrer kayıt olmaması için
+        lütfen önce [mevcut issue'lara bak](../issues?q=is%3Aissue+label%3A%22type%3A+feature%22).
+
+        ℹ️ You may fill this form in **English or Turkish**. · Formu **İngilizce ya da Türkçe** doldurabilirsin.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Feature description · Özellik açıklaması
+      description: |
+        EN — What should be built? Describe the behaviour, not the implementation.
+        TR — Ne yapılmalı? Davranışı anlat, implementasyonu değil.
+      placeholder: Users should be able to sign in with their company Google account instead of a password.
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation / business value · Motivasyon / iş değeri
+      description: |
+        EN — What problem does this solve, and for whom? What happens if we do not build it?
+        Numbers and concrete examples beat adjectives.
+        TR — Hangi problemi, kim için çözüyor? Yapmazsak ne olur? Sayı ve somut örnek,
+        sıfattan iyidir.
+      placeholder: |
+        Support handles ~15 password reset requests per week, each costing about 10 minutes.
+        SSO removes that queue entirely and is a hard requirement for the enterprise deal in Q4.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance criteria · Kabul kriterleri
+      description: |
+        EN — How do we know this is done? Write a checklist a reviewer can verify item by item.
+        Each line must be objectively true or false — no "works well" or "is fast enough".
+        TR — Bunun bittiğini nasıl anlarız? Reviewer'ın madde madde doğrulayabileceği bir liste
+        yaz. Her satır nesnel olarak doğru ya da yanlış olmalı — "iyi çalışıyor" ya da
+        "yeterince hızlı" olmaz.
+      value: |
+        - [ ] Given ... when ... then ...
+        - [ ] Given ... when ... then ...
+        - [ ] Existing behaviour is unchanged · Mevcut davranış bozulmadı
+        - [ ] The flow is covered by a test · Akış test ile kapsandı
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternative solutions · Alternatif çözümler
+      description: |
+        EN — What else did you consider, and why is this proposal better?
+        TR — Başka neleri değerlendirdin ve bu öneri neden daha iyi?
+      placeholder: |
+        We considered magic-link email sign-in, but it does not satisfy the customer's
+        requirement to enforce access centrally through their identity provider.
+    validations:
+      required: false
+
+  - type: textarea
+    id: design-notes
+    attributes:
+      label: Design notes / mockups · Tasarım notları / mockup
+      description: |
+        EN — Drag and drop mockups here, or link to a Figma file.
+        Technical notes, API sketches, and open questions are welcome too.
+        TR — Mockup'ları buraya sürükleyip bırakabilirsin ya da Figma linki verebilirsin.
+        Teknik notlar, API taslakları ve açık sorular da buraya.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting · Göndermeden önce
+      options:
+        - label: I searched existing issues and this is not a duplicate · Mevcut issue'ları aradım, bu bir kopya değil
+          required: true
+        - label: My acceptance criteria are testable — each line can be verified as true or false · Kabul kriterlerim test edilebilir
+          required: true
