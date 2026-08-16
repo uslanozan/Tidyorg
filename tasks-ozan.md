@@ -398,39 +398,40 @@ yazıyordu. O üyelik bir ara arayüzden elle değiştirilmiş — drift'in bir 
 > pin + kullanım). Şemayı tek repoda dondurup sonra bölmek, bölüp sonra şema değiştirmekten
 > çok daha ucuz.
 
-### 📦 Faz 2 — `terraform/templates/` klasörünü canlıya çıkar
-- [ ] Config şemasına `files` ve `workflows` alanlarını ekle
-  ```yaml
-  defaults:
-    files:
-      contributing: seed        # strict | seed | none
-      security: seed
-      editorconfig: seed
-      issue_templates: strict
-      pr_template: strict
-    workflows: [ci]             # ci | release | dependabot
-  ```
-- [ ] Modülde `github_repository_file` ile dağıtımı kur _(CODEOWNERS mekanizmasının aynısı)_
-- [ ] **`strict` modu** — Terraform içeriği sahiplenir, elle değişiklik geri alınır
-  - [ ] `.github/CODEOWNERS` _(zaten var)_
-  - [ ] `.github/ISSUE_TEMPLATE/*`
-  - [ ] `.github/PULL_REQUEST_TEMPLATE.md`
-  - [ ] `.github/workflows/*`
-  - [ ] `.github/dependabot.yml`
-- [ ] **`seed` modu** — yalnızca ilk oluşturmada yazılır, repo sonra değiştirebilir
-      _(`lifecycle { ignore_changes = [content] }`)_
-  - [ ] `CONTRIBUTING.md`, `SECURITY.md`, `.editorconfig`, `README.md`
-- [ ] **Tutarlılık doğrulaması** — `workflows` içinde `ci` yoksa `require_status_checks`
-      da boş olmalı. Modül bunu `precondition` ile hata olarak vermeli; aksi halde PR'lar
-      hiç raporlanmayacak bir check'i sonsuza kadar bekler.
-- [ ] Pilot repo'da doğrula
-  - [ ] PR açınca şablon dolu geliyor mu?
-  - [ ] Issue template'leri görünüyor mu?
-  - [ ] `ci/test` raporlanıyor mu?
-- [ ] [`docs/onboarding.md`](docs/onboarding.md)'deki "PR şablonu otomatik dolar" iddiası
-      artık doğru — dokümanı gözden geçir
+### 📦 Faz 2 — `terraform/templates/` klasörünü canlıya çıkar ✅ _(2026-08-16)_
 
-- [ ] ✅ **Hafta Sonu Sync:** App devreye girince dağıtımı yeni kimlikle test et
+**Sonuç: 27 kaynak, 3 repo, `0 destroy`.** Kanıtlar:
+[`docs/pilot-verification.md`](docs/pilot-verification.md) Bölüm 7.6–7.8.
+
+- [x] Config şemasına `files` ve `workflows` alanları eklendi
+- [x] Modülde `github_repository_file` ile dağıtım kuruldu
+- [x] **`strict` modu** — `.github/ISSUE_TEMPLATE/*`, `PULL_REQUEST_TEMPLATE.md`,
+      `dependabot.yml`, `workflows/ci.yml` _(CODEOWNERS ayrı kaynak, config'den üretiliyor)_
+- [x] **`seed` modu** — `CONTRIBUTING.md`, `SECURITY.md`, `.editorconfig`
+      _(`README.md` şablonu yok — yazılırsa katalog + config'e birer satır yeter)_
+- [x] **Tutarlılık doğrulaması** — `precondition` eklendi ve **test edildi**:
+      `workflows: []` yapılınca plan hata verip durdu, repo + dal adını söyledi
+- [x] Doğrulandı: **`ci/test` ilk kez raporlandı ve yeşil** (PR #17)
+- [x] PR şablonu artık geliyor — [`docs/onboarding.md`](docs/onboarding.md)'deki
+      "PR şablonu otomatik dolar" iddiası **nihayet doğru**
+
+**Yol üstünde çözülen dört engel** _(hepsi plan ortasında patlayacak cinstendi)_:
+
+1. `templates/` repo kökündeydi, **HCP yalnızca working directory'yi paketliyor** —
+   `config/` ile yaşanan tuzağın aynısı. `terraform/templates/` altına taşındı.
+2. `ci.yml` içinde 11 tane `${{ }}` — `templatefile()` patlardı, `file()` kullanıldı.
+3. **`lifecycle` bloğu dinamik olamıyor** — `strict`/`seed` tek kaynakta yapılamaz,
+   iki ayrı kaynak yazıldı.
+4. App'in **`workflows` izni yoktu** — `.github/workflows/` ayrı bir izne bağlı,
+   `contents: write` yetmiyor. İzin verildi, manifest ve README güncellendi.
+
+- [ ] ⚙️ **Dependabot gürültüsü** — dağıtım sonrası 5 adet `github-actions` PR'ı açıldı
+      ve bildirim yağıyor. Seçenekler: `groups` ile tek PR'da toplamak, `interval`'ı
+      `monthly` yapmak, `open-pull-requests-limit`'i düşürmek, ya da repo bazında
+      `files: { dependabot: none }`. **Karar bekliyor.**
+
+- [x] ✅ **Hafta Sonu Sync:** dağıtım yeni App kimliğiyle test edildi — commit'ler
+      `tidyorg-infra-bot[bot]` adına düştü
 
 - [x] Doğrula: yeni `apply` sonrası commit'ler bot adına görünmeli (2026-08-15)
 - [x] [`docs/notes/github-auth-strategy.md`](docs/notes/github-auth-strategy.md)'yi

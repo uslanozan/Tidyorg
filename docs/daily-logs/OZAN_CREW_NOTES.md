@@ -8,6 +8,93 @@ Resmî dokümantasyon değil — düşünce sürecinin kaydı. Hafta 4'teki sunu
 
 ---
 
+## 2026-08-16 (akşam) — Faz 2 canlıda, ve `main`'in aylardır koptuğunu bugün öğrendim
+
+Sabahki erişim düzeltmesinden sonra şablon dağıtımına (Faz 2) geçtim. İş bitti, 27 dosya
+üç repoya indi, `ci/test` ilk kez yeşil yandı. Ama günün asıl bulgusu bu değil — aşağıda.
+
+### Faz 2 — dört mayın
+
+Kod yazmadan önce zemini taradım, iyi ki taramışım. Dördü de plan ortasında patlayacak
+cinstendi:
+
+1. **`templates/` klasörü HCP'ye hiç yüklenmiyormuş.** Workflow'lar `working-directory:
+   terraform` ile çalışıyor ve HCP yalnızca çalışma dizinini paketliyor. Bu, `config/` ile
+   yaşadığım tuzağın **birebir aynısı** — o zaman lokalde `validate` geçmiş, uzakta `plan`
+   patlamıştı. `terraform/templates/` altına taşıdım, 20 doküman referansını düzelttim.
+   Tarihsel kayıtlara (bu günlük, `implementation plan.md`) dokunmadım; o gün öyleydi.
+
+2. **`ci.yml` içinde 11 tane `${{ }}` var.** `templatefile()` bunları kendi sözdizimi
+   sanıp ayrıştırma hatası verirdi. `file()` kullandım — şablonlar birebir kopyalanıyor,
+   değişken enjekte edilmiyor. Bedeli: workflow'a repo bazında değer geçemiyoruz. Bugün
+   ihtiyaç yok, gerekirse `$${{` escape'i şart.
+
+3. **`lifecycle` bloğu dinamik olamıyor.** `seed` modu `ignore_changes = [content]`
+   gerektiriyor ama `lifecycle` değişken alamaz, `for_each` ile moda göre seçilemez. Yani
+   `strict`/`seed` ayrımını tek kaynakta yapmanın yolu yok. İki ayrı kaynak yazdım ve
+   sebebini kodun içine yazdım — yoksa biri "bunu birleştireyim" der.
+
+4. **App'in `workflows` izni yokmuş.** GitHub `.github/workflows/` altına yazmayı ayrı bir
+   izne bağlamış; `contents: write` yetmiyor. Label'lardaki `issues: write` 403'ünün aynısı.
+   İzni verdim, `app-manifest.json`'a ve kurulum README'sine ekledim — README'deki izin
+   tablosunda `Issues` bile yokmuş, o da sonradan elle eklenip yazılmamış.
+
+**Tutarlılık kilidi eklendi:** bir dal `ci/test` istiyorsa `ci` workflow'u dağıtılmak
+zorunda, yoksa modül `precondition` ile plan aşamasında hata veriyor. Test ettim,
+`workflows: []` yapınca durdu ve repo + dal adını söyledi. Bugün yaşadığımız blokajın bir
+daha kurulamaması için.
+
+### `ci/test` yeşil — Hafta 2'deki bir kararın karşılığını aldım
+
+`ci.yml`'i yazarken toplayıcı job'u, dil job'ları `skipped` dönse bile başarı sayacak
+biçimde kurmuştum. Gerekçem *"yoksa tek dilli repoda check hiç raporlanmaz"*dı. Bu repoda
+hiçbir dil manifesti yok — dört job da atlandı, `ci/test` yine de yeşil raporladı.
+
+O karar olmasaydı bu PR merge edilemezdi. Kendi kendine referans veren bir doğrulama oldu:
+Hafta 2'de yazdığım gerekçe, Hafta 5'te tam olarak öngördüğü durumda işe yaradı.
+
+### Asıl bulgu — `main` aylardır canlıdan kopmuş
+
+Live test'i planlarken dalların durumuna baktım ve donakaldım:
+
+- `main`, `develop`'ın **24 commit gerisinde**
+- `main`'de `terraform/` kökünde **yalnızca `modules/`** var — `main.tf`, `repositories.tf`,
+  `config/`, hiçbiri yok
+- `terraform-apply.yml` yazıldığından beri **hiç çalışmamış**
+
+Yani apply workflow'u aylardır sessizce bekliyordu ve **çalışsaydı yıkıcı olacaktı.**
+`develop → main` merge'ünü, şablon işi daha `develop`'a inmeden yapsaydım apply eski kodla
+koşacak ve: `emre_admin`'i yeniden yaratacak (Emre `platform-admins`'e geri dönerdi),
+`github_membership` kayıtlarını ve 27 şablon dosyasını silecekti.
+
+Doğru sırayı (`feat → develop`, sonra `develop → main`) bilerek uyguladım, apply `0 destroy`
+ile geçti. Ama fark etmeseydim tek bir merge'le günlerin işini geri alacaktım.
+
+**Bu, Karar F'nin (`develop` kaldırılsın) gerekçesine bugüne kadarki en güçlü kanıt.** İki
+dallı akış, apply'ı yalnızca `main`'e bağlayınca kod ile canlının **aylarca ayrışmasına**
+izin verdi ve kimse fark etmedi. `develop`'a merge edilen her şey "yapıldı" görünüyordu;
+canlıda karşılığı yoktu. Rapora Bölüm 7.8 olarak yazdım.
+
+### Kendime not
+
+Sabah `terraform-plan.yml` için *"tamamlandı işaretlemeden önce çalıştığını görmek lazım"*
+diye yazmıştım. Akşam aynı dersin daha büyüğünü aldım: **bir workflow'un var olması,
+çalıştığı anlamına gelmiyor; çalışması da doğru şeyi yapacağı anlamına gelmiyor.** Faz 3'ü
+"tamamlandı" işaretlemiştim — hem dosya bozuktu hem de arkasındaki dal aylardır boştu.
+
+### Medine eklendi
+
+`config/repositories/Tidyorg.yml` içine bir satır: `medine2906`,
+`developer`. Org daveti otomatik gitti — `onboarding.md`'de anlattığımız akışın **ilk
+gerçek kullanımı** oldu, kimse elle davet göndermedi. Org rolünü `org-membership.tf` ile
+`member`a da sabitledim; varsayılana güvenmek ile beyan etmek aynı şey değil.
+
+Yol üstünde kendi tutarsızlığımı da düzelttim: `paitblack`'e `roles: [developer]` yazmıştım,
+sonra "`people` bölümüne repo kapsamlı rol yazılmaz" kuralını koymuştum. O satır kalsaydı
+tam da dokümante ettiğim tuzağın tohumu olurdu.
+
+---
+
 ## 2026-08-16 — Direct push yasağı "çalışmadı", meğer çalışıyormuş
 
 15'inin gecesi başlayıp bugüne sarkan bir iş. Emre projeden ayrılmışken hazır fırsat

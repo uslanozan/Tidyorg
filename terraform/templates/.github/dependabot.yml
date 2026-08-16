@@ -6,6 +6,24 @@
 # unchanged across Go, Python, TypeScript and PHP repositories.
 #
 # Reviewed by the repository mentor — see docs/security-policy.md.
+#
+# GROUPING · GRUPLAMA
+# Every ecosystem groups its updates, but not identically — the split is
+# deliberate:
+#
+#   Package ecosystems (gomod, npm, pip, composer)
+#     minor + patch  -> one PR      (routine, low risk)
+#     major          -> its own PR  (may break the build; deserves its own review)
+#
+#   GitHub Actions
+#     everything     -> one PR
+#     Action majors are routine (actions/checkout v4 -> v5 and the like) and
+#     carry far less risk than a library major. Splitting them produced one PR
+#     per action — five notifications in a single afternoon on 2026-08-16, which
+#     is what prompted this change.
+#
+# Ungrouped updates still open individual PRs; grouping only batches what the
+# rules below match.
 # =============================================================================
 
 version: 2
@@ -20,6 +38,10 @@ updates:
     labels: ["type: chore"]
     commit-message:
       prefix: "chore(deps)"
+    groups:
+      # Patch and minor bumps arrive as one PR to keep review load manageable.
+      minor-and-patch:
+        update-types: [minor, patch]
 
   - package-ecosystem: npm
     directory: "/"
@@ -44,6 +66,10 @@ updates:
     labels: ["type: chore"]
     commit-message:
       prefix: "chore(deps)"
+    groups:
+      # Patch and minor bumps arrive as one PR to keep review load manageable.
+      minor-and-patch:
+        update-types: [minor, patch]
 
   - package-ecosystem: composer
     directory: "/"
@@ -54,6 +80,10 @@ updates:
     labels: ["type: chore"]
     commit-message:
       prefix: "chore(deps)"
+    groups:
+      # Patch and minor bumps arrive as one PR to keep review load manageable.
+      minor-and-patch:
+        update-types: [minor, patch]
 
   - package-ecosystem: github-actions
     directory: "/"
@@ -64,3 +94,9 @@ updates:
     labels: ["type: chore"]
     commit-message:
       prefix: "chore(ci)"
+    groups:
+      # Everything in one PR, majors included — see the note in the header.
+      # `patterns: ["*"]` matches every action; without it each action bump
+      # opens its own pull request.
+      all-actions:
+        patterns: ["*"]

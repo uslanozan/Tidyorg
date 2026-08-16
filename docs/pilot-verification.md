@@ -133,8 +133,8 @@ Bölüm 4.2'de anlatılan düzeltmeyle eklendi.
 Pilotun asıl değeri burada. İki gerçek kusur yalnızca canlı bir repo oluşturulunca
 ortaya çıktı; ikisi de modülde kalıcı olarak düzeltildi.
 
-> **Toplam dört kusur bulundu.** Bu bölümdeki ikisi **modülde**, Bölüm 7.2'deki ikisi
-> **GitOps katmanında** — ve dördü de yalnızca sistem gerçekten çalıştırılınca ortaya
+> **Toplam beş kusur bulundu.** Bu bölümdeki üçü **modülde**, Bölüm 7.2'deki ikisi
+> **GitOps katmanında** — ve beşi de yalnızca sistem gerçekten çalıştırılınca ortaya
 > çıktı. Hiçbiri kod okuyarak fark edilemezdi.
 
 ### 4.1 Label çakışması (422 already_exists)
@@ -171,6 +171,42 @@ repo'larda `admin` olarak tanımlıydı; modül bunu uygulamıyordu. Eksik olan 
 **Öğrenilen:** GitHub bazı istekleri sessizce yok sayıyor. Terraform olmasaydı
 "push kısıtı koydum" sanıp devam edilirdi. Drift tespiti bunu ortaya çıkardı —
 beyan temelli yönetimin somut faydası.
+
+---
+
+### 4.3 Satır sonu farkı — apply, çalıştıran makineye göre farklı sonuç üretiyordu
+
+**Bulunma tarihi:** 2026-08-16 · Faz 2 sonrası ilk şablon güncellemesinde.
+
+**Belirti:** Yalnızca `dependabot.yml` düzenlenmişken `plan` **18 dosyada** değişiklik
+gösterdi. Diff'in iki tarafı da birebir aynıydı:
+
+```
+-       placeholder: Uploading an avatar larger than 2 MB returns a 500 …
++       placeholder: Uploading an avatar larger than 2 MB returns a 500 …
+```
+
+**Kök sebep:** Windows'ta `core.autocrlf = true`. Repo'daki `.gitattributes` dosyası
+`* text=auto` ile içeriği LF olarak saklıyor, ama **checkout sırasında CRLF'e çeviriyor.**
+Modül `file()` ile diski okuduğu için CRLF içerik gönderiyordu; GitHub'daki içerik LF'ti.
+Sonuç: her `apply` tüm `strict` dosyaları "değişmiş" sayıp yeniden yazıyordu.
+
+Doğrulaması net: aynı anda diskte `ci.yml` **CRLF**, `dependabot.yml` ise **LF**'ti —
+çünkü ilki git checkout'undan gelmiş, ikincisi az önce elle yazılmıştı.
+
+**Çözüm:** Modülde içerik normalize ediliyor —
+`replace(file(...), "\r\n", "\n")`. Plan **18 → 3**'e düştü.
+
+**Neden `.gitattributes` yetmedi:** o dosya deponun *içindeki* gösterimi düzenliyor,
+çalışma dizinine çıkan hali değil. Normalizasyonun modülde olması ayrıca daha doğru:
+bir kontrol düzlemi, apply'ı **kimin hangi işletim sisteminden çalıştırdığına göre farklı
+sonuç üretmemeli.** Faz 8'de motor repo'sunu farklı makinelerden apply edecek olmamız bunu
+zorunlu kılıyor.
+
+**Öğrenilen:** Kusur, sistemi ilk kez *ikinci kez* çalıştırınca ortaya çıktı. İlk apply
+temizdi çünkü karşılaştırılacak bir önceki hâl yoktu; sorun ancak bir şablon
+**güncellendiğinde** görünür oldu. Yeni bir mekanizmayı yalnızca kurup doğrulamak yetmiyor,
+bir kez de değiştirip tekrar çalıştırmak gerekiyor.
 
 ---
 
@@ -405,6 +441,71 @@ yazılmış durumda ama hiçbir repo'ya dağıtılmıyor; GitHub şablonu repo'n
 
 [`docs/onboarding.md`](onboarding.md)'deki *"PR şablonu otomatik dolar"* iddiasının neden
 hâlâ yanlış olduğunun doğrudan kanıtı. Faz 2 (şablon dağıtımı) bunu kapatacak.
+
+---
+
+### 7.6 `ci/test` ilk kez yeşil — ✅
+
+**Tarih:** 2026-08-16 · **PR:** `Develop` #17 → `main`
+
+Şablon dağıtımı (Faz 2) sonrası `ci.yml` üç repoya da indi. `develop → main` PR'ında
+check ilk kez raporlandı:
+
+![PR #17 — tüm check'ler geçti, ci/test yeşil](images/pilot-verification/15-gitops-ci-test-green.png)
+
+| Check | Sonuç |
+| :--- | :--- |
+| **`CI / ci/test`** `Required` | ✅ **Successful in 3s** |
+| `CI / Detect stack` | ✅ Successful in 5s |
+| `CI / Go` · `PHP` · `Python` · `TypeScript` | ⏭️ Skipped |
+| `Terraform Plan` | ✅ Successful in 55s |
+| **Toplam** | **All checks have passed** — 4 skipped, 3 successful |
+
+**Kanıtladığı — Hafta 2'de verilen bir tasarım kararının doğruluğu.** `ci.yml`'deki
+toplayıcı job, dil job'ları `skipped` dönse bile bunu **başarı sayacak** biçimde yazılmıştı.
+Gerekçesi o zaman şuydu: *"yoksa tek dilli repoda check hiç raporlanmaz ve PR sonsuza kadar
+bekler."* Bu repoda hiçbir dil manifesti yok — dört dil job'u da atlandı ve `ci/test` yine
+de yeşil raporladı. Karar olmasaydı bu PR merge edilemezdi.
+
+`ci/test` bugüne kadar hiçbir zaman raporlanmamıştı; bu, `require_status_checks` ayarının
+ilk kez gerçek bir karşılığı olduğu an.
+
+### 7.7 Zincirin tamamı çalıştı
+
+`feat/gitops-templates → develop` (#11) → `develop → main` (#17). İkinci merge'de
+`terraform-apply.yml` **yazıldığından beri ilk kez** tetiklendi.
+
+Plan çıktısı `0 destroy` verdi ve `28 × Drift detected — kozmetik` notunu taşıdı — yani
+bugün eklediğimiz drift sayacı da canlıda çalıştı.
+
+### 7.8 ⚠️ En kritik bulgu — `main` aylardır canlıdan kopmuştu
+
+Testi planlarken fark edildi ve raporun bu bölümdeki en önemli maddesi:
+
+| | Durum |
+| :--- | :--- |
+| `main`, `develop`'ın gerisinde | **24 commit** |
+| `main`'de `terraform/` kökü | **yalnızca `modules/`** — `main.tf`, `repositories.tf`, `config/` hiçbiri yok |
+| `terraform-apply.yml` | Yazıldığından beri **hiç çalışmamıştı** |
+
+Yani apply workflow'u aylardır sessizce bekliyordu ve **çalışsaydı yıkıcı olacaktı.**
+`develop → main` merge'ü, `feat/gitops-templates` daha `develop`'a inmeden yapılsaydı,
+apply eski kodla koşacaktı:
+
+| Terraform ne görürdü | Ne yapardı | Sonuç |
+| :--- | :--- | :--- |
+| `emre_admin` kodda var, state'te yok | ➕ CREATE | 🔴 Projeden ayrılan kullanıcı **`platform-admins`'e geri eklenirdi** — her repoda admin, bypass yetkisiyle |
+| `github_membership.emre` / `.medine` state'te var, kodda yok | ➖ DESTROY | Org rolü beyanları kalkardı |
+| 27 × `github_repository_file` state'te var, kodda yok | ➖ DESTROY | 🔴 Dağıtılan **27 dosyanın hepsi silinirdi** |
+
+Doğru sıra (`feat → develop`, sonra `develop → main`) bilinçli olarak uygulandı ve apply
+`0 destroy` ile geçti.
+
+**Neden bu kadar önemli:** iki dallı akış, apply'ı yalnızca `main`'e bağlayınca **kod ile
+canlının aylarca ayrışmasına izin verdi ve kimse fark etmedi.** `develop`'a merge edilen
+her şey "yapıldı" görünüyordu; canlıda karşılığı yoktu. Bu, kontrol düzlemi repolarının
+trunk-based çalışması kararının ([`ROADMAP.md`](../ROADMAP.md) Karar F) dayandığı gözlemin
+en somut kanıtı — ve Faz 8'de repo ayrımının neden yapıldığının da yarısı.
 
 ---
 

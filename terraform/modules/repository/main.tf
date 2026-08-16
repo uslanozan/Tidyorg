@@ -261,6 +261,16 @@ resource "github_repository_file" "codeowners" {
 # GitHub Actions ifadeleri var (`${{ matrix.go-version }}` gibi) ve Terraform
 # bunları kendi template sözdizimi sanıp ayrıştırma hatası verir. Şablonlar
 # birebir kopyalanır; değişken enjekte edilmez.
+#
+# SATIR SONU NORMALİZASYONU — `replace(..., "\r\n", "\n")`
+# Windows'ta `core.autocrlf=true` ile checkout, şablonları CRLF'e çevirir; Linux
+# ve macOS'ta LF kalır. Normalize edilmezse `file()` okuduğu içerik platforma
+# göre değişir ve **apply'ı kimin çalıştırdığına bağlı olarak** her seferinde
+# tüm strict dosyalar "değişti" görünür.
+#
+# 2026-08-16'da canlı yaşandı: yalnızca dependabot.yml düzenlenmişken plan
+# 18 dosyada değişiklik gösterdi; diff'in iki tarafı da birebir aynıydı.
+# Bir kontrol düzlemi, çalıştıran makineye göre farklı sonuç üretmemeli.
 
 # strict — Terraform içeriği sahiplenir. Elle yapılan değişiklik bir sonraki
 # apply'da geri alınır. Yönetişim dosyaları ve tüm workflow'lar buradan geçer.
@@ -270,7 +280,7 @@ resource "github_repository_file" "strict" {
   repository          = github_repository.this.name
   branch              = var.default_branch
   file                = each.value
-  content             = file("${local.templates_root}/${each.value}")
+  content             = replace(file("${local.templates_root}/${each.value}"), "\r\n", "\n")
   commit_message      = "chore(github): sync ${each.value} from templates"
   overwrite_on_create = true
 
@@ -285,7 +295,7 @@ resource "github_repository_file" "seed" {
   repository          = github_repository.this.name
   branch              = var.default_branch
   file                = each.value
-  content             = file("${local.templates_root}/${each.value}")
+  content             = replace(file("${local.templates_root}/${each.value}"), "\r\n", "\n")
   commit_message      = "chore(github): seed ${each.value} from templates"
   overwrite_on_create = true
 
