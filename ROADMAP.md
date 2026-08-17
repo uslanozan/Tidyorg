@@ -8,7 +8,7 @@
 > [`docs/rbac-and-permissions.md`](docs/rbac-and-permissions.md) · Kısa vadeli engeller:
 > [`TODO.md`](TODO.md)
 
-Son güncelleme: 2026-08-16
+Son güncelleme: 2026-08-17
 
 ---
 
@@ -26,21 +26,22 @@ Son güncelleme: 2026-08-16
 | Eski 9 takım silindi, `platform-admins` kaldı | ✅ Canlı |
 | GitOps döngüsü _(Faz 3)_ | ✅ Workflow'lar yazıldı ve düzeltildi |
 | GitHub App `tidyorg-infra-bot` _(Faz 4)_ | ✅ Terraform artık bot kimliğiyle çalışıyor |
+| Şablon ve workflow dağıtımı _(Faz 2)_ | ✅ Üç repo'ya indi; `ci/test` ilk kez yeşil _(2026-08-16)_ |
 | Erişim modelinin **ret tarafı** | ✅ Canlı doğrulandı — `GH006`, "Review required" |
 | 12 doküman + 1 ADR | ✅ Yazıldı |
 
 **Çalışmıyor / eksik:**
 
-1. `terraform/templates/` klasörünün tamamı atıl — hiçbir repo'ya ulaşmıyor _(Faz 2)_
-2. **`ci/test` karşılıksız** — required check hiçbir repoda üretilmiyor, `developer`
-   rolündeki biri onay alsa bile merge edemez _(Faz 2 çözüyor)_
-3. `people` bölümü Terraform tarafından okunmuyor — `org-membership.tf` tek kişilik
+1. `people` bölümü Terraform tarafından okunmuyor — `org-membership.tf` tek kişilik
    istisna dosyası olarak duruyor _(Faz 6)_
-4. `default_repository_permission` = **`Read`**, yönetilmiyor — her org üyesi her repo'yu
+2. `default_repository_permission` = **`Read`**, yönetilmiyor — her org üyesi her repo'yu
    görüyor _(Faz 6)_
-5. Dashboard yok _(Faz 5)_
-6. Repo güvenlik ayarları yönetilmiyor _(Faz 6)_
-7. **Motor ile durum aynı repoda** — mentörü motordan ayıracak bir sınır yok _(Faz 8)_
+3. Dashboard yok _(Faz 5)_
+4. Repo güvenlik ayarları yönetilmiyor — secret scanning, `vulnerability_alerts`, code
+   scanning'in hiçbiri kurulu değil _(Faz 6)_
+5. **Motor ile durum aynı repoda** — mentörü motordan ayıracak bir sınır yok _(Faz 8)_
+6. `release.yml` yazılmış ama **hiçbir repo'ya dağıtılmıyor** — `defaults.workflows`
+   değeri `[ci]`; otomatik sürümleme fiilen çalışmıyor _(bkz. [`TODO.md`](TODO.md))_
 
 ---
 
@@ -127,9 +128,9 @@ Dosya adı = repo adı. `repositories.tf` `fileset()` + `yamldecode` ile besleni
 
 ---
 
-### Faz 2 — Şablon ve workflow dağıtımı _(orta)_ — **SIRADAKİ**
+### Faz 2 — Şablon ve workflow dağıtımı ✅ _(tamamlandı, 2026-08-16)_
 
-Config'e `files` ve `workflows` alanları eklenir; modül bunları repo'ya yazar.
+Config'e `files` ve `workflows` alanları eklendi; modül bunları repo'ya yazıyor.
 
 ```yaml
 defaults:
@@ -142,18 +143,23 @@ defaults:
   workflows: [ci]             # ci | release | dependabot
 ```
 
-- [ ] `files` ve `workflows` alanlarını şemaya ekle
-- [ ] Modülde `github_repository_file` ile dağıtımı kur
-- [ ] `strict` / `seed` ayrımını uygula _(mod tablosu: K1)_
-- [ ] **Tutarlılık doğrulaması:** `workflows` içinde `ci` yoksa `require_status_checks`
-      da boş olmalı. Modül bunu `precondition` ile hata versin.
-- [ ] Pilot repo'da doğrula: PR template görünüyor mu, `ci/test` raporlanıyor mu
+- [x] `files` ve `workflows` alanlarını şemaya ekle
+- [x] Modülde `github_repository_file` ile dağıtımı kur
+- [x] `strict` / `seed` ayrımını uygula _(mod tablosu: K1)_
+- [x] **Tutarlılık doğrulaması:** `workflows` içinde `ci` yoksa `require_status_checks`
+      da boş olmalı — modül bunu `precondition` ile hata veriyor
+- [x] Doğrulandı: PR template görünüyor, `ci/test` raporlanıyor
+      _(bkz. [`docs/pilot-verification.md`](docs/pilot-verification.md) Bölüm 7.6)_
+- [x] Satır sonu normalizasyonu (`\r\n` → `\n`) — apply'ı çalıştıran makineye göre
+      değişen sahte diff'ler giderildi _(2026-08-16)_
+- [ ] **Kalan:** `release` workflow'u hiçbir repo'da aktif değil (`defaults.workflows: [ci]`).
+      Dağıtılacak mı, opsiyonel mi kalacak — karar verilmedi. Bkz. [`TODO.md`](TODO.md).
 
-> 🔴 **Bu faz artık bir blokajı çözüyor, sadece bir iyileştirme değil.**
-> Erişim düzeltmesinden sonra normal developer akışı devreye girdi ve `ci/test`
-> hiçbir repoda üretilmediği için **onaylanmış PR bile merge edilemiyor**
+> 🔴 **Bu faz bir blokajı çözdü, sadece bir iyileştirme değildi.**
+> Erişim düzeltmesinden sonra normal developer akışı devreye girmiş ve `ci/test`
+> hiçbir repoda üretilmediği için **onaylanmış PR bile merge edilemiyordu**
 > (kanıt: [`docs/pilot-verification.md`](docs/pilot-verification.md) Bölüm 6.4).
-> Ara çözüm `require_status_checks`'i geçici boşaltmaktır; kalıcı çözüm bu faz.
+> Şablon dağıtımıyla kapandı.
 
 > 💡 **Faz 8 ve Karar H'yi tasarlarken akılda tut.** Şemayı bir kez kurup sonra
 > bozmamak için: (a) `agents` alanı ileride buraya gelecek (bkz. Faz 9), (b) bu faz
@@ -297,7 +303,8 @@ Tidyorg          tidyorg-org-config
 - [ ] `terraform-apply.yml` ve `terraform-plan.yml`'i config repo'ya taşı
 - [ ] Motor repo'da ilk sürüm tag'ini kes (`v1.0.0`)
 - [ ] Yetkileri ayır: mentörler config repo'da admin, motor repo'da **erişimsiz** (ya da read)
-- [ ] `docs/branching-strategy.md`'ye kontrol düzlemi istisnasını yaz (Karar F)
+- [x] `docs/branching-strategy.md`'ye kontrol düzlemi istisnasını yaz (Karar F)
+      _(2026-08-17 — Bölüm 8 olarak eklendi)_
 - [ ] `ADR 005 — kontrol düzlemi repo topolojisi` yaz
 
 **State taşınmıyor.** Aynı HCP workspace kullanılmaya devam eder, yalnızca onu besleyen

@@ -1,11 +1,23 @@
 # Release Süreci
 
-Sürüm çıkarmak elle yapılan bir iş değildir. `main` dalına merge edildiği anda
-[`release.yml`](../terraform/templates/.github/workflows/release.yml) workflow'u devreye girer:
-sürüm numarasını commit mesajlarından hesaplar, tag atar ve changelog'lu bir GitHub
-Release yayınlar.
+Sürüm çıkarmak elle yapılan bir iş olmamalıdır. `main` dalına merge edildiği anda
+[`release.yml`](../terraform/templates/.github/workflows/release.yml) workflow'u devreye
+girer: sürüm numarasını commit mesajlarından hesaplar, tag atar ve changelog'lu bir
+GitHub Release yayınlar.
 
 Bu doküman o mekanizmanın nasıl çalıştığını ve süreci nasıl yürüteceğini anlatır.
+
+> ## ⚠️ Bugün bu otomasyon hiçbir repo'da aktif değil
+>
+> `release.yml` şablonu yazılmış ve test edilmeye hazır, ancak
+> `config/organization.yml` → `defaults.workflows` değeri **`[ci]`**. Yani hiçbir repo'ya
+> dağıtılmıyor ve `main`'e merge hiçbir sürüm üretmiyor.
+>
+> Aşağıdaki her şey, workflow bir repo'ya dağıtıldığı anda geçerli olacak biçimde
+> yazılmıştır. Aktifleştirmek için ilgili repo'nun config dosyasına
+> `workflows: [ci, release]` yazmak yeterlidir.
+>
+> Karar takibi: [`../TODO.md`](../TODO.md) · [`../ROADMAP.md`](../ROADMAP.md) Faz 2.
 
 ---
 

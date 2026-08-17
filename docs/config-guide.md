@@ -141,7 +141,34 @@ developers: [dev-1, dev-2]
 | `protected_branches` | — | Dal kurallarını ezer (bkz. Bölüm 3) |
 | `code_owners` | — | Yol bazlı review yönlendirmesi |
 | `labels` | — | Label setini tamamen değiştirir |
-| `workflows` | — | Dağıtılacak CI/CD workflow'ları (ci, release, dependabot) |
+| `files` | — | Şablon dosyalarının dağıtım modu (bkz. Bölüm 2.5) |
+| `workflows` | — | Dağıtılacak workflow'lar: `ci` · `release`. Liste **tamamen ezer**, kısmi birleştirme yok. |
+
+> ⚠️ `dependabot` bir workflow **değildir**. `.github/dependabot.yml` bir şablon
+> dosyasıdır ve `files.dependabot` altında yönetilir. `workflows` listesine yazılırsa
+> Terraform var olmayan bir şablon dosyası arar ve `apply` hata verir.
+
+### 2.5 `files` — Şablon dosyalarının dağıtımı
+
+```yaml
+files:
+  contributing: seed        # strict | seed | none
+  security: seed
+  editorconfig: seed
+  pr_template: strict
+  issue_templates: strict
+  dependabot: strict
+```
+
+| Mod | Davranış | Kime uygun |
+| :--- | :--- | :--- |
+| `strict` | Terraform içeriği sahiplenir; elle yapılan değişiklik bir sonraki `apply`'da geri alınır | Yönetişim dosyaları |
+| `seed` | Yalnızca ilk oluşturmada yazılır; repo sonradan kendine göre değiştirebilir | İçerik dosyaları |
+| `none` | Hiç yazılmaz | — |
+
+Bu harita **düz bir map** olduğu için repo yalnızca değiştirmek istediği anahtarı yazar;
+gerisi `defaults`'tan gelir. Workflow'lar bu tablonun dışındadır ve **daima `strict`**
+davranır — yönetişim dosyası sayılırlar.
 
 ---
 
@@ -211,13 +238,13 @@ gelir. Kural metnine dokunulmaz.
 
 ### Bir repo'da onay kuralını gevşetmek
 
+`config/repositories/rapid-prototype.yml` içine:
+
 ```yaml
-repositories:
-  rapid-prototype:
-    protected_branches:
-      develop:
-        required_reviews: 0        # Onaysız merge serbest
-        require_status_checks: []  # CI beklemeden merge
+protected_branches:
+  develop:
+    required_reviews: 0        # Onaysız merge serbest
+    require_status_checks: []  # CI beklemeden merge
 ```
 
 `push_allowed_roles` ezilmediği sürece developer'lar yine doğrudan push atamaz; katkı
@@ -307,9 +334,19 @@ private'a geçişte plan yükseltmesi gerekecek.
 
 ---
 
-## 7. CI/CD Otomasyonu ve Token Yapılandırması
+## 7. CI/CD Otomasyonu ve Kimlik Yapılandırması
 
-GitHub Actions workflow'larının (`terraform-plan` ve `terraform-apply`) HCP Terraform Cloud backend'i ile kimlik doğrulaması yapabilmesi için organizasyon seviyesinde bir **Team API Token** kullanılması gerekir.
+Sistemde **iki ayrı kimlik** var; karıştırılmamalıdır:
+
+| Kimlik | Neye erişir | Nerede durur |
+| :--- | :--- | :--- |
+| **`TF_API_TOKEN`** (HCP Team API Token) | GitHub Actions → HCP Terraform Cloud (state + run) | GitHub repository secret |
+| **`tidyorg-infra-bot`** (GitHub App) | Terraform provider → GitHub organizasyonu | HCP Terraform'da sensitive environment variable |
+
+GitHub'a yazan taraf **App**'tir; `TF_API_TOKEN` yalnızca CI'ın HCP'ye bağlanmasını
+sağlar. App'in private key'i hiçbir geliştiricinin makinesine inmez ve installation
+token'ı ~1 saatte bir otomatik yenilenir. Kurulum ve izin listesi:
+[`../integrations/github-app/README.md`](../integrations/github-app/README.md).
 
 ### 7.1 Team API Token Oluşturma (HCP Terraform)
 

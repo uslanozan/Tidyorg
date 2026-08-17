@@ -81,6 +81,10 @@ Dal adı `<kategori>/<kısa-açıklama>` biçimindedir. Kategoriler: `feat/`, `f
 `chore/`, `docs/`. Issue takip sistemi kullanılıyorsa ID'yi ekle:
 `feat/LIN-123-user-auth`.
 
+> **Repo'nun `develop` dalı yoksa şaşırma.** Altyapı/config repolarında (`Tidyorg`
+> gibi) `develop` bilinçli olarak yoktur; dal `main`'den açılır ve `main`'e döner.
+> Gerekçe: [`branching-strategy.md`](branching-strategy.md) Bölüm 8.
+
 **2. Değişikliği yap ve commit'le**
 
 ```bash

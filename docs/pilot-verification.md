@@ -30,6 +30,12 @@ repositories:
 Geri kalan her şey (görünürlük, dallar, korumalar, label'lar, takımlar, CODEOWNERS)
 `defaults` bölümünden miras alındı. Repo'ya özel tek bir kural yazılmadı.
 
+> **Şema notu:** Yukarıdaki `repositories:` bloğu 2026-08-07 tarihindeki şemadır.
+> Faz 1 ile (2026-08-15) repo tanımları ayrı dosyalara bölündü; bugünkü karşılığı
+> `config/repositories/pilot-intern-web.yml` dosyasının içeriğidir — anahtar olarak repo
+> adı yazılmaz, dosya adı repo adıdır. Güncel şema:
+> [`config-guide.md`](config-guide.md).
+
 **Sonuç:** `Apply complete! Resources: 25 added, 0 changed, 0 destroyed.`
 
 ---
@@ -325,18 +331,19 @@ akışında görünür oldu. Kalıcı çözüm şablon dağıtımıdır — [`RO
 
 ### 6.5 Henüz doğrulanmayanlar
 
+- [x] ~~CI workflow tetiklenmesi ve `ci/test` status check'inin **raporlanması**~~
+      ✅ **2026-08-16'da doğrulandı** — şablon dağıtımı sonrası check ilk kez yeşil
+      raporladı. Bkz. Bölüm 7.6.
 - [ ] `main`'de code owner (mentör) onayının zorunlu kılınması — 6.3/6.4 testleri
       `develop` üzerinde yapıldı, `main` akışı ayrıca denenmeli
-- [ ] CI workflow tetiklenmesi ve `ci/test` status check'inin **raporlanması**
-      _(zorunlu olduğu doğrulandı, üretildiği doğrulanmadı — bkz. 6.4)_
 - [ ] Force push denemesinin sonucu (admin bypass'ının force push'u kapsayıp kapsamadığı
       bilinmiyor)
 
 Takip: [`TODO.md`](../TODO.md)
 
-> **Not:** Modül CODEOWNERS dosyasını repo'ya yazıyor ancak workflow dosyalarını
-> dağıtmıyor. Workflow dağıtımının repo bazında konfigüre edilebilir hale getirilmesi
-> kararlaştırıldı; ayrıntı `TODO.md` içinde.
+> **Bu bölümdeki gözlemler 2026-08-15 tarihlidir.** O tarihte modül CODEOWNERS'ı yazıyor
+> ama workflow dosyalarını dağıtmıyordu. Workflow dağıtımı ertesi gün (Faz 2) devreye
+> girdi; yukarıdaki 6.4 notu tarihsel kayıt olarak duruyor.
 
 ---
 

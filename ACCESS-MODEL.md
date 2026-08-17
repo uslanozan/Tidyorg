@@ -4,7 +4,7 @@
 > `tasks-ozan.md` / `tasks-emre.md` haftalık görevleri anlatır; bu dosya **neden**ini anlatır.
 > Yeni bir ortamda çalışmaya başlayan biri (veya kod asistanı) önce bunu okumalı.
 
-Son güncelleme: 2026-08-07
+Son güncelleme: 2026-08-17
 
 ---
 
@@ -40,8 +40,14 @@ Pilot repo(lar) bu motorun çalıştığını göstermek içindir, hedefin kendi
 - Mentörleri repo'lara dağıtır ve **zaman içinde bu dağılımı değiştirebilir**.
 - Her şeye yetkilidir.
 
-### Mentörler (4 kişi, her biri 2 repo — toplam 8)
+### Mentörler (hedef: 4 kişi, her biri 2 repo — toplam 8 repo)
 - **Bir repo'da tek mentör bulunur**, o repo'da başka mentör yoktur.
+
+> **Bu bir hedef tasarımdır, bugünkü tablo değil.** Şu an canlıda tek mentör var
+> (`uslanozan`) ve üç repo'nun da mentörü o. "4 kişi × 2 repo" ifadesi mentör başına
+> düşen repo sayısını anlatır; bir repo'daki mentör sayısını değil. Kimin nerede mentör
+> olduğu tek yerden okunur: `config/repositories/<repo>.yml` → `mentors`.
+
 - Sorumlu oldukları repo'da **tam yetkiye** (`admin`) sahiptir.
 - `main` ve `develop` dahil her branch'e push atabilirler.
 - Repo kurallarını değiştirebilirler — ancak **config/dashboard üzerinden**
@@ -99,11 +105,19 @@ verilemez. Write yetkisi daima repo geneline verilir, sonra branch'ler *kısıtl
 3. `restrict_pushes` izin listesine **yalnızca mentörleri** yaz
 4. `enforce_admins = false` yap
 
-### ⚠️ Mevcut koddaki uyumsuzluk
-`terraform/branch-protection.tf` içinde `main` koruması `enforce_admins = true` ile
-canlıya alınmış durumda. Bu ayar admin'leri de kurala tabi tutar; yani **mentörler
-admin olsalar bile `main`'e push atamaz.** İstenen davranış için `false` olmalı ve
-mentörler `restrict_pushes` listesine eklenmelidir.
+### ✅ Uygulanan durum _(2026-08-16 itibarıyla)_
+Yukarıdaki dört adımın tamamı canlıda. `enforce_admins` her dalda `false` ve
+`push_allowed_roles: [mentor, head-of-engineering]` allowlist'i
+[`config/organization.yml`](terraform/config/organization.yml) üzerinden uygulanıyor.
+
+Bu dosyanın önceki sürümü, `terraform/branch-protection.tf` içindeki elle yazılmış
+`main` kuralının `enforce_admins = true` olduğunu bir uyumsuzluk olarak not ediyordu.
+O dosya artık boş: `pilot-intern-api` 2026-08-15'te `terraform state mv` ile
+`modules/repository` altına taşındı ve kuralları da config'den üretiliyor.
+
+`enforce_admins = false` **kalıcı bir karardır**, unutulmuş bir ayar değil. Gerekçesi ve
+üç sonucu: [`docs/rbac-and-permissions.md`](docs/rbac-and-permissions.md) Bölüm 4
+(ROADMAP Karar E / K5).
 
 ---
 
@@ -314,10 +328,13 @@ Bilinçli olarak ertelenen, sistemin çalışması için gerekli olmayan konular
 ## 6. Kısıtlar
 
 ### GitHub plan seviyesi
-Free plan'de **private repo'larda branch protection ve ruleset çalışmaz.** Pilot repo
-bu yüzden `visibility = "public"` olarak açıldı (`branch-protection.tf` içindeki nota
-bakınız). Gerçek organizasyonda repo'ların çoğu private olacağına göre **GitHub Team
+Free plan'de **private repo'larda branch protection ve ruleset çalışmaz.** Repo'lar bu
+yüzden `public` açıldı; `defaults.visibility` değeri
+[`config/organization.yml`](terraform/config/organization.yml) içinde bu gerekçeyle
+`public`. Gerçek organizasyonda repo'ların çoğu private olacağına göre **GitHub Team
 planı bu mimarinin ön koşuludur.** Sunumda açıkça belirtilmelidir.
+
+Plan geldiğinde yapılacaklar tek yerde toplandı: [`ROADMAP.md`](ROADMAP.md) Faz 7.
 
 ### Config şeması = asıl sözleşme
 UI ile Terraform arasındaki sözleşme config şemasıdır. Şema yanlış tasarlanırsa her iki
@@ -325,11 +342,12 @@ taraf da yeniden yazılır. Bu nedenle **modül yazılmadan önce şema taslağ�
 
 ---
 
-## 7. Mevcut Durum (2026-08-07)
+## 7. Mevcut Durum
 
-Canlıda mevcut: 10 takım ve hiyerarşisi, 4 üyelik, `pilot-intern-api` repo'su,
-`develop` branch'i, `main` + `develop` branch protection kuralları.
+Bu dosya **tasarımı ve gerekçeleri** anlatır; anlık durum burada tutulmaz.
 
-Canlıda yok: CI workflow'ları, label seti, repository modülü, dependabot, config motoru.
+Neyin canlıda olduğu, neyin eksik kaldığı tek yerden okunur:
+[`ROADMAP.md`](ROADMAP.md) Bölüm 1.
 
-Bu bölüm tasarım değil anlık fotoğraftır; güncelliğini yitirebilir.
+> _Not: Buradaki 2026-08-07 tarihli anlık fotoğraf kaldırıldı. İki yerde durum tutmak,
+> ikisinin de eskimesine yol açıyordu._

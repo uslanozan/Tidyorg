@@ -80,6 +80,10 @@ git checkout -b feat/LIN-123-user-auth
 Dal isimlendirme kuralları: [`branching-strategy.md`](branching-strategy.md).
 Kısaca: `feat/`, `fix/`, `chore/`, `docs/`, `release/`, `hotfix/`.
 
+> **Kontrol düzlemi repolarında `develop` yoktur.** `Tidyorg` gibi
+> config ve motor barındıran repolarda dal doğrudan `main`'den açılır ve `main`'e döner.
+> Gerekçe: [`branching-strategy.md`](branching-strategy.md) Bölüm 8 (Karar F).
+
 **2. Commit at**
 
 ```bash
@@ -144,7 +148,7 @@ flowchart LR
 **Temel ilke: kod katmanı ile veri katmanı ayrıdır.**
 
 - **Kod (HCL)** — "bir repo nasıl kurulur, kural nasıl uygulanır" tarifi. Nadiren değişir,
-  değiştiren Ozan/Emre.
+  değiştiren platform ekibi.
 - **Veri (config)** — "hangi repo var, kimde hangi yetki var". Sık değişir, değiştiren
   mentör.
 
@@ -173,6 +177,10 @@ sürümlenir.
 4. `main`'e merge, [`release.yml`](../terraform/templates/.github/workflows/release.yml)
    workflow'unu tetikler: sürüm numarası commit'lerden türetilir, tag atılır,
    changelog'lu bir GitHub Release yayınlanır
+
+> ⚠️ **4. adım bugün çalışmıyor.** `release.yml` hiçbir repo'ya dağıtılmıyor
+> (`defaults.workflows: [ci]`); sürüm etiketi şimdilik elle atılmalıdır. Ayrıntı ve
+> aktifleştirme adımı: [`release-process.md`](release-process.md) başındaki not.
 
 Tam süreç ve komutlar: [`release-process.md`](release-process.md).
 
@@ -206,7 +214,13 @@ sonsuza kadar bekler ve **hiçbir şey merge edilemez**. Değiştirmen gerekiyor
 ### CI olmayan repo'larda status check zorunluluğu kapatılmalı
 
 Her projede CI olmak zorunda değil. Bir repo'ya CI workflow'u dağıtılmıyorsa
-`require_status_checks` alanı da boşaltılmalıdır; yoksa yukarıdaki kilit yaşanır.
+(`workflows` listesinde `ci` yoksa) `require_status_checks` alanı da boşaltılmalıdır;
+yoksa yukarıdaki kilit yaşanır.
+
+Bu tutarsızlık sessizce geçmez: modül `plan` aşamasında `precondition` ile hata verir
+([`modules/repository/main.tf`](../terraform/modules/repository/main.tf)). Hatayı
+gördüğünüzde ya `workflows` listesine `ci` ekleyin ya da `require_status_checks`
+içinden `ci/test` değerini çıkarın.
 
 ### GitHub plan seviyesi
 

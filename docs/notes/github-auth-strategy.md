@@ -1,17 +1,20 @@
 # Not: Terraform → GitHub Kimlik Doğrulama Stratejisi
 
-> **Durum:** Karar verildi ve uygulandı (2026-08-15)
-> **Yazan:** Ozan · **Tarih:** 2026-08-05 (Güncelleme: 2026-08-15)
-> **İlgili:** Ozan & Medine
-> **Sonrasında:** Karar netleştiği için [ADR-002](../adr/002-terraform-for-github.md)'ye taşındı / güncellendi.
-
+> **Durum:** ✅ Karar verildi ve **uygulandı** (2026-08-15)
+> **Yazan:** Ozan · **Tarih:** 2026-08-05 (Güncelleme: 2026-08-17)
+> **Sonuç:** `tidyorg-infra-bot` GitHub App'i canlı; Terraform provider App kimliğiyle
+> çalışıyor. Kurulum kılavuzu:
+> [`integrations/github-app/README.md`](../../integrations/github-app/README.md)
+>
+> Bu not **karar gerekçesinin** kaydıdır; kurulum talimatı değildir.
 
 ---
 
 ## TL;DR
 
-**Mevcut plan:** Kişisel classic PAT (`repo`, `admin:org`, `read:org`, `delete_repo`).
-**Önerim:** Pilot için ayrı test org + fine-grained PAT → gerçek org için **organizasyona ait GitHub App**.
+**O günkü mevcut plan:** Kişisel classic PAT (`repo`, `admin:org`, `read:org`, `delete_repo`).
+**Öneri:** Pilot için ayrı test org + fine-grained PAT → gerçek org için **organizasyona
+ait GitHub App**. → **Uygulanan:** doğrudan GitHub App (2026-08-15).
 
 Classic PAT'in problemi güvenlik paranoyası değil; projenin kendi tezini çürütmesi. Denetlenebilir altyapı kurduğumuzu iddia edip altyapıyı kişisel bir anahtarla yönetmek sunumda ilk sorulacak soru olur.
 
@@ -83,12 +86,12 @@ Gerçek footgun'lar:
 
 ### Korunma önlemleri
 
-Repository modülünde (benim dosyam, bunları ben ekliyorum):
+Repository modülünde planlanan iki önlem:
 
 ```hcl
 resource "github_repository" "this" {
   # ...
-  archive_on_destroy = true   # destroy → silmek yerine arşivle. Varsayılan KAPALI, açıkça yazmak gerekiyor.
+  archive_on_destroy = true   # destroy → silmek yerine arşivle. Varsayılan KAPALI.
 
   lifecycle {
     prevent_destroy = true    # yanlışlıkla silinmeye karşı sert kilit
@@ -96,7 +99,13 @@ resource "github_repository" "this" {
 }
 ```
 
-`archive_on_destroy = true` ile "repo silme" riski "repo arşivleme"ye, yani geri alınabilir bir hataya dönüşüyor.
+> **Uygulanma durumu (2026-08-17):** `prevent_destroy` **kuruldu** ve canlı doğrulandı
+> ([`pilot-verification.md`](../pilot-verification.md) Bölüm 6.1).
+> `archive_on_destroy` ise [`modules/repository/main.tf`](../../terraform/modules/repository/main.tf)
+> içinde **yok**. Pratikte ikinci kemer olurdu; `prevent_destroy` zaten `apply`'ı
+> durdurduğu için eksikliği bugün bir açık yaratmıyor, ancak `prevent_destroy` bilinçli
+> olarak kaldırıldığında (bkz. [`runbook.md`](../runbook.md) 2.3) tek koruma da
+> kalkmış oluyor.
 
 Süreç tarafında:
 - Pilot için **ayrı test organizasyonu** — [implementation plan.md](../../implementation%20plan.md)'de bu soru cevapsız duruyor; cevabı "ayrı org" olsun
@@ -106,12 +115,27 @@ Süreç tarafında:
 
 ---
 
-## Önerilen iki fazlı yol
+## Önerilen iki fazlı yol — ve ne oldu
 
-**Faz 1 — öğrenme + pilot (şimdi)**
+**Faz 1 — öğrenme + pilot**
 Ayrı test org + fine-grained PAT (tek org'a scope'lu, 30 gün expiry, silme izni yok). En kötü senaryo bir test org'unun bozulması; yeniden kurarız.
 
 **Faz 2 — gerçek org (pilot çalıştıktan sonra)**
 Org'a ait GitHub App + private key HCP'de sensitive + `apply` sadece CI'dan.
+
+### Gerçekleşen
+
+| Öneri | Sonuç |
+| :--- | :--- |
+| Ayrı test organizasyonu | ✅ `your-org` — tüm çalışma burada yapıldı |
+| Fine-grained PAT ara adımı | ⏭️ Atlandı; doğrudan App'e geçildi _(2026-08-15)_ |
+| Org'a ait GitHub App | ✅ `tidyorg-infra-bot` — Administration + Contents + Members write |
+| Private key HCP'de sensitive | ✅ |
+| `apply` yalnızca CI'dan | ✅ `terraform-apply.yml`, `main` merge tetikli _(Faz 3)_ |
+
+> **Sonraki soru — Karar H:** Otomasyon kimliği tek değil. `tidyorg-infra-bot`'un izinleri
+> bir review/triage agent'ına verilemez; prompt injection'ı yetki yükseltmeye çevirir.
+> Agent'lar minimum izinli **ayrı App** kullanacak. Bkz. [`ROADMAP.md`](../../ROADMAP.md)
+> Karar H ve Faz 9.
 
 ---

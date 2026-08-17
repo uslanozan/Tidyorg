@@ -78,29 +78,31 @@ geri ekler.
 
 ### 2.1 Yeni repo açmak
 
+`terraform/config/repositories/yeni-servis.yml` adında **yeni bir dosya** oluştur.
+Dosya adı repo adı olur; içinde repo adı tekrar yazılmaz:
+
 ```yaml
-repositories:
-  yeni-servis:
-    description: "Kısa açıklama"
-    language: go
-    mentors: [mentor-a]
-    developers: [dev-1, dev-2]
+description: "Kısa açıklama"
+language: go
+mentors: [mentor-a]
+developers: [dev-1, dev-2]
 ```
 
-Beş satır. Dallar, korumalar, takımlar, label'lar ve CODEOWNERS otomatik oluşur.
+Dört satır. Dallar, korumalar, takımlar, label'lar, şablon dosyaları, CI workflow'u ve
+CODEOWNERS otomatik oluşur.
 
 `apply` sonrası kontrol et: repo açıldı mı, default branch `develop` mü, CODEOWNERS
 yerinde mi.
 
 ### 2.2 Repo'yu kapatmak
 
+`config/repositories/eski-servis.yml` dosyasına ekle:
+
 ```yaml
-repositories:
-  eski-servis:
-    archived: true
+archived: true
 ```
 
-**Config'den satırı silmeyin.** Silmek Terraform'a "yok et" demektir. `prevent_destroy`
+**Dosyayı dizinden silmeyin.** Silmek Terraform'a "yok et" demektir. `prevent_destroy`
 koruması devreye girer ve `apply` şu hatayla durur:
 
 ```
@@ -118,7 +120,7 @@ Nadiren gerekir. Sırasıyla:
 1. Repo'nun gerçekten silinmesi gerektiğini teyit et — arşivleme yetmiyor mu?
 2. `terraform/modules/repository/main.tf` içindeki `lifecycle { prevent_destroy = true }`
    bloğunu geçici olarak kaldır
-3. Config'den repo satırını sil
+3. `config/repositories/<repo-adı>.yml` dosyasını sil
 4. `plan` çıktısını **dikkatle** oku — yalnızca hedeflenen repo silinmeli
 5. `apply`
 6. `prevent_destroy` bloğunu **geri koy**
@@ -127,15 +129,16 @@ Adım 6 unutulursa koruma tüm repo'lar için kalkmış olur.
 
 ### 2.4 Bir repo'nun kurallarını değiştirmek
 
+`config/repositories/payments-api.yml` içine:
+
 ```yaml
-repositories:
-  payments-api:
-    protected_branches:
-      main:
-        required_reviews: 3
+protected_branches:
+  main:
+    required_reviews: 3
 ```
 
 Yalnızca farklı olan alanı yaz; geri kalanı `defaults`'tan gelmeye devam eder.
+Birleştirme dal bazında yapılır — bir dalı ezmek o dalın diğer alanlarını silmez.
 
 ### 2.5 Mentör değiştirmek
 
@@ -211,9 +214,15 @@ gelir.
 **Free plan.** Private repo'larda branch protection ve push kısıtları GitHub Team planı
 gerektirir. Şu an public repo'larla çalışılıyor.
 
-**Terraform commit'leri kişisel token üzerinden gidiyor.** Otomasyonun yaptığı
-değişiklikler bir kişinin adına görünür. GitHub App'e geçiş planlanmaktadır —
-[`notes/github-auth-strategy.md`](notes/github-auth-strategy.md).
+**Repo güvenlik ayarları yönetilmiyor.** Secret scanning, push protection,
+`vulnerability_alerts` ve code scanning'in hiçbiri config'den kurulmuyor — bkz.
+[`security-policy.md`](security-policy.md) Bölüm 5.
+
+**Otomasyonun kimliği: `tidyorg-infra-bot` GitHub App'i** _(2026-08-15'ten beri)_.
+Terraform'un yaptığı commit'ler artık bir kişinin değil bot'un adına düşüyor; audit
+log'da elle yapılan değişiklikten ayırt edilebiliyor. Kurulum:
+[`../integrations/github-app/README.md`](../integrations/github-app/README.md) ·
+Gerekçe: [`notes/github-auth-strategy.md`](notes/github-auth-strategy.md).
 
 ---
 

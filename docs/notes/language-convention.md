@@ -1,8 +1,9 @@
 # Not: Dil Konvansiyonu
 
-> **Durum:** Karar verildi (Ozan, 2026-08-05) · Emre'nin de uyması gerekiyor
-> **Neden bu not var:** Hafta 3'te ikimiz de doküman yazacağız. Kural yazılı olmazsa
-> `docs/` klasörü yarı İngilizce yarı Türkçe bir karmaşaya dönüşür.
+> **Durum:** ✅ Karar verildi (Ozan, 2026-08-05) ve uygulandı · Son güncelleme: 2026-08-17
+> **Neden bu not var:** Aynı anda birden fazla kişi doküman yazdığında, kural yazılı
+> olmazsa `docs/` klasörü yarı İngilizce yarı Türkçe bir karmaşaya dönüşür.
+> Kural yürürlüktedir; yeni doküman yazan herkes için geçerlidir.
 
 ## Kural
 
@@ -41,13 +42,18 @@ Placeholder ve örnek metinler tek dilli (İngilizce) bırakıldı — bunlar ku
 
 ## Bilinen açık
 
-`docs/` Türkçe olduğu için plandaki `external-collaborators` takımı ([implementation plan.md](../../implementation%20plan.md))
-bu dokümanları okuyamaz. Şu an dış paydaş yok, o yüzden sorun değil; ihtiyaç doğarsa
-`docs/en/` altına yalnızca gerekli dokümanların İngilizce karşılığı eklenir — hepsinin değil.
+`docs/` Türkçe olduğu için Türkçe bilmeyen bir dış paydaş bu dokümanları okuyamaz. Şu an
+dış paydaş yok, o yüzden sorun değil; ihtiyaç doğarsa `docs/en/` altına yalnızca gerekli
+dokümanların İngilizce karşılığı eklenir — hepsinin değil.
+
+> _Not: Bu bölüm daha önce `external-collaborators` takımına atıfta bulunuyordu. O takım
+> 2026-08-16'da silindi ([`ACCESS-MODEL.md`](../../ACCESS-MODEL.md) Karar 12); dış
+> danışman erişimi şimdilik `consultant` rolüyle birlikte future work._
 
 ## Aksiyon
 
-- [ ] **Emre:** Hafta 3 dokümanlarını (`branching-strategy.md`, `commit-convention.md`,
-      `security-policy.md`, `rbac-and-permissions.md`) **Türkçe** yaz
-- [ ] **Emre:** `terraform/templates/CONTRIBUTING.md`, `SECURITY.md`, `CODEOWNERS` yorumları → **iki dilli**
-- [ ] **Ozan:** README.md taslağını yazarken bu konvansiyonu README'de de belirt
+- [x] `branching-strategy.md`, `commit-convention.md`, `security-policy.md`,
+      `rbac-and-permissions.md` → **Türkçe** yazıldı
+- [x] `terraform/templates/CONTRIBUTING.md`, `SECURITY.md`, PR/issue template'leri →
+      **iki dilli** (`EN · TR`)
+- [ ] Kök `README.md` henüz yok; yazıldığında bu konvansiyon orada da belirtilecek

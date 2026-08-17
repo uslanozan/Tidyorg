@@ -727,15 +727,15 @@ yükleniyor**; `terraform/`'un üstündeki dosya uzak tarafta yok. Lokalde `vali
 uzakta `plan` patladı. Yol artık `config_file` değişkeniyle ayarlanabiliyor.
 
 **CI/CD şablonları yazıldı:**
-- [ci.yml](../../templates/.github/workflows/ci.yml) — dört dil, her job yalnızca ilgili
+- [ci.yml](../../terraform/templates/.github/workflows/ci.yml) — dört dil, her job yalnızca ilgili
   manifest varsa çalışıyor. Son job'un adı bilerek **`ci/test`**; Emre'nin branch
   protection'ı bu isimde bir check bekliyor. Dil job'ları atlansa bile çalışıp `skipped`
   sonuçlarını başarı sayıyor — yoksa tek dilli repo'da check hiç raporlanmaz ve PR
   sonsuza kadar beklerdi.
-- [release.yml](../../templates/.github/workflows/release.yml) — Conventional Commits'ten
+- [release.yml](../../terraform/templates/.github/workflows/release.yml) — Conventional Commits'ten
   semver türetip tag ve release üretiyor. Üçüncü parti action yerine `git` + `gh`
   kullandım; workflow repo'da write yetkisi taşıdığı için bağımlılığı minimumda tuttum.
-- [dependabot.yml](../../templates/.github/dependabot.yml) — beş ekosistem, haftalık.
+- [dependabot.yml](../../terraform/templates/.github/dependabot.yml) — beş ekosistem, haftalık.
 
 `fmt` temiz, `validate` geçiyor, uzaktaki `plan` **25 ekle / 0 değiştir / 0 sil** diyor.
 Sıfır silme önemliydi: Emre'nin kaynaklarına dokunulmuyor. **Apply edilmedi** — 25 gerçek
@@ -765,10 +765,10 @@ sildim. Lock dosyası provider sürümlerini sabitliyor ve **commit edilmeli** �
 farklı `plan` çıktısı alabiliyoruz.
 
 **Issue ve PR template'leri yazıldı** — Hafta 1'in ana işi:
-- [bug_report.yml](../../templates/.github/ISSUE_TEMPLATE/bug_report.yml) — 9 alan, severity dropdown, `type: bug` auto-label
-- [feature_request.yml](../../templates/.github/ISSUE_TEMPLATE/feature_request.yml) — 7 alan, kabul kriterleri pre-filled, `type: feature` auto-label
-- [config.yml](../../templates/.github/ISSUE_TEMPLATE/config.yml) — boş issue kapalı, 3 contact link
-- [PULL_REQUEST_TEMPLATE.md](../../templates/.github/PULL_REQUEST_TEMPLATE.md) — What / Why / Type of change / Testing / Semantic commit / Release impact / Checklist
+- [bug_report.yml](../../terraform/templates/.github/ISSUE_TEMPLATE/bug_report.yml) — 9 alan, severity dropdown, `type: bug` auto-label
+- [feature_request.yml](../../terraform/templates/.github/ISSUE_TEMPLATE/feature_request.yml) — 7 alan, kabul kriterleri pre-filled, `type: feature` auto-label
+- [config.yml](../../terraform/templates/.github/ISSUE_TEMPLATE/config.yml) — boş issue kapalı, 3 contact link
+- [PULL_REQUEST_TEMPLATE.md](../../terraform/templates/.github/PULL_REQUEST_TEMPLATE.md) — What / Why / Type of change / Testing / Semantic commit / Release impact / Checklist
 
 Hepsi şema doğrulamasından geçti. **Önemli:** bozuk bir issue form'unu GitHub sessizce
 görmezden geliyor, hata vermiyor. O yüzden Hafta 2'de `ci.yml`'a form lint adımı eklemek
