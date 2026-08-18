@@ -253,15 +253,87 @@ reddedilir. Denetim izi gerçektir — commit'ler işlemi yapan kişinin adına 
       Break-glass: `uslanozan` yönetim dışı kalır.
       ⚠️ Riskli: mevcut owner yetkilerini etkileyebilir; `plan`'ı dikkatle incele.
       Tamamlanınca `org-membership.tf` istisna dosyası kalkar.
-- [ ] **`default_repository_permission` kararı ve yönetime alınması**
-      Bugünkü değer **`Read`** _(kanıt: `04-collaborators-teams.png`)_. Yazma deliği yok
-      ama izolasyon da yok — yeni stajyer ilk günden tüm repo'ları görüyor.
-      `None` mu olmalı? Karar verilip `github_organization_settings` ile bağlanmalı.
-- [ ] **Repo güvenlik ayarları** — `vulnerability_alerts`, `security_and_analysis`
-- [ ] **"Kim bypass edebiliyor?" raporu** — repo × dal bazında etkin bypass aktörlerini
-      listeleyen Terraform output'u.
+      **Faz 6'nın kalan tek büyük işi.**
+- [x] ✅ **`default_repository_permission` → `none`** _(2026-08-18)_
+      Bugünkü değer `Read`'ti — yazma deliği yoktu ama izolasyon da yoktu. Artık
+      erişimin tek kaynağı takım üyeliği. Yan etki: `medine2906` iki pilot repo'yu
+      görmeyi kaybetti (beklenen davranış, [`TODO.md`](TODO.md)'de takipte).
+- [x] ✅ **Repo güvenlik ayarları** _(2026-08-18)_ — `vulnerability_alerts` (her plan,
+      her görünürlük) ve `secret_scanning` + push protection (yalnızca public; private
+      GHAS ister, modül sessizce atlar).
+      ⚠️ **Bulgu:** `vulnerability_alerts` **bu repo'da kapalıymış** — kontrol düzleminin
+      kendisi Dependabot uyarısı almıyormuş. Sebep: bu repo Terraform'dan önce elle açıldı.
+- [x] ✅ **Org geneli güvenlik varsayılanları** _(2026-08-18)_ — beşi `false` → `true`.
+      `advanced_security` bilerek `false` (GHAS/Enterprise ister → Faz 7).
+- [x] ✅ **Repo açma yetkisi kısıtlandı** _(2026-08-18)_ —
+      `members_can_create_repositories = false`. Artık yalnızca org owner elle repo
+      açabilir; normal yol config'den geçiyor.
+      ⚠️ GitHub "sadece mentörler" diyemiyor — org düzeyinde yetki ikili (tüm üyeler /
+      yalnızca owner'lar), takım bazlı ara kademe yok. Bugün tek owner `uslanozan`
+      olduğu için sonuç aynı, ama owner olmayan bir mentör repo açamaz.
+      ⚠️ **Doğrulanmadı:** bu ayarın GitHub App'i etkilemediği varsayılıyor (App org
+      üyesi değil). Bir sonraki repo yaratımı bunu kanıtlayacak; `403` gelirse geri alınır.
+- [x] ✅ **"Kim bypass edebiliyor?" raporu** _(2026-08-18)_ — repo × dal bazında etkin
+      bypass aktörlerini listeleyen Terraform output'u.
       **Karar E'nin doğrudan sonucu:** muafiyet kalıcıysa geriye tek kontrol görünürlük
       kalıyor. 2026-08-15 olayının fark edilmeme sebebi tam olarak buydu.
+      ⚠️ Org kapsamlı kısmı `people`'dan okuyor; `people` zorlanana kadar *beyan*.
+
+---
+
+### 📌 Konuşulacak — "Geçmişi kim koruyacak?" _(2026-08-18'de açıldı, faz atanmadı)_
+
+> **Durum: tartışma notu.** Karar verilmedi, faz atanmadı. Şu anki işler bitince
+> masaya gelecek. Burada duruyor ki unutulmasın.
+
+**Sorunu doğuran bulgu.** Org geneli güvenlik varsayılanlarını açtık ama bunlar
+`*_for_new_repositories` — yani **yalnızca geleceği koruyorlar**. Mevcut repo'lar
+etkilenmedi; onları modüldeki repo bazlı ayarlarla ayrıca açmak gerekti. Aynı gün
+`vulnerability_alerts`'in **bu repo'da kapalı** olduğu ortaya çıktı: elle açılmış tek
+repo, ve tam da denetlenmeyen tek repo oydu.
+
+**Genel hâli:** org'a **dışarıdan gelen** bir repo (transfer, satın alma, eski proje)
+config'i tanımıyor. Ne olacağı bugün belirsiz:
+
+| Soru | Bugünkü cevap |
+| :--- | :--- |
+| Repo org'a girdi, config'de yok. Ne olur? | **Hiçbir şey.** Terraform onu görmez, yönetmez, raporlamaz. |
+| Güvenlik varsayılanları uygulanır mı? | **Hayır** — onlar yalnızca *yeni* repo'lara. |
+| Bypass raporunda çıkar mı? | **Hayır** — rapor `local.repos`'tan, yani config'ten üretiliyor. |
+| Fark edilir mi? | **Hayır.** Bakılacak bir yer yok. |
+
+Yani bugün org'a sessizce bir repo girip **hiçbir kontrolün kapsamına girmeden**
+durabilir. Bu, projenin çözdüğünü iddia ettiği problemin ta kendisi.
+
+**Konuşulan iki yaklaşım** _(ikisi de tartışılmadı, sadece kaydedildi)_:
+
+1. **Script ile config çıkarma (pull).** Repo org'a gelmeden ya da geldikten hemen
+   sonra, mevcut ayarlarını okuyup `config/repositories/<ad>.yml` üreten bir araç.
+   İnsan üretilen dosyayı gözden geçirir, neyi kabul edip neyi ezeceğine karar verir,
+   PR açar, apply eder.
+   _Not: Terraform'un `import` bloğu bu işin **yarısını zaten yapıyor** — 2026-08-18'de
+   org ayarlarında tam olarak bunu kullandık ve dört bulgu çıkardı. Aynı teknik repo
+   başına uygulanabilir. Yani sıfırdan araç yazmak gerekmeyebilir._
+
+2. **Otomatik algılama (push).** Org'daki repo'ları periyodik olarak listeleyip
+   config'de karşılığı olmayanları raporlayan bir kontrol. Kendiliğinden yönetmez,
+   **görünür kılar** — "şu repo yönetim dışında" der.
+   _Not: bu, `enforce_admins = false` için verdiğimiz cevabın aynısı — kapatamıyorsan
+   en azından gör. Aynı felsefe._
+
+**Ayrı ayrı sorular, karıştırılmamalı:**
+- **Keşif** — repo'nun bugünkü ayarları ne? (import / API okuma)
+- **Uzlaştırma** — bunların hangisini kabul edip hangisini ezeceğiz? (insan kararı)
+- **Kapsama** — yönetim dışı repo'yu kim, ne sıklıkta fark edecek? (sürekli kontrol)
+
+Üçü farklı işler; biri diğerini çözmüyor. 1. yaklaşım keşif + uzlaştırmayı,
+2. yaklaşım kapsamayı hedefliyor — muhtemelen **ikisi de gerekiyor**.
+
+**Faz yerleşimi hakkında ön düşünce** _(karar değil)_: bu iş `config/`'in nerede
+yaşadığına bağımlı, yani **Faz 8'den sonra** yapılması daha ucuz — aksi halde araç
+önce bu repoya, sonra config repo'suna yazacak şekilde iki kez kurulur. Ama
+**kapsama kontrolü** (2. yaklaşım) Faz 8'i beklemek zorunda değil; bugün de yazılabilir
+ve bugünkü boşluğu görünür kılar.
 
 ---
 

@@ -79,6 +79,23 @@ defaults:
   default_branch: develop
 
   # ---------------------------------------------------------------------------
+  # GÜVENLİK
+  # ---------------------------------------------------------------------------
+  # vulnerability_alerts → Dependabot güvenlik uyarıları. Her planda, her
+  #   görünürlükte çalışır. Kapatmak bilinçli bir karar olmalı.
+  #
+  # secret_scanning → Secret scanning + push protection. Asıl değerli olan
+  #   ikincisi: sızdırılmış anahtar repo'ya GİRMEDEN push reddedilir.
+  #   ⚠️ Yalnızca PUBLIC repo'da ücretsiz; private repo GitHub Advanced Security
+  #   (Enterprise) ister. Modül private repo'da bu ayarı sessizce atlar — burada
+  #   `true` bırakmak private repo'nun apply'ını patlatmaz.
+  #
+  # `advanced_security` bilerek yönetilmiyor: public'te örtük açık, private'ta
+  # lisans gerektiriyor. İkisinde de yönetmeye çalışmak hata üretir.
+  vulnerability_alerts: true
+  secret_scanning: true
+
+  # ---------------------------------------------------------------------------
   # ŞABLON DAĞITIMI
   # ---------------------------------------------------------------------------
   # Kaynak dosyalar: terraform/templates/ — ağaç yapısı repo içindeki hedef yolu

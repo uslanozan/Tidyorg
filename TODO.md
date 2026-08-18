@@ -50,17 +50,48 @@ Son güncelleme: 2026-08-18
 
 Bunlar `org-settings.tf` import'unun yan ürünü — daha önce hiçbir yerde görünmüyorlardı.
 
-- [ ] **Org düzeyinde hiçbir güvenlik varsayılanı açık değil.**
-      `dependabot_alerts` · `dependabot_security_updates` · `dependency_graph` ·
-      `secret_scanning` · `secret_scanning_push_protection` · `advanced_security`
-      → **hepsi `false`**. Config'den açılan her yeni repo sıfır güvenlik özelliğiyle
-      doğuyor. Faz 6'nın `vulnerability_alerts` maddesi bunu repo bazında çözer; org
-      varsayılanı olarak açmak yukarıdaki blok devreye girince tek satırlık iş.
+- [x] ~~**Org düzeyinde hiçbir güvenlik varsayılanı açık değil.**~~ ✅ **2026-08-18** —
+      beşi `false` → `true` yapıldı (`dependabot_alerts`, `dependabot_security_updates`,
+      `dependency_graph`, `secret_scanning`, `secret_scanning_push_protection`).
+      `advanced_security` bilerek `false` kaldı: GHAS/Enterprise lisansı ister.
+      ⚠️ Bunlar **yeni** repo'ları kapsar; mevcut repo'lar modüldeki ayarlarla çözüldü.
 
-- [ ] **`members_can_create_public_repositories = true`** — herhangi bir org üyesi
-      **public** repo açabiliyor. `default_repository_permission = none` bunu **kapatmaz**
-      (farklı eksen: biri mevcut repolara erişim, diğeri yeni repo yaratma).
-      Karar gerekiyor; kapatılırsa repo açma tamamen config'e iner.
+- [x] ~~**`members_can_create_public_repositories = true`**~~ ✅ **2026-08-18** — üçü de
+      `false` yapıldı (`repositories`, `public`, `private`). Artık yalnızca org owner
+      elle repo açabilir; normal yol config'den geçiyor.
+      ⚠️ GitHub "sadece mentörler açsın" **diyemiyor** — org düzeyinde yetki ikili
+      (tüm üyeler / yalnızca owner'lar), takım bazlı ara kademe yok.
+
+- [x] 🧪 ~~**Repo açma kısıtı GitHub App'i etkiliyor mu?**~~ ✅ **DOĞRULANDI — etkilemiyor**
+      _(2026-08-18)_. `members_can_create_repositories = false` yürürlükteyken geçici bir
+      repo config'i eklendi ve apply çalıştırıldı:
+      ```
+      module.repositories["tmp-app-create-test"].github_repository.this:
+        Creation complete after 11s [id=tmp-app-create-test]
+      Apply complete! Resources: 11 added, 0 changed, 0 destroyed.
+      ```
+      **Sonuç:** ayar org **üyelerini** kısıtlıyor; GitHub App org üyesi değil, kurulu bir
+      entegrasyon ve kendi izinleriyle çalışıyor. Config'den repo yaratma akışı sağlam.
+      Bu, kısıtın **istenen** şekli: insan elle açamıyor, config açabiliyor.
+
+- [ ] 🗑️ **Test artıklarını sil — elle yapılman gereken 3 nesne** _(2026-08-18)_
+      `tmp-app-create-test` Terraform state'inden çıkarıldı ve config'i silindi, ama
+      **GitHub'da hâlâ duruyor** (`prevent_destroy` yüzünden Terraform silemedi).
+      Şu an yönetim dışı — yani tam da ROADMAP'teki "Geçmişi kim koruyacak?" notunun
+      örneği, kendi elimizle üretilmiş hâli.
+      Silinecekler:
+      1. Repo: `https://github.com/your-org/tmp-app-create-test` → Settings → Danger Zone
+      2. Takım: `tmp-app-create-test-mentors`
+      3. Takım: `tmp-app-create-test-devs`
+      _(Repo silinince takımlar silinmez, ayrıca kaldırılmalı.)_
+
+- [ ] 💡 **Öneri: config'e `ephemeral: true` alanı** _(2026-08-18'de doğdu)_
+      Bugünkü test gösterdi ki **atılabilir repo açmak pahalı**: `prevent_destroy`
+      yüzünden temizlik üç adımlı ve elle yapılıyor, arkasında yönetim dışı nesneler
+      kalıyor. `ephemeral: true` yazan repo'da modül `prevent_destroy`'u uygulamasın —
+      config'den satır silinince Terraform temizlesin.
+      ⚠️ `lifecycle` bloğu dinamik olamıyor (Faz 2'de öğrenildi), yani `strict`/`seed`
+      ayrımındaki gibi **iki ayrı kaynak** gerekir. Maliyeti buna değer mi, konuşulmalı.
 
 ---
 

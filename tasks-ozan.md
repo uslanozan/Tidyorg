@@ -552,8 +552,25 @@ iniyor. Geri alma da pin'i düşürmeye iniyor.
 > bağlandığı için Faz 6 bugünkü tek repo zemininde yapılıyor.
 
 ### 🔒 Repo güvenlik ayarları
-- [ ] Modüle `vulnerability_alerts` ekle _(Dependabot uyarıları)_
-- [ ] Uygun olduğunda `security_and_analysis` blokları
+- [x] ✅ Modüle `vulnerability_alerts` eklendi _(2026-08-18)_ — config'den yönetiliyor
+      (`defaults.vulnerability_alerts: true`), dört repoda da açık.
+      ⚠️ **Bulgu: bu repo'da kapalıymış.** Yani kontrol düzleminin kendisi aylardır
+      Dependabot zafiyet uyarısı almıyormuş. İki pilot repo'da açıktı — fark, bu repo'nun
+      Terraform'dan **önce elle** açılmış olmasından geliyor. Elle kurulan her şeyin
+      config'e alınana kadar denetlenmediğinin somut örneği.
+- [x] ✅ `security_and_analysis` bloğu eklendi _(2026-08-18)_ — secret scanning +
+      **push protection**. İkincisi asıl değerli olan: sızdırılmış anahtar repo'ya
+      **girmeden** push reddedilir, sonradan uyarmaz.
+      ⚠️ Yalnızca **public** repo'da ücretsiz; private repo GHAS (Enterprise) ister.
+      Modül koşulu `visibility == "public"` içeriyor — `pilot-access-test` (private)
+      sessizce atlandı ve apply **ilk denemede** geçti, `422` alınmadı.
+      `advanced_security` bilerek hiç yönetilmiyor: public'te örtük açık, private'ta
+      lisans ister; ikisinde de yönetmeye çalışmak hata.
+- [x] ✅ **Org geneli güvenlik varsayılanları açıldı** _(2026-08-18)_ —
+      `dependabot_alerts` · `dependabot_security_updates` · `dependency_graph` ·
+      `secret_scanning` · `secret_scanning_push_protection` → `false` → `true`.
+      Bunlar **yeni** repo'ları kapsıyor, modüldeki ayarlar **mevcut** repo'ları.
+      İkisi farklı zaman dilimini koruyor, biri diğerinin yerine geçmez.
 - [x] ✅ **`default_repository_permission` = `Read` → `None`** — **canlıda** _(2026-08-18)_.
       Değer kendi raporumuzda görünüyordu —
       [`04-collaborators-teams.png`](docs/images/pilot-verification/04-collaborators-teams.png)
@@ -582,16 +599,30 @@ iniyor. Geri alma da pin'i düşürmeye iniyor.
       GitHub tarafında daha dar tanımlanmış. Yeni bir kaynak türüne ilk kez dokunurken izin
       tablosuna **önden** bakmak gerekiyor.
       İzin verildi, apply geçti. Manifest ve kurulum README'si güncellendi.
-- [ ] 🚨 **`members_can_create_public_repositories = true`** — import'un yan ürünü olarak
-      bugün görüldü. **Herhangi bir org üyesi public repo açabiliyor.** `default_repository_permission`
-      bunu kapatmaz (farklı eksen: biri mevcut repolara erişim, diğeri yeni repo yaratma).
-      Karar gerekiyor — kapatılırsa repo açma tamamen config'e (dogfooding) iner.
-- [ ] 🚨 **Org düzeyinde hiçbir güvenlik varsayılanı açık değil** — aynı import'ta görüldü:
-      `dependabot_alerts` · `dependabot_security_updates` · `dependency_graph` ·
-      `secret_scanning` · `secret_scanning_push_protection` · `advanced_security`
-      → **hepsi `false`**. Yeni açılan her repo sıfır güvenlik özelliğiyle doğuyor.
-      Yukarıdaki `vulnerability_alerts` maddesi bunu repo bazında çözer; org varsayılanı
-      olarak açmak `org-settings.tf` bloğu devreye girince tek satırlık iş.
+- [x] ✅ ~~`members_can_create_public_repositories = true`~~ — **kapatıldı** _(2026-08-18)_.
+      Üçü de `false`: `repositories`, `public`, `private`. Artık yalnızca org owner elle
+      repo açabilir; normal yol config'den geçiyor — dogfooding iddiası artık zorlanıyor.
+      ⚠️ GitHub "sadece mentörler açsın" **diyemiyor**: org düzeyinde yetki ikili
+      (tüm üyeler / yalnızca owner'lar), takım bazlı ara kademe yok. Bugün tek owner
+      `uslanozan` olduğu için sonuç aynı; owner olmayan bir mentör gelirse repo açamaz.
+      ✅ **Doğrulandı (2026-08-18):** ayar GitHub App'i **etkilemiyor.** Kısıt
+      yürürlükteyken geçici bir repo config'den yaratıldı, `Creation complete after 11s`.
+      Sebep: ayar org **üyelerini** hedefliyor; App org üyesi değil, kurulu bir
+      entegrasyon ve kendi izinleriyle çalışıyor. Kısıtın istenen şekli tam olarak bu:
+      **insan elle açamıyor, config açabiliyor.**
+      🔗 [Restricting repository creation](https://docs.github.com/en/organizations/managing-organization-settings/restricting-repository-creation-in-your-organization)
+      · [Roles in an organization](https://docs.github.com/en/organizations/managing-peoples-access-to-your-organization-with-roles/roles-in-an-organization)
+- [x] ✅ **`vulnerability_alerts` ayrı kaynağa taşındı** _(2026-08-18, test sırasında çıktı)_
+      Apply, `github_repository.vulnerability_alerts` alanının **deprecate edildiğini**
+      uyardı: *"Use the github_repository_vulnerability_alerts resource instead. This
+      field will be removed in a future version."*
+      Ayrı kaynağa geçildi (`github_repository_vulnerability_alerts`, `enabled` alanıyla).
+      `4 to add, 0 to change` — yani geçiş mevcut ayarı bozmadı, sadece sahipliği taşıdı.
+      **Ders:** deprecation uyarıları apply çıktısının sonunda görünüyor ve `Apply
+      complete!` satırının gürültüsünde kolayca kaçıyor. Bugün ancak `grep` ile fark edildi.
+- [x] ✅ ~~Org düzeyinde hiçbir güvenlik varsayılanı açık değil~~ — **kapatıldı**
+      _(2026-08-18)_. Beşi `false` → `true` yapıldı; `advanced_security` bilerek `false`
+      kaldı (GHAS/Enterprise lisansı ister). Detay yukarıdaki güvenlik maddelerinde.
 - [x] 🔍 ✅ **"Kim bypass edebiliyor?" raporu** _(2026-08-18)_ —
       [`terraform/outputs.tf`](terraform/outputs.tf) → `branch_protection_bypass`.
       Repo × dal kırılımında muaf aktörleri listeliyor.
@@ -604,8 +635,11 @@ iniyor. Geri alma da pin'i düşürmeye iniyor.
       bunu `_uyari` alanında açıkça söylüyor; aşağıdaki `github_membership` işi bitince
       uyarı kalkacak.
       Bugünkü çıktı: her repo ve her dalda tek muaf aktör `uslanozan`.
-- [ ] [`docs/security-policy.md`](docs/security-policy.md)'deki durum tablosunu güncelle —
-      "planlandı" olan maddeler "aktif" olacak
+- [x] ✅ [`docs/security-policy.md`](docs/security-policy.md) durum tablosu güncellendi
+      _(2026-08-18)_ — Bölüm 5'ten ("Bunlara güvenmeyin") dört madde çıktı; yerine
+      "5.1 Bu bölümden çıkanlar" tarihsel kaydı geldi. Tabloya iki yeni ⛔ eklendi
+      (private repo'da secret scanning, `advanced_security`) ve
+      `members_can_create_public_repositories` ⚠️ olarak girdi.
 
 ### 👤 `people` → organizasyon üyeliği
 

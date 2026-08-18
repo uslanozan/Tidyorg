@@ -163,6 +163,181 @@ bulunması saatler süren bir "neden göremiyorum" turu olurdu.
 Ozan'a söyledim; Medine'ye haber gidecek ve iki repo'nun `developers` listesine eklenip
 eklenmeyeceğine karar verilecek.
 
+### 6. Test repo'su — ve public/private tuzağı
+
+`none`'ın gerçekten çalıştığını görmek için sıfırdan bir repo açtık: `pilot-access-test`,
+kimseye yetki verilmemiş halde (yalnızca mentör ben).
+
+Config'i yazarken az kalsın testi geçersiz kılıyordum. `defaults.visibility` = `public`
+ve **public repo'yu internetteki herkes görür** — Emre ile Medine repo'yu görseydi bu
+base permission'dan değil public olmasından gelirdi. Yani test hiçbir şey kanıtlamazdı.
+`visibility: private` yazdım.
+
+Ama private olunca free plan'de branch protection çalışmıyor. `protected_branches`'i
+`null` ile kaldırdım — bu, `develop`'u silerken eklediğim kaldırma escape hatch'inin
+**ikinci kullanımı** oldu. İki gün önce tek seferlik bir ihtiyaç sanıyordum; meğer genel
+bir yetenekmiş.
+
+Sonuç: 20 kaynak, `0 destroy`. Faz 2'yi ilk kez **sıfırdan bir repoya** uyguladık — daha
+önce hep var olan repolara dağıtmıştık. Şablonların tamamı indi.
+
+Bir de şunu fark ettim: bypass raporu bu repo için `{}` döndürdü. Doğru (korumalı dal
+yok), ama raporun bir zayıflığını gösteriyor — **"korumalı dal yok" ile "endişelenecek
+bir şey yok" aynı görünüyor.** Burada bilerek öyle; gerçek bir repoda boş harita alarm
+olmalı, sessizlik değil.
+
+### 7. Repo güvenlik ayarları — ve kendi evimizin kapısı açıkmış
+
+Faz 6'nın kalan büyük parçalarından biri. Modüle iki ayar ekledim:
+
+- **`vulnerability_alerts`** — Dependabot zafiyet uyarıları. Her planda, her görünürlükte
+  çalışır, varsayılanı `true`.
+- **`secret_scanning`** — secret scanning + **push protection**. Asıl değerli olan
+  ikincisi: sızdırılmış anahtar repo'ya **girmeden** push reddediliyor, sonradan
+  uyarılmıyor.
+
+Secret scanning yalnızca public repo'da ücretsiz; private repo GHAS (Enterprise) istiyor
+ve API `422` dönüyor. Bu yüzden modüldeki koşula `visibility == "public"` de koydum —
+config'de `true` yazan bir private repo apply'ı patlatmasın diye. Sessiz atlama normalde
+kötü bir kalıp; burada kabul edilebilir olmasının sebebi kararın **config'e değil plana**
+bağlı olması. Kullanıcı yanlış bir şey yazmıyor, GitHub o repo türünde özelliği vermiyor.
+`pilot-access-test` sessizce atlandı, apply ilk denemede geçti.
+
+**Plan'ın gösterdiği şey canımı sıktı:** `vulnerability_alerts` bu repo'da **`false`**'muş.
+Yani **kontrol düzleminin kendisi** aylardır Dependabot zafiyet uyarısı almıyormuş. İki
+pilot repoda açıktı. Fark nereden geliyor? Bu repo Terraform'dan **önce elle** açılmıştı;
+pilotlar modülden doğdu.
+
+Bu, projenin tezinin en somut kanıtı oldu: **elle kurulan hiçbir şey denetlenmiyor.**
+Güvenlik politikası yazdık, dört doküman ürettik, branch protection'ı canlı test ettik —
+ve kendi repo'muzda temel bir ayar kapalıydı. Kimse fark etmedi çünkü bakılacak bir yer
+yoktu. Config'e alındığı an `plan` bunu bir satırda söyledi.
+
+Org düzeyinde de beş varsayılanı açtım — ama şunu ayırt etmek önemli: **org ayarları
+yalnızca YENİ repo'ları kapsıyor, mevcutları değil.** İkisi farklı zaman dilimini
+koruyor, biri diğerinin yerine geçmiyor. Bunu hem koda hem `security-policy.md`'ye yazdım
+çünkü "org'da açtık, tamamdır" demek kolay ve yanlış.
+
+`security-policy.md`'nin "⛔ Bunlara güvenmeyin" bölümünden dört madde çıktı. O bölümü
+silmek yerine altına "5.1 Bu bölümden çıkanlar" diye tarihsel bir kayıt bıraktım —
+bir güvenlik dokümanında "ne zaman neye güvenilemezdi" bilgisi, "şu an ne var" kadar
+değerli.
+
+### 8. Repo açma kısıtı — ve GitHub'ın diyemediği şey
+
+Ozan `members_can_create_public_repositories = false` istedi, "sadece mentörler veya
+head of engineer repo açabilsin" diye. Yaptım ama istenen şeyi tam veremedim ve bunu
+söylemek zorundaydım: **GitHub org düzeyinde "sadece mentörler" diyemiyor.** Repo açma
+yetkisi ikili — ya tüm üyeler, ya yalnızca org owner'lar. Takım bazlı ara kademe yok.
+
+Bugün fark yok: tek mentör Ozan ve zaten org owner. Ama owner olmayan bir mentör gelirse
+repo açamayacak. Bunu bir kayıp olarak değil, modelin doğal sonucu olarak kabul ediyorum:
+**repolar config'den doğmalı, insan elinden değil.** Elle repo açmak zaten kaçak yoldu;
+kapatmak modeli bozmuyor, tersine zorluyor.
+
+Üçünü birden `false` yaptım (`repositories`, `public`, `private`) — master anahtar tek
+başına yeterdi ama alt anahtarları da açıkça yazmak, ileride biri master'ı açtığında
+alt seviyede ne olacağını belirsiz bırakmıyor.
+
+**Bir şeyi doğrulamamıştım:** bu ayarın GitHub App'i etkilemediğini *varsayıyordum* — App
+org üyesi değil, kurulu bir entegrasyon. Ama test etmemiştim, ve yanılsam config'den repo
+yaratma tamamen bozulurdu. Ozan "doğrulayalım" dedi, haklıydı.
+
+### 10. App testi — varsayım tuttu
+
+Kısıt yürürlükteyken geçici bir repo config'i ekleyip apply ettim:
+
+```
+module.repositories["tmp-app-create-test"].github_repository.this:
+  Creation complete after 11s [id=tmp-app-create-test]
+Apply complete! Resources: 11 added, 0 changed, 0 destroyed.
+```
+
+**App kısıtlanmıyor.** Ayar org **üyelerini** hedefliyor; App kendi izinleriyle çalışan
+kurulu bir entegrasyon. Yani kısıtın aldığı şekil tam olarak istediğimiz: **insan elle
+repo açamıyor, config açabiliyor.**
+
+Bu testi yapmasaydık bunu ancak haftalar sonra, gerçek bir repo açarken öğrenecektik — ve
+o an "neden çalışmıyor" diye Terraform'da arayacaktık, org ayarında değil.
+
+### 11. Testin yan ürünü: kullandığım alan deprecated'mış
+
+Apply çıktısını `grep`'lerken uyarıyı gördüm:
+
+> `vulnerability_alerts` — *"Use the `github_repository_vulnerability_alerts` resource
+> instead. This field will be removed in a future version."*
+
+Yani **bugün eklediğim alan zaten ölmüş.** Ayrı kaynağa taşıdım; `4 to add, 0 to change`,
+yani geçiş mevcut ayarı bozmadı, sadece sahipliği taşıdı.
+
+**Asıl rahatsız edici kısım şu:** bu uyarı ilk apply'da da vardı, ben görmedim. Deprecation
+uyarıları `Apply complete!` satırının hemen üstünde, uzun çıktının içinde duruyor. Bugün
+ancak `grep` attığım için fark ettim — normal akışta gözden kaçardı ve provider güncellemesi
+geldiğinde apply patlardı.
+
+Kendime kural: apply çıktısını sadece "başarılı mı" diye okumak yetmiyor, **`Warning`
+satırlarına ayrıca bakmak** gerekiyor. CI'daki plan yorumuna bunu ekleyebiliriz —
+uyarı sayısını da raporlasın, tıpkı drift sayısını raporladığı gibi.
+
+### 12. Kendi elimizle yönetim dışı nesne ürettik
+
+Test repo'sunu temizlerken şunu fark ettim: **atılabilir repo açmak pahalı.** Modüldeki
+`prevent_destroy` yüzünden Terraform repo'yu silemiyor. Yaptığım:
+
+1. `terraform state rm 'module.repositories["tmp-app-create-test"]'`
+2. Config dosyasını sil
+
+Ama repo GitHub'da duruyor — ve artık **yönetim dışı**. Üstelik iki takım da (`-mentors`,
+`-devs`) orada kaldı; repo silinince takımlar silinmiyor.
+
+Yani sabah "org'a yönetim dışı bir repo girerse kimse fark etmez" diye not yazdım,
+öğleden sonra kendi elimle üç tane ürettim. Ozan elle silecek, ama bu tesadüf değil —
+**test etmeyi pahalı yapan her şey, testin yapılmamasına yol açar.**
+
+ROADMAP'e bir öneri yazdım: config'e `ephemeral: true` alanı: öyle işaretlenen repo'da
+`prevent_destroy` uygulanmasın, config'den satır silinince Terraform temizlesin. Bedeli
+var — `lifecycle` dinamik olamadığı için (Faz 2'de öğrendik) iki ayrı kaynak gerekir.
+Değer mi, konuşulacak.
+
+### 9. Bugünün en büyük sorusu: geçmişi kim koruyacak?
+
+Org varsayılanlarını açarken fark ettiğim şey, aslında bugünün en önemli bulgusu:
+bu ayarlar `*_for_new_repositories`. **Yalnızca geleceği koruyorlar.**
+
+Ve aynı gün `vulnerability_alerts`'in bu repo'da kapalı olduğunu gördük — elle açılmış
+tek repo, ve tam da denetlenmeyen tek repo oydu. İkisi aynı madalyonun yüzleri.
+
+Genel hâli daha rahatsız edici: org'a **dışarıdan gelen** bir repo (transfer, eski proje,
+satın alma) config'i tanımıyor. Bugün ne olur?
+
+- Terraform onu görmez, yönetmez, raporlamaz
+- Güvenlik varsayılanları uygulanmaz (onlar yalnızca yeni repo'lara)
+- Bypass raporunda çıkmaz (rapor config'ten üretiliyor)
+- **Ve kimse fark etmez, çünkü bakılacak bir yer yok**
+
+Yani org'a sessizce bir repo girip hiçbir kontrolün kapsamına girmeden durabilir. Bu,
+projenin çözdüğünü iddia ettiği problemin ta kendisi — sadece bir seviye yukarıda.
+
+Ozan iki yaklaşım attı: repo gelmeden config çıkaran bir script, ya da otomatik algılayan
+bir şey. Şimdilik konuşmadık, ROADMAP'e tartışma notu olarak yazdım. Ama not alırken üç
+şeyin karıştırılmaması gerektiğini fark ettim:
+
+- **Keşif** — repo'nun bugünkü ayarları ne?
+- **Uzlaştırma** — bunların hangisini kabul edip hangisini ezeceğiz?
+- **Kapsama** — yönetim dışı bir repo'yu kim, ne sıklıkta fark edecek?
+
+Script yaklaşımı ilk ikisini, otomatik algılama üçüncüsünü çözüyor. **Biri diğerinin
+yerine geçmiyor**; muhtemelen ikisi de gerekiyor.
+
+Bir de şunu yazdım çünkü kendimi tekrar ederken buldum: keşif kısmı için sıfırdan araç
+yazmak gerekmeyebilir — **`import` bloğu bu işin yarısını zaten yapıyor.** Bugün org
+ayarlarında tam olarak bunu kullandık ve dört bulgu çıkardı. Aynı teknik repo başına
+uygulanabilir.
+
+Ve kapsama kısmı için verdiğim cevap, `enforce_admins` için verdiğimizin aynısı:
+**kapatamıyorsan en azından gör.** Bu projede aynı felsefeye üçüncü kez varıyoruz —
+sanırım bu artık bir tesadüf değil, projenin omurgası.
+
 **Günün dersi:** `import` bloğunu buraya bir "state'e alma" mekaniği olarak kullandım ama
 asıl işi **keşif** oldu. Terraform'a hiç bağlanmamış bir kaynağı import edip plan almak,
 o kaynağın gerçek durumunu okumanın en ucuz yolu — hem de hiçbir şeyi değiştirmeden.

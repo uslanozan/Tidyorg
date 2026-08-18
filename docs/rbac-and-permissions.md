@@ -125,6 +125,35 @@ Birini kapatmak yetmez.
 Rol tanımları: [`organization.yml`](../terraform/config/organization.yml) → `roles:`.
 Dal kuralları: aynı dosya → `defaults.protected_branches`.
 
+### 4.1 Repo açma yetkisi — GitHub'ın diyemediği şey _(2026-08-18)_
+
+`members_can_create_repositories = false` yapıldı: artık **yalnızca org owner** elle repo
+açabilir. Normal yol config'den geçer — `config/repositories/<ad>.yml` eklenir, PR açılır,
+apply repo'yu yaratır.
+
+**"Sadece mentörler açabilsin" GitHub'da ifade edilemiyor.** Org düzeyinde repo açma
+yetkisi ikili: ya tüm üyeler, ya yalnızca owner'lar. Takım bazlı ara kademe yoktur.
+
+- [Restricting repository creation in your organization](https://docs.github.com/en/organizations/managing-organization-settings/restricting-repository-creation-in-your-organization)
+- [Roles in an organization](https://docs.github.com/en/organizations/managing-peoples-access-to-your-organization-with-roles/roles-in-an-organization)
+
+> 🚨 **"O zaman mentörü owner yaparız" — bedeli küçük değil.**
+>
+> Org owner'lık repo açma yetkisi vermez; **organizasyondaki her şeye** tam yetki verir:
+> her repo'da admin, her korumalı dalda muaf (Karar E ile `enforce_admins = false`),
+> üye ekleme/çıkarma, org ayarlarını değiştirme, repo silme, faturaya erişim.
+>
+> Yukarıdaki matriste org owner satırının **"kapatılamaz"** demesinin sebebi bu.
+> 2026-08-15 olayının kökü de tam olarak buydu.
+>
+> Yani repo açabilsin diye owner yapmak, **bir kapıyı açmak için duvarı yıkmaktır.**
+> Owner'lık repo açma ihtiyacından değil, **org yönetimi** ihtiyacından verilmelidir;
+> sayısı bilinçli tutulur ([`../ACCESS-MODEL.md`](../ACCESS-MODEL.md): azami 3 civarı).
+> Kimin owner olduğu `terraform output branch_protection_bypass` çıktısında görünür.
+>
+> Repo açma ihtiyacı için doğru cevap owner'lık değil, **config'den açmaktır** — zaten
+> istenen akış odur.
+
 ### Karar: `enforce_admins` her dalda `false` kalır _(2026-08-15 teyit edildi)_
 
 `main` için `true` yapmak tartışıldı ve **reddedildi.** Gerekçe: mentörler ve üstü her

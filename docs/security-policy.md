@@ -55,8 +55,8 @@ modda dağıtılır — yani Terraform içeriği sahiplenir, elle değiştirilir
   `tech-leads` takımı 2026-08-16'da kaldırıldı ([`../ACCESS-MODEL.md`](../ACCESS-MODEL.md)
   Karar 12).
 
-> Dependabot yalnızca **güncelleme** açar. Zafiyet uyarılarının (`vulnerability_alerts`)
-> Terraform'dan yönetimi henüz kurulmadı — bkz. Bölüm 5.
+> Dependabot yalnızca **güncelleme** açar; zafiyet **uyarıları** ayrı bir ayardır
+> (`vulnerability_alerts`). O da 2026-08-18'de Terraform'a bağlandı — bkz. Bölüm 5.
 
 ---
 
@@ -113,12 +113,23 @@ planlanmıştır ([`../ROADMAP.md`](../ROADMAP.md)).
 
 | Koruma | Durum | Not |
 | :--- | :--- | :--- |
-| **Secret scanning / Push protection** | ⛔ Yönetilmiyor | Public repo'larda GitHub tarafında etkinleştirilebilir, ancak Terraform'dan yönetilmiyor ve org geneli açık olduğu doğrulanmadı. |
 | **Code scanning (CodeQL)** | ⛔ Yok | `ci.yml` içinde CodeQL adımı bulunmuyor. Kritik/yüksek bulgunun merge'i engellemesi diye bir mekanizma **yoktur**. |
-| **`vulnerability_alerts`** | ⛔ Yönetilmiyor | `security_and_analysis` ayarları config şemasında yok. |
 | **Süre sınırlı erişim** | ⛔ Yok | Geçici erişimler elle kaldırılmalıdır. |
-| **"Kim bypass edebiliyor?" raporu** | ⛔ Yok | Kalıcı muafiyet varken tek gerçek kontrol görünürlüktür; bu output Faz 6'da planlı. |
 | **Private repo'da dal koruması** | ⛔ Engelli | Free plan'de çalışmıyor. Repo'lar bu yüzden `public`; GitHub Team planı ön koşuldur. |
+| **Private repo'da secret scanning** | ⛔ Engelli | GitHub Advanced Security (Enterprise) ister. Modül private repo'da bu ayarı **sessizce atlar** — config'de `true` yazsa bile uygulanmaz. Bugün etkilenen tek repo: `pilot-access-test`. |
+| **`advanced_security`** | ⛔ Bilerek yönetilmiyor | Public repo'da örtük açık, private'ta lisans ister. İkisinde de yönetmeye çalışmak hata üretir. Team/Enterprise planına geçilirse yeniden değerlendirilir. |
+| **`members_can_create_public_repositories`** | ⚠️ **Açık** | Herhangi bir org üyesi **public** repo açabiliyor. `default_repository_permission = none` bunu kapatmaz — farklı eksen. Karar bekliyor ([`../TODO.md`](../TODO.md)). |
+
+### 5.1 Bu bölümden 2026-08-18'de çıkanlar
+
+Aşağıdakiler artık **Bölüm 4'te yürürlükte** — bu tabloda tarihsel kayıt olarak duruyor:
+
+| Koruma | Yeni durum |
+| :--- | :--- |
+| **`vulnerability_alerts`** | ✅ Config'den yönetiliyor (`defaults.vulnerability_alerts`), dört repoda da açık. ⚠️ Bulgu: **bu repo'da kapalıymış** — kontrol düzleminin kendisi Dependabot uyarısı almıyormuş. |
+| **Secret scanning / Push protection** | ✅ Üç public repo'da açık (`defaults.secret_scanning`). Push protection asıl değerli olan: sızdırılmış anahtar repo'ya **girmeden** push reddedilir. |
+| **Org geneli güvenlik varsayılanları** | ✅ Beşi de açıldı — yeni repo'lar artık Dependabot alerts + security updates + dependency graph + secret scanning ile doğuyor. Öncesinde **altısı da kapalıydı**. |
+| **"Kim bypass edebiliyor?" raporu** | ✅ `terraform output branch_protection_bypass` |
 
 ---
 

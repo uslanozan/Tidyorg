@@ -109,12 +109,57 @@ resource "github_repository" "this" {
     }
   }
 
+  # --- Güvenlik ---
+  # NOT: `vulnerability_alerts` alanı burada DEĞİL — provider onu deprecate etti
+  # ("Use the github_repository_vulnerability_alerts resource instead"). Ayrı kaynak
+  # olarak aşağıda tanımlı.
+  #
+  # Secret scanning YALNIZCA public repo'da ücretsiz; private repo GHAS (Enterprise)
+  # ister ve API `422` döner. Bu yüzden koşul `visibility`'yi de içeriyor —
+  # config'de `true` yazan bir private repo apply'ı patlatmasın, sessizce atlansın.
+  #
+  # Sessiz atlama normalde kötü bir kalıptır; burada kabul edilebilir olmasının
+  # sebebi kararın config'e değil PLANA bağlı olması — kullanıcı yanlış bir şey
+  # yazmıyor, GitHub o repo türünde bu özelliği vermiyor.
+  #
+  # `advanced_security` bilerek yok: public'te örtük açık, private'ta lisans ister.
+  dynamic "security_and_analysis" {
+    for_each = (var.secret_scanning && var.visibility == "public" && !var.archived) ? [1] : []
+
+    content {
+      secret_scanning {
+        status = "enabled"
+      }
+      secret_scanning_push_protection {
+        status = "enabled"
+      }
+    }
+  }
+
   lifecycle {
     # Config'den bir repo satırının yanlışlıkla silinmesi repo'yu yok etmemeli.
     # Gerçekten silmek gerekirse bu bloğun bilinçli olarak kaldırılması gerekir.
     # Normal kullanımda silme yerine `archived: true` tercih edilir.
     prevent_destroy = true
   }
+}
+
+# --- Dependabot zafiyet uyarıları -------------------------------------------
+# `github_repository` üzerindeki `vulnerability_alerts` alanı provider tarafından
+# deprecate edildi ve ileride kaldırılacak. Bu kaynak onun yerini alıyor.
+#
+# 2026-08-18'de config'e alındığında bu repo'da KAPALI çıktı — kontrol düzleminin
+# kendisi aylardır zafiyet uyarısı almıyormuş. Sebep: bu repo Terraform'dan önce
+# elle açılmıştı, pilot repo'lar modülden doğdu. Elle kurulan hiçbir şeyin
+# denetlenmediğinin somut kanıtı.
+#
+# Arşiv repo hariç tutuluyor: GitHub arşivlenmiş repo'nun ayarlarını salt okunur
+# yapar, apply hata verir.
+resource "github_repository_vulnerability_alerts" "this" {
+  count = local.active ? 1 : 0
+
+  repository = github_repository.this.name
+  enabled    = var.vulnerability_alerts
 }
 
 # --- Dallar ----------------------------------------------------------------

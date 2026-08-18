@@ -52,6 +52,38 @@ variable "archived" {
   default     = false
 }
 
+variable "vulnerability_alerts" {
+  type        = bool
+  description = <<-EOT
+    Dependabot güvenlik uyarıları. Bağımlılıklarda bilinen açık çıktığında GitHub
+    uyarı üretir.
+
+    Her plan ve her görünürlükte çalışır — GHAS gerektirmez. Bu yüzden varsayılanı
+    `true`: kapatmak bilinçli bir karar olmalı, açmak değil.
+
+    ⚠️ Arşivlenmiş repo'da değiştirilemez; GitHub arşiv repo'nun ayarlarını salt
+    okunur yapar. Arşivlenecek repo'da önce bu ayar bugünkü değerinde bırakılmalı.
+  EOT
+  default     = true
+}
+
+variable "secret_scanning" {
+  type        = bool
+  description = <<-EOT
+    Secret scanning + push protection. İkincisi asıl değerli olan: sızdırılmış
+    anahtar repo'ya GİRMEDEN push'u reddeder, sonradan uyarmaz.
+
+    ⚠️ Yalnızca PUBLIC repo'larda ücretsiz. Private repo'da GitHub Advanced Security
+    (Enterprise lisansı) ister. Modül bu yüzden ayarı yalnızca `visibility == "public"`
+    iken uygular; private repo'da config `true` olsa bile sessizce atlanır —
+    aksi halde apply `422` ile patlardı.
+
+    `advanced_security` bilerek hiç yönetilmiyor: public repo'da zaten örtük açık,
+    private repo'da lisans gerektiriyor. Yönetmeye çalışmak iki durumda da hata.
+  EOT
+  default     = true
+}
+
 variable "has_issues" {
   type        = bool
   description = "Issues sekmesi açık mı"

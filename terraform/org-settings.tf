@@ -110,4 +110,60 @@ resource "github_organization_settings" "this" {
   # bir insana düşüyor. Bu değer bir daha daraltılacaksa önce "bu varsayılana kim
   # bağımlı?" sorusu cevaplanmalı; apply'dan sonra değil, önce.
   default_repository_permission = "none"
+
+  # --- Repo açma yetkisi ----------------------------------------------------
+  # 2026-08-18 import'unda `members_can_create_public_repositories = true` çıktı:
+  # herhangi bir org üyesi PUBLIC repo açabiliyordu. Kod sızıntısı için en kısa yol.
+  #
+  # ⚠️ GitHub "sadece mentörler açabilsin" DİYEMİYOR. Org düzeyinde repo açma yetkisi
+  # ikili: ya tüm üyeler, ya yalnızca ORG OWNER'lar. Takım bazlı ara kademe yok.
+  #   → https://docs.github.com/en/organizations/managing-organization-settings/restricting-repository-creation-in-your-organization
+  #   → https://docs.github.com/en/organizations/managing-peoples-access-to-your-organization-with-roles/roles-in-an-organization
+  #
+  # `false` = yalnızca org owner. Bugün tek owner `uslanozan` olduğu için "sadece
+  # mentör" ile aynı sonucu veriyor, ama owner OLMAYAN bir mentör gelirse repo
+  # açamayacak — bu kabul edilen bir sınırlama, çünkü asıl kural şu:
+  #
+  #   Repo'lar config'den doğar, insan elinden değil. `config/repositories/*.yml`
+  #   içine bir dosya eklenir, PR açılır, apply repo'yu yaratır. Elle repo açmak
+  #   zaten kaçak bir yol; kapatılması modeli bozmuyor, tersine zorluyor.
+  #
+  # 🚨 "Mentörü org owner yapalım" ÇÖZÜMÜNÜN BEDELİ — küçük değil:
+  # Org owner olmak repo açma yetkisi vermez, ORG'DAKİ HER ŞEYE tam yetki verir:
+  # her repo'da admin, her korumalı dalda muaf (Karar E ile `enforce_admins = false`),
+  # üye ekleme/çıkarma, org ayarlarını değiştirme, repo silme.
+  # 2026-08-15'te yaşadığımız olayın kökü tam olarak buydu.
+  #
+  # Yani "repo açabilsin diye owner yapmak", bir kapıyı açmak için duvarı yıkmaktır.
+  # Owner sayısı bilinçli tutulmalı (ACCESS-MODEL: azami 3 civarı) ve owner'lık
+  # repo açma ihtiyacından DEĞİL, org yönetimi ihtiyacından verilmelidir.
+  # Kim owner'sa `terraform output branch_protection_bypass` içinde görünür.
+  #
+  # ⚠️ DOĞRULANMADI: Bu ayar GitHub App'i etkilemiyor olmalı — App org ÜYESİ değil,
+  # kurulu bir entegrasyon. Ama canlı test edilmedi. Eğer Terraform'un yeni repo
+  # yaratması bundan sonra `403` verirse sebebi budur; o durumda bu üç satır geri
+  # alınır. Bir sonraki repo yaratımı bu yüzden dikkatle izlenmeli.
+  members_can_create_repositories         = false
+  members_can_create_public_repositories  = false
+  members_can_create_private_repositories = false
+
+  # --- Yeni repo'lar için güvenlik varsayılanları --------------------------
+  # 2026-08-18 import'unda ALTISI DA `false` çıktı — yani config'den açılan her
+  # yeni repo sıfır güvenlik özelliğiyle doğuyordu. Modüldeki repo bazlı ayarlar
+  # (`vulnerability_alerts`, `secret_scanning`) mevcut repo'ları kapsıyor; buradaki
+  # değerler ise HENÜZ VAR OLMAYAN repo'ları. İkisi farklı zaman dilimini koruyor,
+  # biri diğerinin yerine geçmez.
+  dependabot_alerts_enabled_for_new_repositories           = true
+  dependabot_security_updates_enabled_for_new_repositories = true
+  dependency_graph_enabled_for_new_repositories            = true
+
+  # ⚠️ Secret scanning org varsayılanı yalnızca PUBLIC repo'lara uygulanır;
+  # private repo'lar GHAS ister. Org ayarı olarak açmak private repo yaratmayı
+  # engellemez, o repo'da özellik açılmaz.
+  secret_scanning_enabled_for_new_repositories                 = true
+  secret_scanning_push_protection_enabled_for_new_repositories = true
+
+  # advanced_security → GHAS (Enterprise) lisansı gerektirir. Bilerek `false`.
+  # Team planına geçilirse (ROADMAP Faz 7) yeniden değerlendirilecek.
+  advanced_security_enabled_for_new_repositories = false
 }
