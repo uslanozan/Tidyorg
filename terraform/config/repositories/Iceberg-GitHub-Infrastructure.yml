@@ -6,3 +6,10 @@ developers:
   - paitblack
   - medine2906
 default_branch: main
+
+# Kontrol düzlemi repo'su — `develop` dalı yok (ROADMAP.md Karar F,
+# docs/branching-strategy.md Bölüm 8). Varsayılanlardan gelen `develop` koruması
+# `null` ile düşürülüyor; aksi halde var olmayan bir dala işaret eden ölü bir kural
+# kalırdı.
+protected_branches:
+  develop: null

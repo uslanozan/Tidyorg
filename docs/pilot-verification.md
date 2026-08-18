@@ -334,10 +334,33 @@ akışında görünür oldu. Kalıcı çözüm şablon dağıtımıdır — [`RO
 - [x] ~~CI workflow tetiklenmesi ve `ci/test` status check'inin **raporlanması**~~
       ✅ **2026-08-16'da doğrulandı** — şablon dağıtımı sonrası check ilk kez yeşil
       raporladı. Bkz. Bölüm 7.6.
-- [ ] `main`'de code owner (mentör) onayının zorunlu kılınması — 6.3/6.4 testleri
-      `develop` üzerinde yapıldı, `main` akışı ayrıca denenmeli
-- [ ] Force push denemesinin sonucu (admin bypass'ının force push'u kapsayıp kapsamadığı
-      bilinmiyor)
+- [x] ~~Force push denemesinin sonucu~~
+      ✅ **Doğrulandı — sonuç role göre değişiyor:**
+
+      | Rol | Sonuç |
+      | :--- | :--- |
+      | `developer` | ❌ **Reddedildi** — `allow_force_push: false` zorlanıyor |
+      | `mentor` | ✅ **Geçti** — `enforce_admins = false` muafiyeti force push'u da kapsıyor |
+
+      Yani mentör muafiyeti yalnızca PR/onay kurallarını değil, **force push korumasını da**
+      kapsıyor. Karar E'nin kapsamı bu kadar geniş — [`rbac-and-permissions.md`](rbac-and-permissions.md)
+      Bölüm 4'e işlendi.
+
+- [~] `main`'de code owner (mentör) onayının zorunlu kılınması — **kısmen doğrulandı**
+
+      **Gözlenen:** `developer` rolündeki hesap PR açtı ve **kendi PR'ını merge edemedi**
+      (Bölüm 6.4, `develop` üzerinde).
+
+      **Gözlenmeyen:** `develop`'ta `require_code_owner_review: false`. Yani o test
+      "onay zorunluluğu"nu kanıtladı, **code owner mekanizmasını değil** — ikisi ayrı
+      kural. `main`'de fazladan çalışan şey CODEOWNERS dosyası eşleşmesidir.
+
+      **Neden risk düşük:** CODEOWNERS dosyasının geçerliliği bağımsız olarak doğrulandı
+      (Bölüm 3 — GitHub'ın yeşil *"This CODEOWNERS file is valid"* bandı). Geçersiz bir
+      takım adı sessizce yok sayılırdı; geçerli olması eşleşmenin çalışacağını gösterir.
+
+      **Tam kanıt için gereken:** bir developer'ın `main`'e açtığı PR'ı **başka bir
+      developer** onaylasın ve PR yine de bloklu kalsın. İki developer hesabı gerektiriyor.
 
 Takip: [`TODO.md`](../TODO.md)
 

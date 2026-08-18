@@ -242,6 +242,31 @@ bir hedef doğar. Bugün tek org var.
 | Hotfix | Ayrı bir süreç değil; normal PR akışı zaten kısa |
 | Korumalı dal | Yalnızca `main` |
 
+### 8.1 Bir repo'yu trunk-based yapmak
+
+İki satır gerekir — ikincisi atlanırsa doküman yalan söyler:
+
+```yaml
+# terraform/config/repositories/<repo-adı>.yml
+default_branch: main
+
+protected_branches:
+  develop: null      # varsayılanlardan gelen develop kuralını düşür
+```
+
+`default_branch: main` tek başına yetmez. `defaults.protected_branches` içinde `develop`
+tanımlı olduğu için, düşürülmezse **var olmayan bir dala işaret eden ölü bir koruma kuralı**
+kalır — ve dal silindikten sonra bir sonraki `apply` onu sessizce **yeniden yaratır**.
+
+`null` yazma imkânı bu iş için eklendi: `repositories.tf` dal anahtarlarını birleştirdiği
+için, kaldırma kaçışı olmadan bir repo `defaults` içindeki bir dal kuralından asla
+kurtulamıyordu. Ayrıntı: [`config-guide.md`](config-guide.md).
+
+> ⚠️ **Silme sırası:** `develop` korumasında `allow_deletions: false` var. Dalı silmeye
+> çalıştığında GitHub itiraz ederse sebebi budur — mentör/head-of-engineering rolü
+> `enforce_admins = false` sayesinde yine de silebilir, ama temiz yol önce config'den
+> kuralı düşürüp `apply` etmektir.
+
 ---
 
 ## 9. İlgili Dokümanlar

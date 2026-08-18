@@ -32,6 +32,16 @@ locals {
   # olan alanı yazarak ezer. merge() sığ birleştirdiği için dal bazında tek tek
   # birleştirmek gerekir; aksi halde repo bir dalı ezdiğinde o dalın diğer tüm
   # alanları kaybolurdu.
+  #
+  # KALDIRMA KAÇIŞI — repo, bir dalı `null` yazarak varsayılandan düşürebilir:
+  #
+  #   protected_branches:
+  #     develop:            # ya da açıkça `develop: null`
+  #
+  # Buna ihtiyaç var çünkü anahtarlar birleştiriliyor: kaldırma kaçışı olmasa bir
+  # repo `defaults` içindeki bir dal kuralından asla kurtulamazdı. Kontrol düzlemi
+  # repolarında `develop` dalı hiç yok (Karar F) — kural kalsaydı var olmayan bir
+  # dala işaret eden ölü bir koruma olurdu.
   protected_branches = {
     for repo_name, repo in local.repos :
     repo_name => {
@@ -43,6 +53,9 @@ locals {
         try(local.repo_defaults.protected_branches[branch], {}),
         try(repo.protected_branches[branch], {}),
       )
+      # `try(...) == null` yalnızca repo o dalı AÇIKÇA null yazdığında doğrudur;
+      # hiç yazmadığında sentinel döner ve dal korunmaya devam eder.
+      if try(repo.protected_branches[branch], "inherit") != null
     }
   }
 }

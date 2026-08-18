@@ -198,6 +198,44 @@ Emin değilsen merge etme.
 Aynı anda iki `apply` çalışamaz. "Workspace is locked" hatası alırsanız birinin işlemi
 devam ediyordur. HCP Terraform arayüzünden çalışan run'ı görebilirsiniz.
 
+### 3.6 Biri arayüzden bir şeyi değiştirdi ya da sildi
+
+Mentör ve head-of-engineering rolleri arayüzden değişiklik yapabilir — `enforce_admins`
+kalıcı olarak `false` ([Karar E](../ROADMAP.md)). Yani bu senaryo **istisna değil, beklenen
+bir durum.** Sistemin buna verdiği cevap üç farklı davranışa ayrılır:
+
+| Ne yapıldı | Terraform ne yapar | Sonuç |
+| :--- | :--- | :--- |
+| **Yönetilen bir alan değişti** _(onay sayısı 1 → 2)_ | `plan`'da `~ update in-place` çıkar | ✅ `apply` eski değere döndürür |
+| **Yönetilen bir kaynak silindi** _(branch protection kuralı)_ | Refresh'te `Drift detected (delete)` | ✅ `apply` **yeniden yaratır** |
+| **Yönetilmeyen bir şey silindi** _(varsayılan olmayan bir dal)_ | Hiçbir şey — haberi olmaz | ⚠️ Sessizce kaybolur |
+
+**Üçüncü satır bu sistemin bilinen sınırı.** Modül yalnızca **varsayılan dalı** yönetir
+(`github_branch.default`, yalnızca `default_branch != "main"` iken oluşur). Varsayılan
+olmayan uzun ömürlü bir dal silinirse Terraform onu geri getirmez. Commit'ler git
+tarafında kaybolmaz (reflog, açık PR'lar durur) ama dalın kendisi beyan edilmediği için
+otomatik onarım yoktur.
+
+> **Bilinmesi gereken ayrım — kural dala bağlı değildir.**
+> Branch protection bir **isim desenine** uygulanır, dalın kendisine değil. Dal silinse
+> bile kural durabilir; o isimde bir dal yeniden açıldığında **kendiliğinden devreye
+> girer.** Var olmayan bir dala işaret eden kural zararsızdır ama görünmezdir — bu yüzden
+> bir dalı kalıcı olarak kaldırırken config'den de düşürülmelidir
+> (bkz. [`branching-strategy.md`](branching-strategy.md) Bölüm 8.1).
+
+**Ne yapmalı:**
+
+1. `terraform plan` çalıştırın — değişiklik yönetilen bir şeye aitse görünür.
+2. Değişiklik **kalıcı olsun isteniyorsa** arayüzde bırakmayın; config'e yazıp `apply` edin.
+   Aksi halde bir sonraki apply geri alır ve "ayarım kayboldu" şikayeti gelir.
+3. Silinen şey yönetim dışıysa (dal, etiket, milestone) elle geri getirilmelidir.
+
+**Yaşanmış örnek (2026-08-17):** `Tidyorg` reposunda `develop` dalı
+ve koruma kuralı arayüzden silindi. Dal zaten yönetilmiyordu (bu repoda varsayılan `main`),
+o yüzden Terraform fark etmedi. Koruma kuralı ise yönetiliyordu — ve config'den aynı anda
+düşürülmeseydi bir sonraki `apply` **var olmayan bir dal için kuralı sessizce geri
+yaratacaktı.**
+
 ---
 
 ## 4. Bilinen Kısıtlar
@@ -205,7 +243,12 @@ devam ediyordur. HCP Terraform arayüzünden çalışan run'ı görebilirsiniz.
 **Terraform yalnızca GitHub'ı yönetir.** Linear, Slack ve diğer sistemler kapsam
 dışıdır.
 
-**Arayüzden yapılan değişiklikler kalıcı değildir.** Bir sonraki `apply` geri alır.
+**Arayüzden yapılan değişiklikler kalıcı değildir — ama yalnızca yönetilen kaynaklar
+için.** Yönetilen bir ayar değiştirilir ya da silinirse bir sonraki `apply` geri alır;
+**yönetilmeyen bir şey silinirse Terraform'un haberi bile olmaz.** Varsayılan olmayan
+dallar, etiketler ve milestone'lar bu ikinci gruba girer. Üç durumun tablosu ve yaşanmış
+örnek: Bölüm 3.6.
+
 Mentörlere bu davranış önceden bildirilmelidir, aksi halde "ayarım kayboldu" şikayeti
 gelir.
 

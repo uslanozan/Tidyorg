@@ -42,17 +42,24 @@ Son güncelleme: 2026-08-17
 Pilot doğrulamasının açık kalan maddeleri — takip:
 [`docs/pilot-verification.md`](docs/pilot-verification.md) Bölüm 6.5.
 
-- [ ] **`main` akışında code owner testi.** `developer` rolündeki hesap `main`'e PR
-      açsın. Beklenen: 2 onay **ve** mentör (code owner) onayı istenir.
-      6.3/6.4 testleri yalnızca `develop` üzerinde yapıldı.
+- [x] ~~**Force push testi.**~~ ✅ **2026-08-17'de doğrulandı.** Sonuç role göre ayrıştı:
+      `developer` reddedildi, `mentor` geçti. Yani `enforce_admins = false` muafiyeti
+      force push ve dal silmeyi de kapsıyor — Karar E'nin sanılandan geniş bir sonucu.
+      İşlendi: `pilot-verification.md` 6.5 · `rbac-and-permissions.md` Bölüm 4 ·
+      `runbook.md` Bölüm 3.6.
 
-- [ ] **Force push testi.** `develop`'a `git push --force` denensin. Admin bypass'ının
-      force push'u da kapsayıp kapsamadığı bilinmiyor. Sonuç ne olursa olsun
-      `pilot-verification.md`'ye yazılmalı.
+- [x] ~~**Drift düzeltme demosu.**~~ ✅ **2026-08-17'de doğrulandı.** `pilot-intern-web`
+      `develop` korumasında onay sayısı arayüzden 1 → 2 yapıldı; `plan` bunu gerçek bir
+      `~ update in-place` olarak gösterdi (kozmetik drift gürültüsünden ayırt edilebilir
+      biçimde), `apply` geri aldı. Sunumda kullanılacak demo bu.
 
-- [ ] **Drift düzeltme demosu.** GitHub arayüzünden `develop` korumasındaki onay sayısını
-      değiştir, `terraform plan` ile farkı gör, `apply` ile geri al.
-      Sunum için en etkili demo; 30 saniye sürer.
+- [~] **`main` akışında code owner testi — kısmen doğrulandı.**
+      `developer` rolündeki hesap PR açtı ve kendi PR'ını merge edemedi. Ancak bu
+      `develop` üzerinde yapıldı ve orada `require_code_owner_review: false` —
+      yani **onay zorunluluğu** kanıtlandı, **code owner mekanizması** değil.
+      Tam kanıt için `main`'e açılan bir PR'ın **başka bir developer tarafından
+      onaylanmasına rağmen** bloklu kalması gözlenmeli; iki developer hesabı gerekiyor.
+      Risk düşük: CODEOWNERS geçerliliği bağımsız doğrulandı (Bölüm 3).
 
 ---
 

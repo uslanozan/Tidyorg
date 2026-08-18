@@ -140,6 +140,19 @@ Sonuçları — üçü birlikte okunmalı:
   artık teknik değil, **insan kaynağı disiplini** meselesidir. Yanlış kişide durması
   hâlinde onu durduracak ikinci bir mekanizma yoktur — 2026-08-15 olayının dersi tam
   olarak budur.
+- **Muafiyetin kapsamı sanılandan geniş: force push ve dal silme de dahil.** Canlı test
+  edildi ve sonuç role göre ayrıştı:
+
+  | Rol | `git push --force` korumalı dala |
+  | :--- | :--- |
+  | `developer` | ❌ Reddedilir — `allow_force_push: false` zorlanıyor |
+  | `mentor` · `head-of-engineering` | ✅ Geçer |
+
+  Aynı şey `allow_deletions: false` için de geçerli — mentör korumalı bir dalı silebilir
+  (2026-08-17'de `develop` böyle silindi). Yani `enforce_admins = false`, "PR ve onay
+  kurallarını atlama" değil, **dal korumasının tamamından muafiyet** anlamına geliyor.
+  Kanıt: [`pilot-verification.md`](pilot-verification.md) Bölüm 6.5. Operasyonel
+  sonuçları: [`runbook.md`](runbook.md) Bölüm 3.6.
 - **Terraform'un kendi yazma işlemleri güvendedir.** App, CODEOWNERS'ı default branch'e
   admin muafiyetiyle yazabiliyor. `true` seçilseydi App'in `push_allowances`'a eklenmesi
   gerekirdi, aksi halde GitOps döngüsü kendi kendini kilitlerdi.
