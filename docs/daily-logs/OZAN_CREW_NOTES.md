@@ -186,6 +186,16 @@ yok), ama raporun bir zayıflığını gösteriyor — **"korumalı dal yok" ile
 bir şey yok" aynı görünüyor.** Burada bilerek öyle; gerçek bir repoda boş harita alarm
 olmalı, sessizlik değil.
 
+**Ek (aynı gün, sonradan kapatıldı):** rapora `korumasiz_repolar` diye bir üst seviye alan
+ekledim. Artık hiç korumalı dalı olmayan repo'lar ayrıca listeleniyor ve neden alarm
+olduklarını söylüyor. Nüansı da yazdım: free plan'de private repo'da branch protection
+zaten çalışmıyor, yani bu **beklenen** olabilir — ama *beklenen olması görünmez olmasını
+gerektirmiyor*. Public bir repo o listeye düşerse gerçek bir açıktır.
+
+Bu, raporu yazarken kaçırdığım bir şeydi ve ancak dördüncü repo eklenince ortaya çıktı.
+Üç repoyla test ederken hepsinin korumalı dalı vardı; boş durum hiç oluşmamıştı. **Bir
+raporun kör noktası, test verisinin kör noktasıdır.**
+
 ### 7. Repo güvenlik ayarları — ve kendi evimizin kapısı açıkmış
 
 Faz 6'nın kalan büyük parçalarından biri. Modüle iki ayar ekledim:

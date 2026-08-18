@@ -635,6 +635,15 @@ iniyor. Geri alma da pin'i düşürmeye iniyor.
       bunu `_uyari` alanında açıkça söylüyor; aşağıdaki `github_membership` işi bitince
       uyarı kalkacak.
       Bugünkü çıktı: her repo ve her dalda tek muaf aktör `uslanozan`.
+      ✅ **`korumasiz_repolar` alanı eklendi** — hiç korumalı dalı olmayan repo'lar
+      `repolar` altında `{}` görünüyordu ve boş harita iki farklı şeyi aynı biçimde
+      söylüyordu: *"atlanacak kural yok"* ile *"sorun yok"*. İlki alarm, ikincisi
+      sessizlik. Artık üst seviyede ayrıca listeleniyorlar.
+      Nüans da yazıldı: free plan'de private repo'da branch protection zaten yok, yani
+      **beklenen** olabilir — ama beklenen olması görünmez olmasını gerektirmez; **public**
+      bir repo o listeye düşerse gerçek açıktır.
+      Bu kör nokta ancak dördüncü repo (`pilot-access-test`) eklenince ortaya çıktı;
+      üç repoyla test ederken boş durum hiç oluşmamıştı.
 - [x] ✅ [`docs/security-policy.md`](docs/security-policy.md) durum tablosu güncellendi
       _(2026-08-18)_ — Bölüm 5'ten ("Bunlara güvenmeyin") dört madde çıktı; yerine
       "5.1 Bu bölümden çıkanlar" tarihsel kaydı geldi. Tabloya iki yeni ⛔ eklendi

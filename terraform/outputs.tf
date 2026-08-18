@@ -56,6 +56,20 @@ locals {
     for user, cfg in try(local.org_config.people, {}) :
     user if contains(try(cfg.roles, []), "head-of-engineering")
   ])
+
+  # Hiç korumalı dalı olmayan repo'lar.
+  #
+  # Bu liste raporun bir zayıflığını kapatıyor: `repolar` haritasında böyle bir repo
+  # `{}` olarak görünüyordu ve `{}` iki farklı şeyi aynı biçimde söylüyordu —
+  # "burada atlanacak kural yok" ile "endişelenecek bir şey yok". İlki bir ALARM,
+  # ikincisi sessizlik. 2026-08-18'de `pilot-access-test` eklenince fark edildi.
+  #
+  # Boş harita alarm olmalı: korumalı dalı olmayan repo'da bypass sorusu anlamsızdır,
+  # çünkü zaten herkes her şeyi yapabilir.
+  unprotected_repos = sort([
+    for repo_name, _ in local.repos : repo_name
+    if length(local.protected_branches[repo_name]) == 0
+  ])
 }
 
 output "branch_protection_bypass" {
@@ -65,6 +79,11 @@ output "branch_protection_bypass" {
     `enforce_admins = false` iken repo'da admin yetkisi olan herkes PR zorunluluğunu,
     onay sayısını, status check'i, force push ve dal silme korumasını atlar. Bu
     kapsam 2026-08-17'de canlı doğrulandı (pilot-verification.md 6.5).
+
+    Okuma sırası:
+      korumasiz_repolar → hiç korumalı dalı olmayanlar. ÖNCE buraya bakılır:
+                          bu repo'larda bypass sorusu anlamsızdır, koruma yoktur.
+      repolar           → korumalı dalı olanlarda kim, hangi dalda muaf.
   EOT
 
   value = {
@@ -78,6 +97,20 @@ output "branch_protection_bypass" {
       org_owner           = local.declared_org_owners
       head_of_engineering = local.declared_head_of_engineering
       not                 = "Bu iki grup HER repo'da admin'dir; repo bazlı listede tekrar görünür."
+    }
+
+    # `repolar` altında bu repo'lar `{}` olarak görünür — ve boş harita tek başına
+    # yanıltıcıdır: "atlanacak kural yok" ile "sorun yok" aynı biçimde okunuyor.
+    # Burada ayrıca listelenmelerinin sebebi bu; sessizlik değil alarm olmalılar.
+    korumasiz_repolar = {
+      liste = local.unprotected_repos
+      not = length(local.unprotected_repos) == 0 ? "Her repo'nun en az bir korumalı dalı var." : join(" ", [
+        "Bu repo'larda HİÇBİR dal korunmuyor — yani bypass sorusu anlamsız,",
+        "herkes zaten her şeyi yapabilir. Free plan'de private repo'da branch",
+        "protection çalışmadığı için bu beklenen bir durum olabilir; beklenen",
+        "olması görünmez olmasını gerektirmez. Public bir repo bu listedeyse",
+        "gerçek bir açıktır.",
+      ])
     }
 
     repolar = {
