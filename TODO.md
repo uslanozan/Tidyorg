@@ -85,6 +85,18 @@ Bunlar `org-settings.tf` import'unun yan ürünü — daha önce hiçbir yerde g
       3. Takım: `tmp-app-create-test-devs`
       _(Repo silinince takımlar silinmez, ayrıca kaldırılmalı.)_
 
+- [x] ✅ ~~**Terraform uyarılarını CI'da görünür kıl**~~ _(2026-08-18)_
+      `plan` yorumu artık uyarıları ayrı bir bölümde sayıp listeliyor (drift sayacının
+      yanında); `apply` ise `::warning::` annotation'ı + step summary üretiyor.
+      **Neden gerekti:** uyarılar plan ÖZETİNİ etkilemiyor — `vulnerability_alerts`
+      deprecation uyarısı "✅ No changes" diyen bir çıktının içinde gizliydi ve ancak
+      `grep` ile yakalandı. İkinci sebep: yorumdaki `MAX_LOG` kısaltması uyarıları
+      (çıktının sonunda oldukları için) tamamen düşürebiliyordu.
+      ⚠️ `grep -P` **kullanılmadı**: `│` çok baytlı ve PCRE modu bazı locale'lerde
+      *"supports only unibyte and UTF-8 locales"* ile reddediyor — yerelde bu hata alındı.
+      `awk` locale'den bağımsız. Dört senaryo fixture ile test edildi (temiz plan /
+      uyarılı plan / destroy + uyarı / apply çıktısı yok).
+
 - [ ] 💡 **Öneri: config'e `ephemeral: true` alanı** _(2026-08-18'de doğdu)_
       Bugünkü test gösterdi ki **atılabilir repo açmak pahalı**: `prevent_destroy`
       yüzünden temizlik üç adımlı ve elle yapılıyor, arkasında yönetim dışı nesneler

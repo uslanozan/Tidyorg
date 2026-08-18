@@ -36,4 +36,56 @@ jobs:
         run: terraform init
 
       - name: Terraform Apply
-        run: terraform apply -auto-approve -no-color -input=false
+        run: |
+          terraform apply -auto-approve -no-color -input=false | tee apply_output.txt
+          exit "${PIPESTATUS[0]}"
+
+      # `main`'e push'ta çalıştığımız için yorum yazacak bir PR yok; uyarılar yalnızca
+      # Actions log'unda kalıyor ve yeşil yanan bir job'un log'unu kimse açmıyor.
+      #
+      # 2026-08-18'de `vulnerability_alerts` alanının deprecate edildiği uyarısı tam
+      # olarak böyle gözden kaçtı. Buradaki adım uyarıları iki yere taşıyor:
+      #   - `::warning::` → run sayfasının EN ÜSTÜNDE annotation olarak görünür
+      #   - step summary  → kalıcı, okunabilir bir liste
+      #
+      # `if: always()` bilinçli: apply BAŞARISIZ olduğunda uyarılar daha da değerli.
+      - name: Surface Terraform Warnings
+        if: always()
+        run: |
+          if [ ! -f apply_output.txt ]; then
+            echo "Apply çıktısı bulunamadı — uyarı taraması atlandı." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          # Biçim (`-no-color`):  │ Warning: Argument is deprecated
+          # Aynı uyarı her kaynak örneği için tekrar eder → tekilleştirip sayıyoruz.
+          #
+          # ⚠️ `grep -P` BİLEREK kullanılmıyor: `│` çok baytlı bir karakter ve PCRE modu
+          # bazı locale'lerde "supports only unibyte and UTF-8 locales" ile reddediyor.
+          # Yerelde tam olarak bu hatayla karşılaşıldı. `awk` locale'den bağımsız çalışır.
+          extract() {
+            awk -F'Warning:' '/^│[[:space:]]*Warning:/ {
+              t = $2
+              gsub(/^[[:space:]]+|[[:space:]]+$/, "", t)
+              print t
+            }' apply_output.txt
+          }
+
+          total=$(extract | wc -l | tr -d ' ')
+
+          if [ "$total" -eq 0 ]; then
+            echo "### ✅ Uyarı yok" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          warnings=$(extract | sort | uniq -c | sort -rn)
+          distinct=$(printf '%s\n' "$warnings" | wc -l | tr -d ' ')
+
+          echo "### ⚠️ ${total} uyarı — ${distinct} farklı" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          printf '%s\n' "$warnings" | while read -r count title; do
+            echo "- **${title}** — ${count}×" >> "$GITHUB_STEP_SUMMARY"
+            echo "::warning title=Terraform::${title} (${count}×)"
+          done
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "_Deprecation uyarıları provider yükseltmesinde apply'ı kırar — birikmeye bırakmayın._" >> "$GITHUB_STEP_SUMMARY"

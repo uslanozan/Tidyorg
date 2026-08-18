@@ -82,6 +82,35 @@ jobs:
               ? `\n\n_${driftCount} × \`Drift detected\` — kozmetik, apply gerektirmez._`
               : '';
 
+            // Uyarılar plan ÖZETİNİ etkilemiyor: "No changes" diyen bir plan da uyarı
+            // taşıyabilir. 2026-08-18'de `vulnerability_alerts` alanının deprecate
+            // edildiği uyarısı tam olarak böyle gözden kaçtı — ancak apply çıktısına
+            // `grep` atıldığında fark edildi. Provider yükseltmesi geldiğinde o alan
+            // kaldırılacak ve apply hiç sinyal vermeden patlayacaktı.
+            //
+            // Uyarıları ayrıca çıkarmanın ikinci sebebi: tam log aşağıda MAX_LOG ile
+            // kısaltılıyor ve uyarılar çıktının SONUNDA duruyor — uzun bir planda
+            // yorumdan tamamen düşerler.
+            //
+            // Biçim (`-no-color`):  │ Warning: Argument is deprecated
+            // Aynı uyarı her kaynak örneği için tekrar eder, o yüzden tekilleştirilip
+            // kaç kez geçtiği yazılıyor.
+            const warningTitles = [...planOutput.matchAll(/^│\s*Warning:\s*(.+?)\s*$/gm)].map(m => m[1]);
+            const warningCounts = warningTitles.reduce((acc, title) => {
+              acc[title] = (acc[title] || 0) + 1;
+              return acc;
+            }, {});
+            const warningEntries = Object.entries(warningCounts);
+
+            const warningLines = warningEntries.length === 0 ? [] : [
+              '',
+              `### ⚠️ ${warningTitles.length} uyarı — ${warningEntries.length} farklı`,
+              '',
+              ...warningEntries.map(([title, n]) => `- **${title}**${n > 1 ? ` — ${n}×` : ''}`),
+              '',
+              "_Uyarılar plan özetini etkilemez; temiz görünen bir plan da uyarı taşıyabilir. Deprecation uyarıları provider yükseltmesinde apply'ı kırar._",
+            ];
+
             let summaryText = '⚠️ Plan summary line not found in output — check the full log below.';
 
             if (match) {
@@ -124,6 +153,7 @@ jobs:
               `| **Plan** | ${planOutcome} |`,
               '',
               summaryText,
+              ...warningLines,
               '',
               '<details>',
               '<summary>🔍 Show Full Plan Log</summary>',

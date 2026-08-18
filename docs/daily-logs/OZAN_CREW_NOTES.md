@@ -299,6 +299,47 @@ ROADMAP'e bir öneri yazdım: config'e `ephemeral: true` alanı: öyle işaretle
 var — `lifecycle` dinamik olamadığı için (Faz 2'de öğrendik) iki ayrı kaynak gerekir.
 Değer mi, konuşulacak.
 
+### 13. Uyarıları CI'ya taşıdım — "yeşil" yeterli bir sinyal değilmiş
+
+Sabahki deprecation olayının asıl dersi teknik değil, **sinyal tasarımıyla** ilgiliydi:
+uyarı oradaydı, ben bakmadım. Bir daha bakmayacağımı varsayıp sistemi değiştirdim.
+
+İki yere ekledim:
+
+**`terraform-plan.yml`** — PR yorumuna uyarı bölümü. Zaten `driftCount` diye bir sayaç
+vardı (kozmetik drift gürültüsünü sayıya indiriyor); aynı kalıbı uyarılara uyguladım.
+Aynı uyarı her kaynak örneği için tekrar ettiğinden başlığa göre tekilleştirip kaç kez
+geçtiğini yazıyorum.
+
+**`terraform-apply.yml`** — burada yorum yazacak bir PR yok (main'e push'ta çalışıyor),
+uyarılar yalnızca Actions log'unda kalıyordu. `::warning::` annotation'ı + step summary
+ekledim. Annotation run sayfasının en üstünde çıkıyor, yani log açmaya gerek kalmıyor.
+`if: always()` koydum — apply *başarısız* olduğunda uyarılar daha da değerli.
+
+**Yazarken iki şey öğrendim:**
+
+1. **`grep -P` kullanamadım.** Terraform uyarı satırları `│` ile başlıyor, bu çok baytlı
+   bir karakter ve PCRE modu bazı locale'lerde *"supports only unibyte and UTF-8 locales"*
+   diye reddediyor — yerelde tam olarak bu hatayı aldım. Runner'da çalışıp yerelde
+   çalışmayan (ya da tersi) bir şey yazmak istemedim, `awk`'a geçtim. Locale'den bağımsız.
+
+2. **Asıl sorun sandığımdan büyükmüş.** Uyarıları ayrı çıkarmanın ikinci bir sebebi var:
+   yorumda `MAX_LOG = 55000` kısaltması var ve **uyarılar çıktının sonunda duruyor.**
+   Yani uzun bir planda uyarılar yorumdan tamamen düşüyordu. Sadece "gözden kaçıyor"
+   değil, bazı durumlarda **hiç görünmüyormuş**.
+
+Dört senaryoyu fixture ile test ettim: temiz plan, uyarılı plan, destroy + uyarı,
+apply çıktısı hiç yok. Test ederken üretilen çıktı bugünün özeti gibiydi:
+
+```
+### 📊 Plan Summary
+✅ **No changes.** Infrastructure matches the configuration.
+### ⚠️ 3 uyarı — 2 farklı
+```
+
+"Hiçbir şey değişmiyor" ve "üç uyarı var" aynı anda doğru olabiliyor. Sabah tam olarak
+bunu kaçırdım.
+
 ### 9. Bugünün en büyük sorusu: geçmişi kim koruyacak?
 
 Org varsayılanlarını açarken fark ettiğim şey, aslında bugünün en önemli bulgusu:
