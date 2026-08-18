@@ -24,8 +24,16 @@ Kişisel token (PAT) yerine organizasyona ait bir GitHub App kullanmanın avanta
 | :--- | :--- | :--- | :--- |
 | Repository | Administration | Read and write | Branch protection, takım erişimi |
 | Repository | Contents | Read and write | Dosya yazma (CODEOWNERS vb.) |
+| Repository | Issues | Read and write | Label seti yönetimi |
+| Repository | Workflows | Read and write | `.github/workflows/*` yazmak |
 | Repository | Metadata | Read-only | Repo bilgisi okuma (zorunlu) |
 | Organization | Members | Read and write | Org üyeliği yönetimi |
+| Organization | Administration | Read and write | Org ayarları (`github_organization_settings`) |
+
+> ⚠️ **`Administration` iki kere geçiyor ve bunlar AYNI İZİN DEĞİL.**
+> `Repository → Administration` repo ayarlarını açar; org ayarları için
+> `Organization → Administration` gerekir. Manifest'te ilki `administration`,
+> ikincisi `organization_administration` anahtarıyla durur.
 
 ---
 
@@ -71,9 +79,20 @@ Formu doldur:
 
 **Organization permissions:**
 
-| İzin | Değer |
-| :--- | :--- |
-| Members | Read and write |
+| İzin | Değer | Neden |
+| :--- | :--- | :--- |
+| Members | Read and write | `github_membership` — org üyeliği ve owner rolü |
+| Administration | Read and write | `github_organization_settings` — base permission, üye izinleri, güvenlik varsayılanları |
+
+> ⚠️ **`Organization → Administration` sonradan, hata alınarak eklendi — atlama.**
+> Yukarıdaki `Repository → Administration` **bunu karşılamaz**; ikisi ayrı izindir.
+> Yoksa `PATCH /orgs/{org}` isteği `403 Resource not accessible by integration`
+> ile patlar (2026-08-18'de yaşandı, `default_repository_permission` apply'ında).
+>
+> 📌 **Örüntü:** bu, `Issues` ve `Workflows` 403'lerinin üçüncüsü. Üçünde de sebep
+> aynı: **GitHub, geniş sanılan bir izni daha dar tanımlamış.** Yeni bir kaynak
+> türüne ilk kez dokunurken bu 403'ü beklemek gerekiyor — App izinleri en az yetkiyle
+> kurulduğu için normal davranış, hata değil.
 
 "Create GitHub App" butonuna tıkla.
 

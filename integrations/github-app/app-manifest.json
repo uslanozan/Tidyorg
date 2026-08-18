@@ -12,6 +12,7 @@
     "issues": "write",
     "metadata": "read",
     "members": "write",
+    "organization_administration": "write",
     "workflows": "write"
   },
   "default_events": []

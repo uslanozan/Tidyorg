@@ -40,8 +40,9 @@ Son güncelleme: 2026-08-17
 4. Repo güvenlik ayarları yönetilmiyor — secret scanning, `vulnerability_alerts`, code
    scanning'in hiçbiri kurulu değil _(Faz 6)_
 5. **Motor ile durum aynı repoda** — mentörü motordan ayıracak bir sınır yok _(Faz 8)_
-6. `release.yml` yazılmış ama **hiçbir repo'ya dağıtılmıyor** — `defaults.workflows`
-   değeri `[ci]`; otomatik sürümleme fiilen çalışmıyor _(bkz. [`TODO.md`](TODO.md))_
+
+> `release.yml`'ın hiçbir repo'ya dağıtılmaması bu listede **yok**, çünkü eksik değil
+> bilinçli bir karar — bkz. Karar I.
 
 ---
 
@@ -79,6 +80,19 @@ akışı **ürün repoları için geçerli kalır**; kontrol düzlemi repoları 
 Gerekçe zinciri Karar E'ye bağlı: `enforce_admins = false` olduğu için mentörü tek repo
 içinde motordan ayıracak bir mekanizma yok — CODEOWNERS'ı da branch protection'ı da
 bypass ediyor. Sınır ancak **repo sınırı** olabilir.
+
+**Karar I — Sürüm otomasyonu opt-in; tetikleyicisi Faz 8** _(2026-08-17)_.
+`release.yml` yazıldı ama **bilinçli olarak hiçbir repo'da aktif değil**
+(`defaults.workflows: [ci]`).
+
+- **Pilot repolarda anlamsız** — içlerinde kod yok; açılsa her `main` push'unda boş bir
+  sürüm üretirdi.
+- **Motor repo'da bugün gereksiz, Faz 8'de zorunlu** — config repo motoru
+  `ref = v1.0.0` ile pinleyecek, yani tag üretilmeden ayrım çalışmaz.
+
+İhtiyacı olan repo `workflows: [ci, release]` yazarak açar. Dokümanın bugünkü durumu
+dürüstçe anlattığı yer: [`docs/release-process.md`](docs/release-process.md) başındaki
+uyarı kutusu.
 
 **Karar H — Otomasyon kimlikleri (agent'lar) kendi App'ini alır.**
 `tidyorg-infra-bot`'un izinleri Administration + Contents + Members write. Bir review
@@ -152,8 +166,8 @@ defaults:
       _(bkz. [`docs/pilot-verification.md`](docs/pilot-verification.md) Bölüm 7.6)_
 - [x] Satır sonu normalizasyonu (`\r\n` → `\n`) — apply'ı çalıştıran makineye göre
       değişen sahte diff'ler giderildi _(2026-08-16)_
-- [ ] **Kalan:** `release` workflow'u hiçbir repo'da aktif değil (`defaults.workflows: [ci]`).
-      Dağıtılacak mı, opsiyonel mi kalacak — karar verilmedi. Bkz. [`TODO.md`](TODO.md).
+- [x] `release` workflow'unun akıbeti **karara bağlandı** _(2026-08-17)_ — opt-in kalıyor,
+      Faz 8'de motor repo'da devreye alınacak. Bkz. Karar I.
 
 > 🔴 **Bu faz bir blokajı çözdü, sadece bir iyileştirme değildi.**
 > Erişim düzeltmesinden sonra normal developer akışı devreye girmiş ve `ci/test`
@@ -268,8 +282,22 @@ Bu işler GitHub Team planı olmadan **yapılamaz**, denenemez.
 
 ### Faz 8 — Repo topolojisi: motor / durum ayrımı _(orta)_ 🆕
 
-**Ne zaman:** Faz 2 bittikten sonra, Faz 5b (dashboard yazma modu) başlamadan önce.
-Yani **Hafta 5 sonu / Hafta 6 başı**. Bu pencere dar ve kaçırılmamalı.
+**Ne zaman — takvim değil, koşul** _(2026-08-17'de revize edildi)_.
+Şu üçünden **biri** gerçekleştiğinde yapılır:
+
+1. **Dashboard yazma moduna geçer** — config'e mühendis olmayan bir kimlik dokunmaya başlar
+2. **Projenin demosu çıkarılır** — hedef mimarinin gösterilmesi gerekir
+3. **İkinci bir mentör katılır** — sınırın karşı tarafında gerçekten biri olur
+
+**Neden takvimden koşula çevrildi:** İlk plan "Hafta 5 sonu" diyordu, ama bu ROADMAP'in
+nominal takviminden türetilmişti, gerçek ilerlemeden değil. Bugün tek mentör var ve
+dashboard yazma moduna geçmedi — yani Faz 8'in koruduğu sınırın karşı tarafında **kimse
+yok.** Olmayan bir riske karşı bugün maliyet ödemek olurdu.
+
+Dahası: **Faz 6 da motor + config şemasının birlikte evrildiği bir iş** (`people`
+tüketimi, `security` alanları, org ayarları). Faz 2 için "bölünmeden önce bitir" denmesinin
+sebebi neyse, Faz 6 için de aynısı geçerli — bölünmüş halde her yeni alan iki PR olur.
+Bu yüzden **sıra: Faz 6 → Faz 8.**
 
 **Neden bu repo bölünüyor:** Tek repoda iki farklı yaşam döngüsü var.
 
@@ -302,6 +330,9 @@ Tidyorg          tidyorg-org-config
       `module "repositories" { source = "git::https://github.com/...//terraform/modules/repository?ref=v1.0.0" }`
 - [ ] `terraform-apply.yml` ve `terraform-plan.yml`'i config repo'ya taşı
 - [ ] Motor repo'da ilk sürüm tag'ini kes (`v1.0.0`)
+- [ ] **`release` workflow'unu motor repo'da devreye al** — `workflows: [ci, release]`.
+      Sürümleme burada zorunlu hale geliyor: config repo motoru `ref = v1.0.0` ile
+      pinleyecek, yani tag üretilmeden ayrım çalışmaz. _(Karar I)_
 - [ ] Yetkileri ayır: mentörler config repo'da admin, motor repo'da **erişimsiz** (ya da read)
 - [x] `docs/branching-strategy.md`'ye kontrol düzlemi istisnasını yaz (Karar F)
       _(2026-08-17 — Bölüm 8 olarak eklendi)_
@@ -471,23 +502,30 @@ eden hedefe göç edilir.
 ## 7. Önerilen Sıra
 
 ```
-Faz 0 ✅  →  Faz 1 ✅  →  Faz 3 ✅  →  Faz 4 ✅
-                                          ↓
-                                   Faz 2 (şablon dağıtımı)
-                                          ↓
-                                   Faz 8 (repo topolojisi)   ← develop burada kalkar
-                                          ↓
-                          Faz 5a ✅→ Faz 5b (dashboard yazma)
-                                          ↓
-                                   Faz 6 (üyelik + güvenlik)
-                                          ↓
-                                   Faz 9 (agent'lar)
+Faz 0 ✅ → Faz 1 ✅ → Faz 3 ✅ → Faz 4 ✅ → Faz 2 ✅
+                                              │
+                                              ├─ develop kaldırıldı ✅  (Karar F, 2026-08-17)
+                                              ↓
+                                       Faz 6 (üyelik + güvenlik + bypass raporu)
+                                              ↓
+                                       Faz 8 (repo topolojisi + release.yml)
+                                              ↓
+                                       Faz 5b (dashboard yazma modu)
+                                              ↓
+                                       Faz 9 (agent'lar)
 
               Faz 7 — Team planı geldiğinde, sıradan bağımsız
 ```
 
-**Gerekçe:** Faz 2 hem bir blokajı çözüyor (`ci/test`) hem de şemayı donduruyor — split
-öncesi yapılması gereken tek iş. Faz 8 dashboard yazma modundan önce yapılmalı, çünkü
-sonrasında hareket eden bir hedefe göç etmek gerekir. Faz 6 riskli işleri sisteme güven
-oluştuktan sonra yapıyor. Faz 9 en son, çünkü Karar H'nin gerektirdiği kimlik modeli
-Faz 6'daki `people` işiyle olgunlaşıyor.
+**Gerekçe:**
+
+- **Faz 2 önce geldi** çünkü hem bir blokajı çözüyordu (`ci/test` karşılıksızdı) hem de
+  config şemasını dondurdu.
+- **Faz 6, Faz 8'den önce.** Faz 2 için geçerli olan gerekçenin aynısı: Faz 6 de motor ile
+  config şemasının **birlikte** evrildiği bir iş (`people` tüketimi, `security` alanları,
+  org ayarları). Repolar bölündükten sonra her yeni alan iki PR olur — önce motor + tag,
+  sonra pin yükselt. Şemayı tek repoda oturtup sonra bölmek çok daha ucuz.
+- **Faz 8 koşula bağlı**, takvime değil: dashboard yazma modu, demo, ya da ikinci mentör.
+  Ayrıntı ve gerekçe Faz 8 bölümünde.
+- **Faz 9 en son**, çünkü Karar H'nin gerektirdiği "insan olmayan aktör" kimlik modeli
+  Faz 6'daki `people` işiyle olgunlaşıyor.

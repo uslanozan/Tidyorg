@@ -8,6 +8,226 @@ Resmî dokümantasyon değil — düşünce sürecinin kaydı. Hafta 4'teki sunu
 
 ---
 
+## 2026-08-18 — Faz 6 başladı: görünürlük raporu, ve org ayarlarını açınca çıkanlar
+
+Bugün iki iş yaptım. Biri planlıydı, diğeri planladığım işin yan ürünü olarak çıktı ve
+açıkçası daha önemli.
+
+### 1. "Kim bypass edebiliyor?" raporu — [`terraform/outputs.tf`](../../terraform/outputs.tf)
+
+Bu, Karar E'nin (`enforce_admins` **kalıcı** `false`) borcuydu. Muafiyeti teknik olarak
+kapatmamayı seçtiysek geriye tek kontrol kalıyor: **görünürlük**. Emre'nin her repoda
+admin olduğu 15 Ağustos'ta ancak `.tf` dosyaları okunarak anlaşılabildi — olayın aylarca
+fark edilmeme sebebi tam olarak buydu. Bir daha aynı şey olacaksa en azından
+`terraform output` ile görünsün.
+
+Rapor repo × dal kırılımında üç şey söylüyor: `enforce_admins` değeri, **tüm kurallardan
+muaf olanlar**, ve push allowlist'indeki roller. Muaf listesi üç kaynağın birleşimi —
+repo'nun mentörleri, `head-of-engineering` taşıyanlar, org owner'lar. Bunlar farklı
+yollardan aynı sonuca varıyor (repo'da admin) ve GitHub **en yüksek** yetkiyi uyguladığı
+için hepsi tek listede toplanmalı.
+
+**Kendi raporuma güvenmemem gereken yeri de rapora yazdım.** Org kapsamlı iki liste
+config'deki `people` bölümünden okunuyor ve `people` bölümünü Terraform **hâlâ
+tüketmiyor**. Yani orası *beyan*, doğrulanmış gerçek değil — birisi arayüzden org owner
+yapılsa rapor bunu göremez. Output'un içine `_uyari` diye bir alan koydum ve bunu açıkça
+söylüyor. Sessizce eksik bir güvenlik raporu, hiç raporu olmamasından daha kötü;
+`people` → `github_membership` işi bitince uyarı kalkacak.
+
+Bugünkü çıktı: her repo, her dalda tek muaf aktör `uslanozan`. Yani Emre gerçekten temiz.
+
+### 2. `default_repository_permission` → `None`, ve import'un ortaya döktüğü şeyler
+
+Base permission bugüne kadar `Read`'ti: org'a eklenen herkes, hiçbir takımda olmasa bile
+bütün repo'ları okuyabiliyordu. Yazma deliği yok ama izolasyon da yok. `None` yapınca
+erişimin tek kaynağı takım üyeliği oluyor — en az yetki ilkesinin kendisi.
+
+**Buradaki tuzağı yazmadan önce fark ettim, iyi ki fark etmişim.**
+`github_organization_settings` tek bir alanı değil, **org'un ayar nesnesinin tamamını**
+yönetiyor (~25 alan: fatura e-postası, üye izinleri, güvenlik varsayılanları...). Yani
+"sadece şu alanı yönetelim" diye eklenemez. Bu yüzden doğrudan yazmak yerine sırayı
+şöyle kurdum: önce `import` bloğuyla mevcut ayarları state'e al, sonra `plan` çalıştırıp
+**provider varsayılanı ile gerçek arasındaki her farkı gör**, ancak ondan sonra yaz.
+
+Plan iki şey öğretti.
+
+**İyi haber:** korktuğum "config'de yazmadığın her alan varsayılana döner" senaryosu
+gerçekleşmedi. Plan sadece iki alanı değişiklik olarak gösterdi; geri kalan ~23 alan
+GitHub'dan okunup olduğu gibi kaldı (Terraform'da optional+computed alanların davranışı
+bu). Yine de bunu **plan'ı görmeden** bilemezdim.
+
+**Kötü haber — ve bloklayan şey:** `billing_email` provider şemasında **zorunlu**.
+Denedim, çıkarınca `validate` patlıyor: *"The argument billing_email is required"*.
+Ama import sonrası plan onu `+` olarak gösterdi — yani Terraform mevcut değeri **boş**
+okudu, muhtemelen App token'ı bu alanı okuyamıyor. Yazma yetkisi ise büyük ihtimalle var.
+Sonuç: buraya tahmini bir değer yazıp apply edersem **organizasyonun fatura e-postası
+sessizce değişir**. Tahmin edilecek alan değil, arayüzden okunacak. Bloğu yorumda
+bıraktım ve sebebini dosyanın içine yazdım.
+
+**Asıl bulgu ise import'un yan ürünü.** Plan çıktısı org'un o güne kadar hiç bakmadığımız
+güvenlik duruşunu döktü:
+
+```
+dependabot_alerts_enabled_for_new_repositories               = false
+dependabot_security_updates_enabled_for_new_repositories     = false
+dependency_graph_enabled_for_new_repositories                = false
+secret_scanning_enabled_for_new_repositories                 = false
+secret_scanning_push_protection_enabled_for_new_repositories = false
+advanced_security_enabled_for_new_repositories               = false
+```
+
+**Org düzeyinde hiçbir güvenlik varsayılanı açık değil.** Yani config'den açtığımız her
+yeni repo sıfır güvenlik özelliğiyle doğuyor. Faz 6'nın zaten planlı olan
+`vulnerability_alerts` maddesi bunu repo bazında çözüyor ama asıl doğru yer burası —
+org varsayılanı olarak açılırsa gelecekte açılacak repolar da kapsanır.
+
+Bir de bu vardı:
+
+```
+members_can_create_public_repositories = true
+members_can_create_repositories        = true
+```
+
+**Herhangi bir org üyesi public repo açabiliyor.** Bunu `default_repository_permission`
+kapatmıyor — farklı eksen: biri *mevcut* repolara erişim, diğeri *yeni* repo yaratma.
+Kod sızıntısı için en kısa yol da bu. Ayrı bir karar olarak Faz 6'ya yazdım; kapatılırsa
+repo açma tamamen config'e iner, ki zaten dogfooding iddiamız o.
+
+### 3. `billing_email` — offboarding'de kaçırdığımız şey
+
+Değeri arayüzden okumaya gidince çıktı: **org'un fatura e-postası Emre'deymiş.** Erişim
+yetkilerini 15 Ağustos'ta aldık, ama fatura bildirimleri üç gün daha ona gitti. Ozan
+adresi kendine aldı, ben de Terraform'a bağladım.
+
+Bu, offboarding kontrol listemizin eksik olduğunu gösteriyor. "Erişimi kes" dediğimizde
+takım üyeliklerini ve rolleri düşünüyoruz; **hesabın bağlı olduğu kanalları** değil.
+Fatura e-postası bunlardan sadece biri.
+
+Bir de şu var: provider bu alanı **okuyamıyor** (import'ta boş geldi). Yani Terraform
+onun drift'ini de göremez — arayüzden değiştirilirse plan sessiz kalır ve bir sonraki
+apply bizim yazdığımızı geri yazar. `org-settings.tf`'teki o satır bir *kayıt* değil,
+**tek doğruluk kaynağı**. Bunu dosyanın içine yazdım, yoksa birisi arayüzden değiştirip
+"Terraform nasılsa görür" diye düşünebilir.
+
+### 4. Apply patladı — üçüncü 403
+
+```
+Error: PATCH https://api.github.com/orgs/your-org:
+       403 Resource not accessible by integration
+```
+
+App'te `Repository → Administration: write` **vardı**. Ama org ayarları için gereken izin
+o değilmiş — GitHub ikisini ayrı tutuyor:
+
+| Manifest anahtarı | Neyi açar |
+| :--- | :--- |
+| `administration` | Repo ayarları, branch protection, takım erişimi |
+| `organization_administration` | **Org ayarları**, base permission, üye izinleri |
+
+**Bu üçüncü sefer.** Önce `Issues` (label senkronizasyonu), sonra `Workflows`
+(`.github/workflows/` yazma), şimdi `organization_administration`. Üçünde de aynı şeyi
+yaptım: geniş görünen bir izni yeterli sandım. Örüntü artık net — **GitHub izinleri
+sandığımdan hep daha dar tanımlıyor**, ve bunu ancak apply patlayınca öğreniyorum.
+
+Bir sonraki sefere kural: yeni bir kaynak türüne ilk kez dokunurken izin tablosuna
+*önden* bakacağım. Manifest'e ve kurulum README'sine ekledim, README'ye de "bu ikisi
+aynı izin değil" uyarısı koydum çünkü isimler birbirine fazla benziyor.
+
+**İyi haber:** `import` adımı başarılı oldu, kaynak state'te. Yani izin verilince ikinci
+apply yalnızca `~ update in-place` yapacak — baştan başlamıyoruz.
+
+Ozan izni verdi, ikinci apply geçti. `plan` artık temiz:
+*"No changes. Your infrastructure matches the configuration."*
+Base permission canlıda **`none`**.
+
+### 5. `none`'ın ilk faturası — Medine iki repo'yu kaybetti
+
+Apply'dan sonra "kim ne kaybetti" diye baktım, iyi ki bakmışım. `medine2906` yalnızca
+`Tidyorg`'ın `developers` listesinde; `pilot-intern-api` ve
+`pilot-intern-web`'e erişimi **org varsayılanından** geliyordu. `read` → `none` olunca
+gitti.
+
+Bu tam olarak istediğimiz davranış — "erişimin tek kaynağı takım üyeliği olsun" demiştik,
+oldu. Ama **soyut bir ilkenin somut bedeli** ilk kez görünür oldu ve bu bedel bir insana
+düştü. Dashboard org'daki repo'ları kullanıcının kendi kimliğiyle listelediği için
+(ACCESS-MODEL Karar 15) Medine'nin ekranından iki repo kaybolacak. Test ederken
+"dashboard bozuldu" sanabilir — bozulmadı, doğru çalışıyor.
+
+**Öğrendiğim şey:** base permission'ı daraltmak sessiz bir işlem değil, bir **erişim
+kaldırma** işlemi. Kimin neyi kaybettiğini apply'dan *önce* çıkarmalıydım, sonra değil.
+Bir dahaki sefere: org kapsamlı bir varsayılanı daraltmadan önce "bu varsayılana kim
+bağımlı?" sorusunun cevabı elimde olmalı. Bugün şansımız yaver gitti — kaybeden kişi
+ekipten biri ve durumu bir mesajla çözülüyor. Stajyer kalabalık bir org'da bu, sebebi
+bulunması saatler süren bir "neden göremiyorum" turu olurdu.
+
+Ozan'a söyledim; Medine'ye haber gidecek ve iki repo'nun `developers` listesine eklenip
+eklenmeyeceğine karar verilecek.
+
+**Günün dersi:** `import` bloğunu buraya bir "state'e alma" mekaniği olarak kullandım ama
+asıl işi **keşif** oldu. Terraform'a hiç bağlanmamış bir kaynağı import edip plan almak,
+o kaynağın gerçek durumunu okumanın en ucuz yolu — hem de hiçbir şeyi değiştirmeden.
+Org ayarlarına aylardır bakmamışız; bir plan çıktısı dört madde çıkardı (güvenlik
+varsayılanları, public repo açma, fatura e-postası, ve eksik App izni).
+
+---
+
+## 2026-08-17 — Testlerin ret tarafı, `develop`'un kalkması, ve Faz 8'de fikir değiştirmem
+
+### Force push testi — Karar E sandığımdan geniş çıktı
+
+`enforce_admins = false`'u "PR zorunluluğu ve review kurallarından muafiyet" diye
+anlıyordum. Test bunu genişletti: **force push ve dal silme de muafiyetin içindeymiş.**
+
+Sonuç role göre net ayrıştı — `developer` hesabıyla force push **reddedildi**, `mentor`
+hesabıyla **geçti**. Yani mentörün elinde sadece "onay beklemeden merge et" değil,
+"tarihi yeniden yaz" yetkisi de var. Karar E'yi verirken bunu hesaba katmamıştım.
+Kararı değiştirmiyorum (gerekçe aynı: mentör hızlı karar alabilmeli), ama artık
+`rbac-and-permissions.md` ve `runbook.md` bu kapsamı açıkça yazıyor. Bir muafiyetin ne
+kadar geniş olduğunu **kararı verirken değil, test ederken** öğrenmek iyi bir his değil.
+
+### Drift demosu çalıştı
+
+`pilot-intern-web` `develop` korumasında onay sayısını arayüzden 1 → 2 yaptım. `plan`
+bunu gerçek bir `~ update in-place` olarak gösterdi ve — asıl önemlisi — **kozmetik drift
+gürültüsünden ayırt edilebiliyordu**. `apply` geri aldı. Sunumdaki drift demosu bu olacak;
+uydurma bir senaryo değil, gerçekten yapılmış bir arayüz değişikliği.
+
+### `develop`'u sildim — ve öğrendiğim şey
+
+`develop`'u silmek Faz 8'in içinde planlıydı. Faz 8 ertelenince bu repo için beklemenin
+anlamı kalmadı: `develop` → `main` boşluğunu elle yönetmek (merge edilen config'in
+canlıda olmaması) süresiz sürecekti.
+
+Silerken şunu öğrendim: **branch protection kuralı dala değil, isim desenine bağlı.**
+Yani dalı silsem bile kural durur ve `develop` bir gün yeniden açılırsa kendiliğinden
+devreye girer. Config'den de kaldırmak gerekiyordu. Ama modülde bunun yolu yoktu — bir
+dalı `defaults`'tan **kaldırmanın** karşılığı yazılmamıştı. `protected_branches: { develop: null }`
+ile bir kaldırma escape hatch'i ekledim: `null` yazılırsa dal `for_each`'ten düşüyor.
+Bu olmasaydı kural sessizce yeniden yaratılacaktı.
+
+Bunu `runbook.md`'ye üç durumluk bir tablo olarak yazdım (arayüzden değiştirildi /
+arayüzden silindi / config'den kaldırılmak isteniyor), çünkü üçünün cevabı farklı ve
+ilk ikisini karıştırmak kolay.
+
+### Faz 8'i ertelemek — Ozan haklıydı, ben değildim
+
+Faz 8'i (repo topolojisi ayrımı) "Medine yazma moduna geçmeden bitmeli" diye Hafta 5'e
+koymuştum. Ozan itiraz etti: **tek mentör benim, split'in koruduğu sınırın karşı tarafında
+kimse yok.** Yani bugün yapılırsa sıfır güvenlik kazandırıp gerçek maliyet getiriyor —
+her config alanı iki PR olur, ve **henüz canlı doğrulanmamış testler iki repoya bölünür.**
+
+Haklı. Üstelik kendi argümanımı tutarsız uygulamışım: Faz 2'yi "motor ve config şeması
+birlikte evriliyor, split'ten önce dondurulmalı" diye öne almıştım — aynı argüman Faz 6
+için de geçerliyken onu split'in arkasına koymuşum. Faz 6 tek repoda, bugünkü test
+zemininde bitirilebilir.
+
+Faz 8 artık takvime değil **koşula** bağlı: dashboard yazma modu ayrılırken ya da demo
+çıkarılırken. `release.yml`'ı da oraya bağladım — o gün motor repo zaten tag ile
+sürümleniyor olacak, yani semver otomasyonu gerçek bir işe bağlanacak. Bugün açarsak üç
+pilot repoda karşılığı olmayan tag'ler üretir.
+
+---
+
 ## 2026-08-16 (akşam) — Faz 2 canlıda, ve `main`'in aylardır koptuğunu bugün öğrendim
 
 Sabahki erişim düzeltmesinden sonra şablon dağıtımına (Faz 2) geçtim. İş bitti, 27 dosya

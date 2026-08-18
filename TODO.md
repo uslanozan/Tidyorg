@@ -7,20 +7,72 @@ Faz planı ve mimari kararlar burada değil — [`ROADMAP.md`](ROADMAP.md) için
 Tamamlanan işler buradan silinir; kalıcı kayıt [`docs/pilot-verification.md`](docs/pilot-verification.md)
 ve [`docs/daily-logs/`](docs/daily-logs/) altındadır.
 
-Son güncelleme: 2026-08-17
+Son güncelleme: 2026-08-18
+
+---
+
+## 🔴 Bloklayan iş
+
+- [ ] 👀 **Medine `pilot-intern-api` ve `pilot-intern-web`'i artık göremiyor.**
+      `default_repository_permission = none` (2026-08-18) uygulandıktan sonraki **doğrudan
+      ve beklenen** sonuç: erişimin tek kaynağı artık takım üyeliği.
+      `medine2906` yalnızca `Tidyorg` repo'sunun `developers`
+      listesinde — diğer iki repoya `read` erişimi org varsayılanından geliyordu, o gitti.
+      ⚠️ Dashboard org'daki repo'ları **kullanıcının kendi kimliğiyle** listeliyor
+      (ACCESS-MODEL Karar 15) — yani Medine'nin ekranında iki repo kaybolur. Test ederken
+      "dashboard bozuldu" sanılabilir; bozulmadı, doğru davranıyor.
+      **Karar gerekiyor:** ya iki repo'nun `developers` listesine eklenecek, ya da
+      dashboard testinde bu durum bilinerek kabul edilecek. **Medine'ye haber verilmeli.**
+
+- [x] ~~🔑 **App'e `Organization → Administration: Read and write` izni ver.**~~
+      ✅ **2026-08-18** — izin verildi, apply geçti, `plan` temiz
+      (`No changes. Your infrastructure matches the configuration.`).
+      İlk deneme `403 Resource not accessible by integration` vermişti: App'te
+      `Repository → Administration: write` vardı ama org ayarları için gereken izin **o
+      değil** — GitHub `administration` ile `organization_administration`'ı ayrı tutuyor.
+      `Issues` ve `Workflows` 403'lerinin **üçüncüsü**.
+      _Manifest ve kurulum rehberi güncellendi:
+      [`app-manifest.json`](integrations/github-app/app-manifest.json) ·
+      [`README.md`](integrations/github-app/README.md)_
+
+- [ ] 💳 **Fatura e-postası offboarding'de gözden kaçmıştı** _(kapandı ama ders kayda değer)_
+      Org'un "Billing email" adresi 2026-08-18'e kadar **ayrılan ekip üyesindeydi**. Erişim
+      yetkileri 15 Ağustos'ta alınmıştı; fatura bildirimleri üç gün daha ona gitti.
+      Arayüzden düzeltildi ve Terraform'a alındı.
+      ⚠️ Provider bu alanı **okuyamıyor** (import'ta boş geldi) — yani drift'ini de göremez.
+      `org-settings.tf`'teki satır bir kayıt değil, **tek doğruluk kaynağı**.
+      **Yapılacak:** offboarding kontrol listesine "fatura e-postası" maddesi eklensin
+      _(bkz. [`docs/runbook.md`](docs/runbook.md))_.
+
+---
+
+## 🟠 Import'un ortaya çıkardığı org bulguları _(2026-08-18)_
+
+Bunlar `org-settings.tf` import'unun yan ürünü — daha önce hiçbir yerde görünmüyorlardı.
+
+- [ ] **Org düzeyinde hiçbir güvenlik varsayılanı açık değil.**
+      `dependabot_alerts` · `dependabot_security_updates` · `dependency_graph` ·
+      `secret_scanning` · `secret_scanning_push_protection` · `advanced_security`
+      → **hepsi `false`**. Config'den açılan her yeni repo sıfır güvenlik özelliğiyle
+      doğuyor. Faz 6'nın `vulnerability_alerts` maddesi bunu repo bazında çözer; org
+      varsayılanı olarak açmak yukarıdaki blok devreye girince tek satırlık iş.
+
+- [ ] **`members_can_create_public_repositories = true`** — herhangi bir org üyesi
+      **public** repo açabiliyor. `default_repository_permission = none` bunu **kapatmaz**
+      (farklı eksen: biri mevcut repolara erişim, diğeri yeni repo yaratma).
+      Karar gerekiyor; kapatılırsa repo açma tamamen config'e iner.
 
 ---
 
 ## 🔴 Tespit edilmiş tutarsızlıklar
 
-- [ ] **`release.yml` hiçbir repo'ya dağıtılmıyor.**
-      [`docs/release-process.md`](docs/release-process.md) otomatik sürümleme akışını
-      yürürlükteymiş gibi anlatıyor, ancak `organization.yml` → `defaults.workflows`
-      değeri `[ci]`. Şablon
-      [`terraform/templates/.github/workflows/release.yml`](terraform/templates/.github/workflows/release.yml)
-      yazılmış durumda ama hiçbir repo'da çalışmıyor.
-      **Karar gerekiyor:** `workflows: [ci, release]` yapılacak mı, yoksa release
-      otomasyonu repo bazında opsiyonel mi kalacak? Doküman şimdilik durumu not ediyor.
+- [x] ~~**`release.yml` hiçbir repo'ya dağıtılmıyor** — karar verildi (2026-08-17).~~
+      **Karar: Faz 8 ile birlikte devreye alınacak** (`defaults.workflows: [ci, release]`).
+      Gerekçe: `release.yml` Conventional Commits'ten semver türetip tag kesiyor; Faz 8'de
+      motor repo zaten tag ile sürümlenecek (`ref=v1.0.0`), yani sürümleme o gün gerçek
+      bir işe bağlanıyor. Bugün açılırsa üç pilot repoda karşılığı olmayan tag'ler üretir.
+      ⚠️ O güne kadar [`docs/release-process.md`](docs/release-process.md) akışı
+      **yürürlükte değil** — doküman durumu not ediyor.
 
 - [ ] **Bu repo'nun `.github/CODEOWNERS`'ında yol bazlı kural yok.**
       [`ACCESS-MODEL.md`](ACCESS-MODEL.md) Karar 13, dashboard'un HCL'i değiştirmesine
