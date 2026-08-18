@@ -1,0 +1,43 @@
+# =============================================================================
+# GEÇİCİ — erişim izolasyonu testi (2026-08-18)
+# =============================================================================
+# Amaç: `default_repository_permission = none` gerçekten çalışıyor mu?
+#
+# Kurulum bilerek "kimseye yetki verilmemiş" halde:
+#   mentors    → yalnızca uslanozan (repo'nun bir sahibi olmak zorunda)
+#   developers → BOŞ
+#
+# Beklenen sonuç: `paitblack` ve `medine2906` bu repo'yu HİÇ göremez. İkisi de
+# org üyesi ama hiçbir takımında değil; `none` öncesinde org varsayılanı onlara
+# `read` verirdi.
+#
+# ⚠️ `visibility: private` ZORUNLU — bu satır olmadan test geçersizdir.
+# `defaults.visibility` = `public` ve public repo'yu internetteki herkes görür;
+# görebilmeleri base permission'dan değil public olmasından gelirdi.
+#
+# ⚠️ Bedeli: free plan'de private repo'da branch protection çalışmıyor. Bu yüzden
+# `protected_branches` aşağıda kaldırıldı. Korumalı dallar zaten diğer üç repoda
+# doğrulandı (pilot-verification.md Bölüm 6), burada kayıp yok.
+#
+# 🗑️ TEMİZLİK — bu dosyayı silmek repo'yu SİLMEZ.
+# Modülde `prevent_destroy = true` var (main.tf): config'den bir repo satırının
+# yanlışlıkla düşmesi repo'yu yok etmesin diye. Yani sadece bu YAML'ı silersen
+# apply hata verir. Doğru sıra:
+#   1. GitHub arayüzünden repo'yu sil (Settings → Danger Zone)
+#   2. `terraform state rm 'module.repositories["pilot-access-test"]'`
+#   3. Bu dosyayı sil
+# Alternatif: `archived: true` yaz ve dursun — silmeden etkisizleştirir.
+# =============================================================================
+
+description: "GEÇİCİ — org base permission `none` izolasyon testi"
+language: typescript
+visibility: private
+
+mentors: [uslanozan]
+developers: []
+
+# Free plan private repo'da branch protection API'si yok; `null` ile defaults'tan
+# kaldırılıyorlar (kaldırma escape hatch'i — bkz. repositories.tf).
+protected_branches:
+  main: null
+  develop: null
