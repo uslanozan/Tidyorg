@@ -1,5 +1,5 @@
 # Bu dosya Terraform tarafından üretilmiştir — elle düzenlemeyin.
-# Kaynak: config/organization.yml
+# Kaynak: config/repositories/Tidyorg.yml (mentors, code_owners)
 
 # Varsayılan sahiplik · Default ownership
 *                       @your-org/tidyorg-github-infrastructure-mentors
