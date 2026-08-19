@@ -712,7 +712,7 @@ ayrı bir kasa kullanır (Settings → Secrets → Dependabot). `secrets.TF_API_
 için `terraform init` HCP'ye bağlanamadan patlıyor. 9 saniye de "checkout + setup + init
 başarısız" süresine denk düşüyor.
 
-**Alınan önlem:** job Dependabot PR'larında atlanıyor (`if: github.actor != 'dependabot[bot]'`).
+**Alınan önlem:** job Dependabot PR'larında atlanıyor. Koşul PR'ın **sahibine** bakıyor (`github.event.pull_request.user.login`), tetikleyene değil — ilk yazımda `github.actor` kullanılmıştı ve bu yanlıştı: bir insan "Re-run jobs" dediğinde değer o insan olur, koşul geçer ve job yine patlar, çünkü GitHub secret kısıtını PR'ı AÇANA göre uygular.
 Token'ı ikinci bir kasaya yaymak yerine bu seçildi; Dependabot bu repo'da yalnızca action
 sürümlerini yükseltiyor, `terraform/` altına dokunmuyor — plan çalışsa `No changes` derdi.
 Job zorunlu status check değil, atlanması PR'ı bloklamaz.

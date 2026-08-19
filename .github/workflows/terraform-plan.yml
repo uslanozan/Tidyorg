@@ -31,7 +31,12 @@ jobs:
     #
     # ⚠️ Bu job zorunlu status check DEĞİL (`require_status_checks: [ci/test]`),
     # dolayısıyla atlanması PR'ı bloklamaz.
-    if: github.actor != 'dependabot[bot]'
+    #
+    # ⚠️ `github.actor` DEĞİL, PR'ın SAHİBİ kontrol ediliyor. `github.actor` işi
+    # tetikleyen kişidir: bir insan "Re-run jobs" derse değeri o insan olur, koşul
+    # geçer ve job yine patlar — çünkü GitHub secret kısıtını tetikleyene değil,
+    # PR'ı AÇANA göre uyguluyor. İlk yazımda bu hata vardı.
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
 
     runs-on: ubuntu-latest
     defaults:
