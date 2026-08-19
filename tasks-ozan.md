@@ -4,15 +4,23 @@
 **Alan:** Repo modülü, issue/PR templates, CI/CD workflows, DX dokümantasyonu, Linear/ClickUp  
 **Tahmini Süre:** 4 hafta
 
-> **Durum (2026-08-18):** Hafta 1–5 tamamlandı. Emre'nin ayrılmasıyla Faz 3 (GitOps) ve
-> Faz 4 (GitHub App) bu listeye geçti ve bitti. **Faz 2 (şablon dağıtımı) 2026-08-16'da
-> canlıya çıktı.** Dış entegrasyonlar ek özellik olarak Hafta 8+'a bırakıldı.
+> **Durum (2026-08-19):** Hafta 1–5 tamamlandı, **Faz 6 kapandı.**
+> Emre'nin ayrılmasıyla Faz 3 (GitOps) ve Faz 4 (GitHub App) bu listeye geçti ve bitti.
+> Faz 2 (şablon dağıtımı) 2026-08-16'da canlıya çıktı. Dış entegrasyonlar Hafta 8+'a bırakıldı.
+>
+> **Faz 6 — 2026-08-18/19'da tamamlandı:** bypass görünürlük raporu · base permission
+> `none` · repo ve org güvenlik ayarları · repo açma kısıtı · `people` → Terraform.
+> Erişim izolasyonu **2026-08-19'da iki hesapla canlı doğrulandı**
+> _(bkz. [`docs/pilot-verification.md`](docs/pilot-verification.md) Bölüm 9)_.
 >
 > **Sıra değişti: Faz 2 → Faz 6 (güvenlik ayarları) → Faz 8 (repo topolojisi).**
 > Faz 8'in "Medine yazma moduna geçmeden bitmeli" gerekçesi 2026-08-17'de düştü — tek
 > mentör benim, split'in koruduğu sınırın bugün karşılığı yok ve split, henüz canlı
 > doğrulanmamış testleri iki repoya böler. Faz 8 artık **koşula bağlı**: dashboard yazma
 > modu ayrılırken ya da demo çıkarılırken. Gerekçeler: [`ROADMAP.md`](ROADMAP.md) Karar E–I.
+>
+> **Açık fazlar:** Faz 5 (dashboard · Medine) · Faz 7 (Team planı — engelli) ·
+> Faz 8 (koşula bağlı) · Faz 9 (agent'lar — değerlendiriliyor).
 
 ---
 
@@ -778,8 +786,56 @@ boşluğu gizlemek olurdu.
       Yani **onay zorunluluğu** kanıtlandı, **code owner mekanizması** değil. Tam kanıt
       için `main`'e açılan bir PR'ın *başka bir developer onayladığı halde* bloklu kalması
       gözlenmeli — **ikinci bir developer hesabı gerekiyor, tek bloklayan bu.**
-- [ ] Sonuçları [`docs/pilot-verification.md`](docs/pilot-verification.md) Bölüm 6'ya işle
-      _(force push → 6.5, drift → 7, code owner → 6.5 kısmi olarak işlendi)_
+- [x] ✅ **Erişim izolasyonu testi** _(2026-08-19)_ — `default_repository_permission = none`
+      iki hesapla canlı doğrulandı. `pilot-access-test` (private, kimseye yetki verilmemiş)
+      ikisine de **404**; `medine2906` iki pilot repo'yu **kaybetti**, `paitblack` görmeye
+      devam ediyor.
+      Asıl kanıt Medine'nin kaybı: o erişim takım üyeliğinden değil **org varsayılanından**
+      geliyordu. People ekranındaki takım sayıları da config'le birebir uyuşuyor (1 / 3 / 5).
+      ⚠️ Kurulumdaki kritik ayrıntı: repo **`private` olmak zorundaydı** — public olsaydı
+      ikisi de görürdü ve test hiçbir şey kanıtlamazdı.
+- [x] ✅ **Yol bazlı CODEOWNERS** _(2026-08-19)_ — kendiliğinden doğrulandı. Kural eklenince
+      GitHub açık bir Dependabot PR'ında `platform-admins`'i **yeni bir code owner review
+      isteğiyle** çağırdı ve merge bloklandı. Aynı ekranda Karar E'nin bypass düğmesi de
+      görünüyor.
+- [x] ✅ Sonuçlar [`docs/pilot-verification.md`](docs/pilot-verification.md)'ye işlendi
+      _(force push → 6.5 · drift → 7 · code owner → 6.5 kısmi · org düzlemi → **Bölüm 9**)_
+
+### ⚙️ CI ve Dependabot _(plan dışı — 2026-08-19'da doğrulama sırasında çıktı)_
+
+- [x] ✅ **Terraform uyarıları CI'da görünür kılındı** _(2026-08-18)_ — `plan` yorumunda
+      sayılıp listeleniyor, `apply`'da `::warning::` annotation + step summary.
+      İlk gerçek çalıştırmasında **sıfır Terraform uyarısı** raporladı (doğru); sayfadaki
+      tek annotation GitHub'ın kendi Node 20 deprecation uyarısıydı.
+- [x] ✅ **Şablon action sürümleri güncellendi** — Dependabot'un bulduğu sürümler
+      `terraform/templates/.github/workflows/{ci,release}.yml`'a taşındı ve dört repoya
+      uygulandı.
+      🔴 **Neden elle:** Dependabot'un `github-actions` ekosistemi yalnızca **gerçek**
+      `.github/workflows/` klasörünü tarar. `terraform/templates/` altındakiler onun için
+      sıradan YAML — hiç güncellenmezler.
+      Ve dağıtılan kopya `strict` modda Terraform'a ait. Şablon güncellenmeden merge
+      edilseydi **sonsuz döngü** oluşurdu:
+      `merge → apply geri alır → Dependabot yine açar`.
+      Doğrulandı: şablon güncellendikten sonra Dependabot PR'ını kapatıp yenisini açtı —
+      **8 güncelleme → 3, 3 dosya → 2**, `ci.yml` listeden düştü.
+- [x] ✅ **`Terraform Plan` Dependabot PR'larında atlanıyor** — GitHub bu PR'lara normal
+      Actions secret'larını vermiyor (ayrı kasa), `TF_API_TOKEN` boş gelip `init` patlıyordu.
+      ⚠️ **İlk yazdığım koşul yanlıştı:** `github.actor` işi *tetikleyeni* verir; "Re-run
+      jobs" denince değer insana döner, koşul geçer, job yine patlar. Doğrusu PR'ın
+      **sahibi**: `github.event.pull_request.user.login`.
+      Ders: bir koşulun doğru olduğunu değil, **doğru sinyale baktığını** doğrulamak gerek.
+- [x] ✅ **`.example.yml` config glob'undan dışlandı** — `config/repositories/` klasöründeki
+      her dosya gerçek bir repo yaratıyor. Örnek dosya klasöre kopyalanıp `plan` ile
+      doğrulandı: `No changes`.
+- [ ] 🔁 **Yönetilen repo'larda workflow Dependabot'u susturulsun mu?**
+      `pilot-intern-*` içindeki `ci.yml` de `strict` — orada açılan workflow PR'ları merge
+      edilse bile apply geri alır. Seçenekler ve karar: [`TODO.md`](TODO.md).
+- [ ] ⚠️ **`golangci-lint-action` v6 → v9 kırıcı olabilir** — v7'den itibaren
+      golangci-lint **v2** bekleniyor ve config şeması farklı. Bugün Go kodu olmadığı için
+      job atlanıyor; **ilk gerçek Go reposunda patlar.**
+- [ ] 🔁 **Rutin PR iki onay istiyor** — `required_reviews: 2`, ekip üç kişi. PR #19 bypass
+      ile merge edildi. Risk teknik değil davranışsal: bypass rutinleşirse kural fiilen
+      ortadan kalkar. Seçenekler: [`TODO.md`](TODO.md).
 
 - [ ] ✅ **Hafta Sonu Sync:** Medine ile dashboard okuma + yazma modunu birlikte gözden geçir
 

@@ -8,7 +8,7 @@
 > [`docs/rbac-and-permissions.md`](docs/rbac-and-permissions.md) · Kısa vadeli engeller:
 > [`TODO.md`](TODO.md)
 
-Son güncelleme: 2026-08-18
+Son güncelleme: 2026-08-19
 
 ---
 
@@ -249,7 +249,7 @@ reddedilir. Denetim izi gerçektir — commit'ler işlemi yapan kişinin adına 
 
 ---
 
-### Faz 6 — Org üyeliği, güvenlik ve taban ayarları _(orta)_
+### Faz 6 — Org üyeliği, güvenlik ve taban ayarları ✅ _(tamamlandı, 2026-08-18/19)_
 
 - [x] ✅ **`people` → `github_membership`** _(2026-08-18)_ — org üyeliği artık
       config'den üretiliyor ([`people.tf`](terraform/people.tf)); `platform-admins`

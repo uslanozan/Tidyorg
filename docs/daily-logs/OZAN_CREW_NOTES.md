@@ -8,6 +8,153 @@ Resmî dokümantasyon değil — düşünce sürecinin kaydı. Hafta 4'teki sunu
 
 ---
 
+## 2026-08-19 — Testlerin cevabı geldi, ve Dependabot bir mimari boşluk gösterdi
+
+Dünkü işlerin doğrulama günü. Üç şey bekliyordum, üçü de cevap verdi — ama en öğreticisi
+hiç beklemediğim yerden geldi.
+
+### 1. Erişim izolasyonu — `none` gerçekten çalışıyor
+
+Emre ve Medine linkleri denedi, beklediğimiz cevaplar geldi. `pilot-access-test` ikisine de
+404. Medine iki pilot repo'yu göremiyor, Emre görebiliyor.
+
+People ekranı bunu sayıyla da doğruladı:
+
+| Kişi | Takım | Karşılığı |
+| :--- | :--- | :--- |
+| `medine2906` | 1 | Yalnızca bu repo'nun devs takımı |
+| `paitblack` | 3 | Üç repo'da developer |
+| `uslanozan` | 5 | `platform-admins` + 4 repo mentors |
+
+Yetkinin tek kaynağının takım üyeliği olduğu artık *iddia* değil, ekranda duran bir sayı.
+Dün "beklenen davranış" diye yazdığım şeyin gerçekten öyle olduğunu bugün gördük — ve
+bunu görmeden yazmış olmam, yazarken fark etmediğim bir güven fazlasıydı.
+
+### 2. Örnek config'deki takma adlara gerçek davet gitmiş
+
+Dün `people.tf`'e şunu yazmıştım:
+
+> `organization.example.yml` asla `for_each`'e sokulmamalı: içindeki `mentor-a`, `dev-1`
+> gibi örnek kullanıcılara **gerçek davet gider**.
+
+Teorik bir uyarı sanıyordum. Bugün Invitations sekmesinde iki bekleyen davet çıktı:
+`Dev-1` ve `dev-2`, **15 Ağustos tarihli**. O kullanıcı adları GitHub'da gerçekten var.
+Yani şema örneğindeki takma adlar yüzünden iki yabancıya private bir organizasyona davet
+gitmiş ve dört gün kimse fark etmemiş.
+
+**Neden fark edilmedi:** bekleyen davetler ayrı bir sekmede ve üye sayısına dahil değil.
+Yine aynı tema — bakılacak bir yer olmadığı için görünmüyor.
+
+Kabul edilselerdi org'a `member` olarak katılırlardı ve `people.yml`'da karşılıkları
+olmadığı için hiçbir raporda görünmezlerdi. Dün eklediğim fail-fast bunu config tarafında
+engelliyor ama **davet zaten gönderilmişse devreye girmiyor** — daveti Terraform üretmedi.
+
+Aynı hatanın repo tarafındaki karşılığını da kapattım: `config/repositories/` klasörü
+`*.yml` ile taranıyordu ve **o klasördeki her dosya gerçek bir repo yaratıyor**.
+`repository.example.yml` neyse ki bir üst klasördeydi, ama biri onu aşağı taşısa
+`repository.example` adında canlı bir repo açılırdı. Glob'a istisna ekledim ve gerçekten
+denedim: dosyayı klasöre kopyaladım, `plan` → `No changes`.
+
+**Ders:** örnek dosyalardaki placeholder değerler zararsız değil. Gerçek bir isim alanında
+— GitHub kullanıcı adları, repo adları — **her placeholder var olabilecek bir kimliktir.**
+
+### 3. Dün yazdığım CODEOWNERS kuralı kendiliğinden test edildi
+
+Bunu ben kurmadım, öylece oldu. Üç gün önce açılmış bir Dependabot PR'ında:
+
+```
+requested a review from ...-mentors        as a code owner  · 3 gün önce
+requested a review from platform-admins    as a code owner  · 11 dakika önce
+```
+
+PR açıldığında yalnızca varsayılan sahiplik geçerliydi. `/.github/workflows/` yolunu
+`platform-admins`'e bağlayınca GitHub **yeni bir review isteği üretti**, çünkü PR o yolun
+altına dokunuyor. Ve merge gerçekten bloklandı.
+
+Aynı ekranda Karar E'nin görünür hâli de vardı: `Merge without waiting for requirements to
+be met (bypass rules)`. Kural mentörü de bloklıyor, ama bypass düğmesi bir tık uzakta.
+Tasarladığımız davranış tam olarak bu.
+
+### 4. Asıl bulgu: Dependabot kopyayı görüyor, kaynağı göremiyor
+
+Aynı PR'da `Terraform Plan` check'i 9 saniyede kırmızı yanıyordu. Peşine düşünce iki ayrı
+sorun çıktı.
+
+**Birincisi — Dependabot PR'ları secret göremiyor.** GitHub bunlara normal Actions
+secret'larını vermiyor, ayrı bir kasa kullanıyor. `TF_API_TOKEN` boş gelince `terraform
+init` HCP'ye bağlanamıyor. Job'ı Dependabot PR'larında atladım; token'ı ikinci bir kasaya
+yaymaktansa bu doğru, çünkü Dependabot bu repo'da `terraform/` altına hiç dokunmuyor.
+
+**İkincisi ve önemlisi — sessiz bir geri alma döngüsü.** PR üç dosya değiştiriyordu.
+İkisi elle yazılmış, sorun yok. Üçüncüsü `.github/workflows/ci.yml` ve o **`strict` modda
+Terraform'a ait**:
+
+```
+terraform/templates/.github/workflows/ci.yml   ← KAYNAK (Dependabot göremez)
+        ↓ Terraform kopyalar
+.github/workflows/ci.yml                       ← KOPYA (Dependabot bunu görür)
+```
+
+Dependabot'un `github-actions` ekosistemi yalnızca gerçek `.github/workflows/` klasörünü
+tarıyor; `terraform/templates/` altındakiler onun için sıradan YAML.
+
+Merge edilseydi:
+
+```
+merge → ci.yml v7 → apply v4'e geri alır → Dependabot yine açar → ...
+```
+
+Sonsuz döngü. Sürümleri şablona taşıyıp apply ettim; Dependabot bir sonraki taramada
+kendi PR'ını kapatıp yenisini açtı: **8 güncelleme → 3, 3 dosya → 2.** `ci.yml` düştü.
+Teorinin en temiz doğrulaması, çünkü botun kendisi onayladı.
+
+**Genel hâli:** bir dosyanın içeriğini Terraform sahipleniyorsa, o dosyayı güncelleyen her
+otomasyon — Dependabot, bot, ileride agent'lar — **kaynağı değil kopyayı görür.** Kopyaya
+yapılan her değişiklik bir sonraki apply'da kaybolur; hata vermeden, sessizce.
+
+Bu, Faz 9'da (otomasyon agent'ları) tekrar karşımıza çıkacak bir sınıf. Bir agent'ın
+"düzelttiği" şey Terraform'un sahiplendiği bir dosyaysa, düzeltme kalıcı olmaz.
+
+### 5. Ve kendi yazdığım koşul yanlıştı
+
+Job'ı atlatırken şunu yazmıştım:
+
+```yaml
+if: github.actor != 'dependabot[bot]'
+```
+
+Yanlış. `github.actor` işi **tetikleyen** kişi — Ozan "Re-run jobs" derse değeri
+`uslanozan` olur, koşul geçer, job çalışır ve **yine patlar**. Çünkü GitHub secret kısıtını
+tetikleyene değil, **PR'ı açana** göre uyguluyor.
+
+```yaml
+if: github.event.pull_request.user.login != 'dependabot[bot]'
+```
+
+Bunu ancak PR'ın hâlâ kırmızı olduğunu görünce fark ettim. İki gün önce "ateşlendiği
+görülmemiş bir doğrulama yazılmış sayılmaz" diye not düşmüştüm; aynı şey guard'lar için de
+geçerliymiş. **Bir koşulun doğru olduğunu değil, doğru sinyale baktığını doğrulamak
+gerekiyor.**
+
+### 6. Rutin PR iki onay istiyor — ve bypass alışkanlığa dönüşüyor
+
+PR sonunda bypass ile merge edildi. Sebep: `main`'de `required_reviews: 2` ve ekip üç
+kişi. Bir action sürüm yükseltmesi iki insan onayı istiyor; Ozan code owner onayını
+verebiliyor ama ikincisi için Emre ya da Medine gerekiyor.
+
+**Buradaki risk teknik değil, davranışsal.** "Rutin PR, bypass'larım" bir kez yapıldığında
+istisna; her hafta yapıldığında varsayılan olur. Ve bypass rutin bir refleks hâline
+geldiğinde, gerçekten incelenmesi gereken PR'da da basılır. Kural o gün fiilen ortadan
+kalkmış olur — kimse kaldırmasa bile.
+
+Bir ironi de var: gruplamayı **güncellemeler gecikmesin** diye yapmıştık. Onay matematiği
+o kazancı geri alıyor.
+
+Karar TODO'da; Faz 8'de config repo ayrıldığında soru zaten yeniden şekillenecek — motor
+repo'da iki onay mantıklı, config repo'da muhtemelen değil.
+
+---
+
 ## 2026-08-18 — Faz 6 başladı: görünürlük raporu, ve org ayarlarını açınca çıkanlar
 
 Bugün iki iş yaptım. Biri planlıydı, diğeri planladığım işin yan ürünü olarak çıktı ve
@@ -253,7 +400,7 @@ alt seviyede ne olacağını belirsiz bırakmıyor.
 org üyesi değil, kurulu bir entegrasyon. Ama test etmemiştim, ve yanılsam config'den repo
 yaratma tamamen bozulurdu. Ozan "doğrulayalım" dedi, haklıydı.
 
-### 10. App testi — varsayım tuttu
+### 9. App testi — varsayım tuttu
 
 Kısıt yürürlükteyken geçici bir repo config'i ekleyip apply ettim:
 
@@ -270,7 +417,7 @@ repo açamıyor, config açabiliyor.**
 Bu testi yapmasaydık bunu ancak haftalar sonra, gerçek bir repo açarken öğrenecektik — ve
 o an "neden çalışmıyor" diye Terraform'da arayacaktık, org ayarında değil.
 
-### 11. Testin yan ürünü: kullandığım alan deprecated'mış
+### 10. Testin yan ürünü: kullandığım alan deprecated'mış
 
 Apply çıktısını `grep`'lerken uyarıyı gördüm:
 
@@ -289,7 +436,7 @@ Kendime kural: apply çıktısını sadece "başarılı mı" diye okumak yetmiyo
 satırlarına ayrıca bakmak** gerekiyor. CI'daki plan yorumuna bunu ekleyebiliriz —
 uyarı sayısını da raporlasın, tıpkı drift sayısını raporladığı gibi.
 
-### 12. Kendi elimizle yönetim dışı nesne ürettik
+### 11. Kendi elimizle yönetim dışı nesne ürettik
 
 Test repo'sunu temizlerken şunu fark ettim: **atılabilir repo açmak pahalı.** Modüldeki
 `prevent_destroy` yüzünden Terraform repo'yu silemiyor. Yaptığım:
@@ -309,7 +456,7 @@ ROADMAP'e bir öneri yazdım: config'e `ephemeral: true` alanı: öyle işaretle
 var — `lifecycle` dinamik olamadığı için (Faz 2'de öğrendik) iki ayrı kaynak gerekir.
 Değer mi, konuşulacak.
 
-### 14. `people` Terraform'a bağlandı — Faz 6 kapandı
+### 12. `people` Terraform'a bağlandı — Faz 6 kapandı
 
 Faz 6'nın kalan tek büyük işi. `config/organization.yml` → `people` bölümü aylardır
 duruyordu ama **hiçbir şey onu okumuyordu**; gerçek üyelik `org-membership.tf` içinde
@@ -374,7 +521,7 @@ YAML.
 (Emre olayının neden iki katmanlı olduğu) `people.tf` içine taşıdım — kod silinir, sebebi
 silinmemeli.
 
-### 15. `people.yml` ayrıldı, üç doğrulama eklendi — ve bir tuzağı soru sayesinde bulduk
+### 13. `people.yml` ayrıldı, üç doğrulama eklendi — ve bir tuzağı soru sayesinde bulduk
 
 Ozan bir şey sordu: *"yeni kişi eklerken sadece organization.yml'ı mı değiştiriyoruz?"*
 Cevabı ararken **`people`'a yazmanın zorunlu olmadığını** fark ettim. Birini yalnızca repo
@@ -396,14 +543,14 @@ Buna da bir precondition ekledim.
 İkisi de "bir şey yapalım" diye değil, **soru sorulduğu için** ortaya çıktı. Kodun kendisi
 bunu söylemiyordu.
 
-### `people.yml` ayrımı
+#### 13a · `people.yml` ayrımı
 
 `people` bölümünü `organization.yml`'dan çıkarıp kendi dosyasına aldım. Gerekçe basit:
 `organization.yml` **rollerin ne anlama geldiğini** tanımlıyor (nadiren değişir, yüksek
 risk); kişi listesi ise sık değişiyor ve ileride dashboard yazacak. Bir stajyer eklemek
 için yetki tanımlarının bulunduğu dosyayı açmak zorunda kalmak yanlıştı.
 
-### Yetki yükseltme tartışması — ve fikir değiştirdiğim yer
+#### 13b · Yetki yükseltme tartışması — ve fikir değiştirdiğim yer
 
 Ozan iyi bir soru sordu: dashboard `people.yml`'a yazacaksa, yetkili biri oradan kendini
 org owner yapamaz mı?
@@ -434,7 +581,7 @@ vermiyor. O listeye ikinci bir isim eklemek, projedeki tüm yetki kontrollerinin
 sessizce genişletir. Ve bu hiçbir yerde yazmıyordu. Artık config dosyasının başında
 büyük harflerle yazıyor.
 
-### Yol bazlı CODEOWNERS — açık bir TODO kapandı
+#### 13c · Yol bazlı CODEOWNERS — açık bir TODO kapandı
 
 `/terraform/` ve `/.github/workflows/` yolları `platform-admins` takımına bağlandı
 (ACCESS-MODEL Karar 13). İkincisini ben ekledim: apply'ı çalıştıran iş akışlarına
@@ -448,7 +595,7 @@ Bir de bunu yaparken üretilen CODEOWNERS'ın başlığındaki `# Kaynak: config
 satırının **yanlış** olduğunu gördüm — dosya repo config'inden üretiliyor. Küçük ama
 dosyayı okuyan birini yanlış yere gönderiyordu.
 
-### 13. Uyarıları CI'ya taşıdım — "yeşil" yeterli bir sinyal değilmiş
+### 14. Uyarıları CI'ya taşıdım — "yeşil" yeterli bir sinyal değilmiş
 
 Sabahki deprecation olayının asıl dersi teknik değil, **sinyal tasarımıyla** ilgiliydi:
 uyarı oradaydı, ben bakmadım. Bir daha bakmayacağımı varsayıp sistemi değiştirdim.
@@ -489,7 +636,7 @@ apply çıktısı hiç yok. Test ederken üretilen çıktı bugünün özeti gib
 "Hiçbir şey değişmiyor" ve "üç uyarı var" aynı anda doğru olabiliyor. Sabah tam olarak
 bunu kaçırdım.
 
-### 9. Bugünün en büyük sorusu: geçmişi kim koruyacak?
+### 15. Bugünün en büyük sorusu: geçmişi kim koruyacak?
 
 Org varsayılanlarını açarken fark ettiğim şey, aslında bugünün en önemli bulgusu:
 bu ayarlar `*_for_new_repositories`. **Yalnızca geleceği koruyorlar.**

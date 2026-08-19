@@ -7,7 +7,7 @@ Faz planı ve mimari kararlar burada değil — [`ROADMAP.md`](ROADMAP.md) için
 Tamamlanan işler buradan silinir; kalıcı kayıt [`docs/pilot-verification.md`](docs/pilot-verification.md)
 ve [`docs/daily-logs/`](docs/daily-logs/) altındadır.
 
-Son güncelleme: 2026-08-18
+Son güncelleme: 2026-08-19
 
 ---
 
@@ -43,6 +43,36 @@ Son güncelleme: 2026-08-18
       `org-settings.tf`'teki satır bir kayıt değil, **tek doğruluk kaynağı**.
       **Yapılacak:** offboarding kontrol listesine "fatura e-postası" maddesi eklensin
       _(bkz. [`docs/runbook.md`](docs/runbook.md))_.
+
+---
+
+## 🔁 Rutin PR'lar iki onay istiyor — bypass alışkanlığa dönüşüyor _(2026-08-19)_
+
+- [ ] **`main` → `required_reviews: 2`, ekip üç kişi.**
+      Dependabot PR #19 bunu somutlaştırdı: bir action sürüm yükseltmesi **iki insan
+      onayı** istiyor. Sen `platform-admins` olarak code owner onayını verebilirsin ama
+      ikinci onay için Emre ya da Medine gerekiyor.
+      **2026-08-19'da PR #19 bypass ile merge edildi** _(Karar E'nin verdiği yetki)_.
+
+      ⚠️ **Asıl risk teknik değil, davranışsal.** "Rutin PR, bypass'larım" bir kez
+      yapıldığında istisna; her hafta yapıldığında **varsayılan** olur. Ve bypass düğmesi
+      rutin bir refleks hâline geldiğinde, gerçekten incelenmesi gereken PR'da da basılır.
+      Kural o gün zaten devre dışıdır — kimse kaldırmasa bile.
+
+      Bir de ironi var: gruplamayı **güncellemeler gecikmesin** diye yapmıştık
+      (2026-08-16, 5 PR'lık spam). Onay matematiği o kazancı geri alıyor.
+
+      **Seçenekler:**
+
+      | Yol | Etkisi | Bedeli |
+      | :--- | :--- | :--- |
+      | Bu repo'da `required_reviews: 1` | Rutin PR tek onayla geçer | `main`'in koruması zayıflar |
+      | `type: chore` etiketli PR'lar için ayrı kural | Hedefli | Klasik branch protection bunu **yapamaz** — ruleset gerekir (ADR konusu, bkz. "Sonraya bırakılanlar") |
+      | Developer'lardan ikinci onay iste | Kural bozulmaz | Her hafta iki kişiyi meşgul eder |
+      | Bugünkü hâl: bypass | Hızlı | Yukarıdaki davranışsal risk |
+
+      **Karar bekliyor.** Faz 8 sonrası config repo ayrıldığında bu soru yeniden şekillenir:
+      motor repo'da 2 onay mantıklı, config repo'da muhtemelen değil.
 
 ---
 
