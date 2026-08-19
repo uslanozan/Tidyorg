@@ -309,6 +309,71 @@ ROADMAP'e bir öneri yazdım: config'e `ephemeral: true` alanı: öyle işaretle
 var — `lifecycle` dinamik olamadığı için (Faz 2'de öğrendik) iki ayrı kaynak gerekir.
 Değer mi, konuşulacak.
 
+### 14. `people` Terraform'a bağlandı — Faz 6 kapandı
+
+Faz 6'nın kalan tek büyük işi. `config/organization.yml` → `people` bölümü aylardır
+duruyordu ama **hiçbir şey onu okumuyordu**; gerçek üyelik `org-membership.tf` içinde
+kişi başına elle yazılıydı. Yani config'in "veri katmanı YAML'da" iddiası bu bölümde
+yalandı.
+
+**Beklediğimden risksiz geçti — çünkü `moved` bloklarını doğru kullandık.**
+
+```
+Plan: 0 to add, 0 to change, 0 to destroy.
+```
+
+Kaynaklar yeniden adlandırılmadı, **adresleri** değişti: `github_membership.emre` →
+`github_membership.people["paitblack"]`. `moved` olmasaydı Terraform bunu "eskiyi yok et,
+yenisini yarat" diye okurdu — üyelikler bir an için düşerdi. Tek bir API çağrısı bile
+yapılmadı; saf state taşıması.
+
+**Doğrulamayı hardcode etmedim.** `roles:` bloğunda zaten `scope: organization |
+repository` var. "Hangi rol `people`'a yazılabilir" sorusunun cevabı orada duruyordu;
+ikinci kez yazmak iki kaynağın zamanla ayrışması demekti. Kural şimdi config'den
+türetiliyor — yarın yeni bir org kapsamlı rol eklenirse doğrulama kendiliğinden bilecek.
+
+**İki hata yolunu da test ettim, ve ikincisi beni yakaladı.**
+
+1. `paitblack`'e `roles: [developer]` yazdım → plan durdu, hangi kişi hangi rol
+   söylendi. ✅
+2. `medine2906`'dan `org_role`'ü sildim → **yanlış hata geldi.** Kaynak
+   `each.value.org_role` satırında çöküyor, benim açıklayıcı precondition'ım hiç
+   çalışmıyordu. Kullanıcının gördüğü şey şuydu:
+
+   > `This object does not have an attribute named "org_role".`
+
+   Terraform'un kendi hatası teknik olarak doğru ama işe yaramaz — hangi kişi, neden
+   zorunlu, ne yazılmalı, hiçbiri yok. `try(each.value.org_role, "member")` ile ifadeyi
+   değerlenebilir hale getirdim; artık plan precondition'a ulaşıyor.
+
+   **Buradaki `try` varsayılan üretmek için değil, hata sırasını düzeltmek için.** O
+   "member" değeri asla uygulanmaz çünkü precondition planı zaten durduruyor. Bunu koda
+   yorum olarak yazdım, yoksa biri "gereksiz try" deyip siler ve hata mesajı sessizce
+   kötüleşir.
+
+   Ders: **bir doğrulamanın ateşlendiğini görmeden yazıldı sayılmaz.** Ateşlenmeyen kural,
+   olmayan kuraldan daha kötü — çünkü var sanıyorsun.
+
+**Bypass raporundaki `_uyari` kalkmadı, daraldı.** Baştan planım onu tamamen kaldırmaktı
+("Faz 6 bitince bu uyarı kalkacak" diye yazmıştım). Ama kaldırmak yanlış olurdu:
+`uslanozan` break-glass gereği hâlâ yönetim dışında, yani onun org rolü **hâlâ beyan** ve
+arayüzden değiştirilirse plan sessiz kalıyor. Uyarı artık bunu ismen söylüyor:
+
+> "Şu org owner'ın rolü Terraform tarafından ZORLANMIYOR: uslanozan. ... Diğer herkes
+> zorlanıyor."
+
+Kendi verdiğim sözü tutmak için gerçek bir boşluğu gizlemek olurdu. Uyarı metnini
+daraltmak, silmekten dürüst.
+
+**Kazanç offboarding'de görünüyor.** 15 Ağustos'ta Emre'yi indirmek iki ayrı `.tf`
+dosyası düzenlemeyi gerektirdi — takım üyeliği ve org rolü. İkisinden birini atlamak
+yetkiyi sessizce bırakıyordu; nitekim ilk denememde tam olarak bu oldu. Artık tek satır
+YAML.
+
+`org-membership.tf` ve `team-memberships.tf` silindi. Ama içlerindeki tarihsel gerekçeleri
+(Emre olayının neden iki katmanlı olduğu) `people.tf` içine taşıdım — kod silinir, sebebi
+silinmemeli.
+
 ### 13. Uyarıları CI'ya taşıdım — "yeşil" yeterli bir sinyal değilmiş
 
 Sabahki deprecation olayının asıl dersi teknik değil, **sinyal tasarımıyla** ilgiliydi:

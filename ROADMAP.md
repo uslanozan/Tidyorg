@@ -8,7 +8,7 @@
 > [`docs/rbac-and-permissions.md`](docs/rbac-and-permissions.md) · Kısa vadeli engeller:
 > [`TODO.md`](TODO.md)
 
-Son güncelleme: 2026-08-17
+Son güncelleme: 2026-08-18
 
 ---
 
@@ -32,13 +32,16 @@ Son güncelleme: 2026-08-17
 
 **Çalışmıyor / eksik:**
 
-1. `people` bölümü Terraform tarafından okunmuyor — `org-membership.tf` tek kişilik
-   istisna dosyası olarak duruyor _(Faz 6)_
-2. `default_repository_permission` = **`Read`**, yönetilmiyor — her org üyesi her repo'yu
-   görüyor _(Faz 6)_
+1. ~~`people` bölümü okunmuyor~~ ✅ **2026-08-18** — `people.tf` ile config'den
+   üretiliyor; istisna dosyaları kaldırıldı. Tek boşluk: `uslanozan` break-glass
+   gereği yönetim dışı, org rolü hâlâ beyan _(bypass raporu bunu ismen söylüyor)_
+2. ~~`default_repository_permission` = `Read`~~ ✅ **2026-08-18** — `none` yapıldı;
+   erişimin tek kaynağı artık takım üyeliği
 3. Dashboard yok _(Faz 5)_
-4. Repo güvenlik ayarları yönetilmiyor — secret scanning, `vulnerability_alerts`, code
-   scanning'in hiçbiri kurulu değil _(Faz 6)_
+4. ~~Repo güvenlik ayarları yönetilmiyor~~ ✅ **2026-08-18** — `vulnerability_alerts` ve
+   secret scanning + push protection config'den yönetiliyor; org geneli varsayılanlar
+   da açıldı. **Kalan:** code scanning (CodeQL) hâlâ yok, ve `advanced_security`
+   GHAS lisansı istediği için bilerek kapalı _(Faz 7)_
 5. **Motor ile durum aynı repoda** — mentörü motordan ayıracak bir sınır yok _(Faz 8)_
 
 > `release.yml`'ın hiçbir repo'ya dağıtılmaması bu listede **yok**, çünkü eksik değil
@@ -248,12 +251,16 @@ reddedilir. Denetim izi gerçektir — commit'ler işlemi yapan kişinin adına 
 
 ### Faz 6 — Org üyeliği, güvenlik ve taban ayarları _(orta)_
 
-- [ ] **`people` → `github_membership`** — org üyeliği config'den üretilsin;
-      `platform-admins` üyeliği de `people.roles`'tan doğsun.
-      Break-glass: `uslanozan` yönetim dışı kalır.
-      ⚠️ Riskli: mevcut owner yetkilerini etkileyebilir; `plan`'ı dikkatle incele.
-      Tamamlanınca `org-membership.tf` istisna dosyası kalkar.
-      **Faz 6'nın kalan tek büyük işi.**
+- [x] ✅ **`people` → `github_membership`** _(2026-08-18)_ — org üyeliği artık
+      config'den üretiliyor ([`people.tf`](terraform/people.tf)); `platform-admins`
+      üyeliği de `people.roles`'tan doğuyor.
+      `org-membership.tf` ve `team-memberships.tf` istisna dosyaları kaldırıldı.
+      **`moved` blokları sayesinde geçiş `0 to add, 0 to change, 0 to destroy`** —
+      saf adres taşıması, tek bir API çağrısı bile yapılmadı.
+      Break-glass: `uslanozan` bilerek yönetim dışı (`unmanaged_people`).
+      **Doğrulama plan aşamasında zorlanıyor** ve ikisi de canlı test edildi:
+      `people.roles` içine repo kapsamlı rol yazmak · `org_role` yazmayı unutmak.
+      Kural hardcode değil — `roles:` bloğundaki `scope` alanından türetiliyor.
 - [x] ✅ **`default_repository_permission` → `none`** _(2026-08-18)_
       Bugünkü değer `Read`'ti — yazma deliği yoktu ama izolasyon da yoktu. Artık
       erişimin tek kaynağı takım üyeliği. Yan etki: `medine2906` iki pilot repo'yu

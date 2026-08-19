@@ -52,8 +52,8 @@ people:
     roles: [head-of-engineering]
 
   paitblack:
-    org_role: admin
-    roles: [head-of-engineering]
+    org_role: member
+    roles: [developer]
 
   # Örnek mentör ve developer'lar
   mentor-a: { org_role: member }

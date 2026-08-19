@@ -205,7 +205,7 @@ flowchart LR
         direction TB
         H1["repositories.tf<br/>config'i modüle bağlar"]
         H2["modules/repository/<br/>takım + koruma üretir"]
-        H3["teams.tf · org-membership.tf<br/>org düzlemi"]
+        H3["teams.tf · people.tf<br/>org düzlemi"]
     end
 
     subgraph GH["🐙 GITHUB · üretilen gerçeklik"]

@@ -43,18 +43,16 @@ output "org_admin_team" {
 # =============================================================================
 
 locals {
-  # ⚠️ `people` bölümü Terraform tarafından HENÜZ TÜKETİLMİYOR. Aşağıdaki iki liste
-  # bu yüzden "config'de beyan edilen" durumdur, GitHub'dan doğrulanmış değil.
-  # Faz 6'nın `github_membership` işi bitince gerçeğe bağlanacak — o güne kadar
-  # rapor bunu açıkça söylüyor (bkz. output içindeki `_uyari` alanı).
-  declared_org_owners = sort([
-    for user, cfg in try(local.org_config.people, {}) :
-    user if try(cfg.org_role, "member") == "admin"
-  ])
-
-  declared_head_of_engineering = sort([
-    for user, cfg in try(local.org_config.people, {}) :
-    user if contains(try(cfg.roles, []), "head-of-engineering")
+  # `org_owners` ve `head_of_engineering` listeleri people.tf'te tanımlı ve artık
+  # Terraform tarafından ZORLANIYOR (`github_membership.people`) — 2026-08-18'e
+  # kadar yalnızca beyandılar.
+  #
+  # Tek istisna `local.unmanaged_people`: break-glass gereği yönetim dışında
+  # bırakılan kişiler. Onların org rolü hâlâ beyandır ve arayüzden değiştirilirse
+  # plan sessiz kalır. Rapor bunu `_uyari` alanında ismen söylüyor.
+  unenforced_owners = sort([
+    for user in local.org_owners : user
+    if contains(local.unmanaged_people, user)
   ])
 
   # Hiç korumalı dalı olmayan repo'lar.
@@ -87,15 +85,21 @@ output "branch_protection_bypass" {
   EOT
 
   value = {
-    _uyari = join(" ", [
-      "org_owner listesi config'deki `people` bölümünden okunuyor ve o bölüm henüz",
-      "Terraform tarafından zorlanmıyor — yani beyan, doğrulanmış gerçek değil.",
-      "Faz 6 tamamlanınca bu uyarı kalkacak.",
+    # 2026-08-18'e kadar bu alan "org rolleri hiç zorlanmıyor, hepsi beyan" diyordu.
+    # `github_membership.people` devreye girince kapsam daraldı: artık yalnızca
+    # break-glass için yönetim dışı bırakılanlar beyan.
+    _uyari = length(local.unenforced_owners) == 0 ? "Tüm org rolleri Terraform tarafından zorlanıyor." : join(" ", [
+      "Şu org owner'ın rolü Terraform tarafından ZORLANMIYOR:",
+      "${join(", ", local.unenforced_owners)}.",
+      "Break-glass gereği bilerek yönetim dışında (people.tf → unmanaged_people):",
+      "tüm owner'ları Terraform'a bağlamak, hatalı bir apply'da geri dönüşü olmayan",
+      "kilitlenme riski taşır. Bedeli görünürlük: bu kişinin rolü arayüzden",
+      "değiştirilirse plan sessiz kalır. Diğer herkes zorlanıyor.",
     ])
 
     organizasyon_geneli = {
-      org_owner           = local.declared_org_owners
-      head_of_engineering = local.declared_head_of_engineering
+      org_owner           = local.org_owners
+      head_of_engineering = local.head_of_engineering
       not                 = "Bu iki grup HER repo'da admin'dir; repo bazlı listede tekrar görünür."
     }
 
@@ -122,8 +126,8 @@ output "branch_protection_bypass" {
           # yetkisi taşıyan herkes muaftır.
           tum_kurallardan_muaf = try(rules.enforce_admins, false) ? [] : sort(distinct(concat(
             try(repo.mentors, []),
-            local.declared_head_of_engineering,
-            local.declared_org_owners,
+            local.head_of_engineering,
+            local.org_owners,
           )))
 
           # Bu roller ayrıca push allowlist'inde de yazılı — muafiyetten bağımsız

@@ -43,9 +43,24 @@ org_admin_team: platform-admins
 # -----------------------------------------------------------------------------
 # KİŞİLER
 # -----------------------------------------------------------------------------
-# NOT: Bu bölüm henüz Terraform tarafından tüketilmiyor. Organizasyon üyeliğinin
-# (github_membership) Terraform'a devredilmesi, mevcut owner yetkilerini
-# etkileyebileceği için bilinçli olarak ertelendi.
+# Bu bölüm terraform/people.tf tarafından tüketilir (2026-08-18'den beri).
+#
+# ⚠️ Buraya bir kişi eklemek GERÇEK BİR ORG DAVETİ üretir; çıkarmak ise kişiyi
+# atmaz, yalnızca `member`a düşürür (`downgrade_on_destroy`).
+#
+# `org_role` ZORUNLUDUR (`admin` | `member`) — yazılmazsa plan hata verir.
+# Varsayılana düşürülmüyor, çünkü org rolü kişinin branch protection dahil her
+# kuralı atlayıp atlayamayacağını belirler; unutulmuş olması ile bilinçli `member`
+# olması aynı şey değildir.
+#
+# `roles` YALNIZCA org kapsamlı rol taşır (bugün: head-of-engineering). Repo
+# kapsamlı roller (mentor/developer) config/repositories/*.yml içinde yaşar.
+# Kural `roles:` bloğundaki `scope` alanından türetilir ve plan aşamasında
+# zorlanır — yanlış yere yazılan rol sessizce durmaz, hata verir.
+#
+# ⚠️ `uslanozan` bilerek YÖNETİM DIŞINDA (people.tf → unmanaged_people): en az bir
+# org owner Terraform'un dışında kalmalı, yoksa hatalı bir apply organizasyonu
+# geri dönüşü olmayan biçimde kilitleyebilir.
 people:
   uslanozan:
     org_role: admin

@@ -14,6 +14,9 @@ geçmesi normaldir.
       Davet e-postası otomatik gelir; kimse elle davet etmez. Mentörün seni
       konfigürasyona ekler, sistem daveti üretir.
       Davet gelmediyse mentörüne söyle — büyük ihtimalle henüz `apply` çalışmamıştır.
+      _Bu iddia 2026-08-18'den beri gerçekten doğru: davet
+      [`terraform/config/organization.yml`](../terraform/config/organization.yml) →
+      `people` bölümünden üretiliyor. Öncesinde üyelikler elle yazılıyordu._
 
 - [ ] **İki faktörlü doğrulamayı (2FA) etkinleştir.**
       GitHub → Settings → Password and authentication.

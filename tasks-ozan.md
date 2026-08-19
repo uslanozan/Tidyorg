@@ -687,43 +687,40 @@ Aynı katmanda iki yol varsa GitHub **en yükseği** uygular
 onlar repo dosyalarının işi. [`organization.example.yml`](terraform/config/organization.example.yml)
 bunu zaten böyle tarif ediyor, canlı config bu kurala uydurulmalı.
 
-**Yapılacaklar:**
-- [ ] `github_membership` ile org üyeliğini `people`'dan üret:
-  ```hcl
-  locals {
-    # Break-glass: en az bir org owner Terraform dışında kalmalı.
-    unmanaged_people = ["uslanozan"]
-  }
+**Yapılacaklar:** ✅ **Tamamlandı — 2026-08-18.** Sonuç: [`terraform/people.tf`](terraform/people.tf)
 
-  resource "github_membership" "people" {
-    for_each = { for u, c in local.org_config.people : u => c
-                 if !contains(local.unmanaged_people, u) }
+- [x] `github_membership` ile org üyeliği `people`'dan üretiliyor
+- [x] `platform-admins` üyeliği `people.roles`'tan doğuyor — offboarding artık tek satır
+      YAML silmek; 2026-08-15'te bu iş **iki ayrı `.tf` dosyası** düzenlemeyi gerektirdi
+      ve birini atlamak sessizce yetkiyi bırakıyordu
+- [x] `org-membership.tf` **ve** `team-memberships.tf` istisna dosyaları kaldırıldı
+      _(tarihsel gerekçeleri `people.tf` içine taşındı — Emre olayının kaydı silinmedi)_
+- [x] **`moved` blokları ile geçiş: `0 to add, 0 to change, 0 to destroy`**
+      Kaynaklar yeniden adlandırılmadı, ADRESLERİ değişti. `moved` olmasaydı Terraform
+      bunu "yok et + yeniden yarat" diye okur, üyelikler bir an için düşerdi.
+- [x] `people.roles` doğrulaması — **hardcode değil**, `roles:` bloğundaki `scope`
+      alanından türetiliyor. Repo kapsamlı rol yazılırsa plan hata veriyor.
+- [x] `org_role` zorunlu kılındı — varsayılana düşürmek yerine hata. Gerekçe: org rolü
+      kişinin branch protection'ı atlayıp atlayamayacağını belirler; **unutulmuş olması
+      ile bilinçli `member` olması aynı şey değildir.**
+- [x] ⚠️ Riskli kısım incelendi: `plan` tek bir değişiklik göstermedi, apply de öyle
+- [x] `organization.example.yml` `for_each`'e sokulmadı — okunan dosya `var.config_file`
 
-    username             = each.key
-    role                 = each.value.org_role
-    downgrade_on_destroy = true
-  }
-  ```
-- [ ] `platform-admins` üyeliğini de elle değil `people.roles`'tan üret — böylece
-      offboarding tek satır YAML silmeye iner (bugün iki `.tf` dosyası düzenlemek gerekti):
-  ```hcl
-  resource "github_team_membership" "platform_admins" {
-    for_each = toset([for u, c in local.org_config.people : u
-                      if contains(try(c.roles, []), "head-of-engineering")])
+**Test edilen iki hata yolu** _(doğrulama ateşlenmezse olmayan doğrulamadır)_:
 
-    team_id  = github_team.platform_admins.id
-    username = each.value
-    role     = "maintainer"
-  }
-  ```
-- [ ] Tamamlanınca `org-membership.tf` istisna dosyasını kaldır (state'te `moved` ile taşı)
-- [ ] `people.roles` doğrulaması ekle — repo kapsamlı rol (`mentor`/`developer`) yazılırsa
-      `precondition` ile hata ver; sessiz çelişki üretmesin
-- [ ] ⚠️ **Riskli:** mevcut owner yetkilerini etkileyebilir. Önce `plan`'ı dikkatle
-      incele, gerekirse `import` ile mevcut üyelikleri state'e al.
-- [ ] ⚠️ `organization.example.yml`'i **asla** `for_each`'e sokma — içindeki `mentor-a`,
-      `dev-1` gibi örnek kişilere gerçek org daveti gider
-- [ ] `docs/onboarding.md`'deki "davet otomatik gelir" iddiası artık doğru
+1. `paitblack`'e `roles: [developer]` eklendi → plan durdu, hangi kişi/hangi rol yazıldı.
+2. `medine2906`'dan `org_role` silindi → **ilk denemede yanlış hata geldi.**
+   Kaynak `each.value.org_role` satırında çöküyor, precondition hiç çalışmıyordu:
+   *"This object does not have an attribute named org_role."*
+   `try(each.value.org_role, "member")` ile ifade değerlenebilir hale getirildi; artık
+   plan precondition'a ulaşıyor ve açıklayıcı mesaj geliyor. **`try` burada varsayılan
+   üretmek için değil, hata sırasını düzeltmek için var** — o varsayılan asla uygulanmaz,
+   çünkü precondition planı zaten durdurur.
+
+**Bypass raporundaki `_uyari` daraldı, kalkmadı.** Artık şunu söylüyor: tüm org rolleri
+zorlanıyor, **tek istisna `uslanozan`** — break-glass gereği yönetim dışı, yani onun rolü
+hâlâ beyan ve arayüzden değiştirilirse plan sessiz kalır. Uyarıyı tamamen kaldırmak bu
+boşluğu gizlemek olurdu.
 
 ### 🧩 Dashboard desteği
 - [ ] Config için JSON Schema yaz — dashboard kaydetmeden önce doğrulama yapabilsin
