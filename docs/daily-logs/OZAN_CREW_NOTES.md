@@ -374,6 +374,80 @@ YAML.
 (Emre olayının neden iki katmanlı olduğu) `people.tf` içine taşıdım — kod silinir, sebebi
 silinmemeli.
 
+### 15. `people.yml` ayrıldı, üç doğrulama eklendi — ve bir tuzağı soru sayesinde bulduk
+
+Ozan bir şey sordu: *"yeni kişi eklerken sadece organization.yml'ı mı değiştiriyoruz?"*
+Cevabı ararken **`people`'a yazmanın zorunlu olmadığını** fark ettim. Birini yalnızca repo
+dosyasına yazarsan modül takım üyeliği üretiyor, GitHub da onu otomatik org'a davet
+ediyor — kişi org'a giriyor ama merkezi listede **hiç görünmüyor**.
+
+Bugün kapattığımız boşluğun küçük hâli. Fail-fast ile kapattım: repo dosyalarında geçen
+herkes `people.yml`'da da tanımlı olmalı, yoksa plan durur. Otomatik üyelik üretmek de
+mümkündü ama offboarding'i felakete çevirirdi — kişiyi çıkarmak için adının geçtiği HER
+repo dosyasını bulmak gerekirdi ve gözden kaçan tek kayıt onu organizasyonda bırakırdı.
+Yani Emre vakasının aynısı, sadece daha dağınık.
+
+**İkinci tuzak, yine bir soru sayesinde çıktı.** Ozan `org_role` sadece `admin` ve `member`
+mi diye sordu. Evet — ama **GitHub arayüzü bu rolü "Owner" diye gösteriyor, API `admin`
+istiyor.** Yani `org_role: owner` yazmak son derece doğal bir hata ve doğrulama olmadan
+**plan'ı geçip apply'da patlardı** — hata en pahalı yerde, değişiklik canlıya uygulanırken.
+Buna da bir precondition ekledim.
+
+İkisi de "bir şey yapalım" diye değil, **soru sorulduğu için** ortaya çıktı. Kodun kendisi
+bunu söylemiyordu.
+
+### `people.yml` ayrımı
+
+`people` bölümünü `organization.yml`'dan çıkarıp kendi dosyasına aldım. Gerekçe basit:
+`organization.yml` **rollerin ne anlama geldiğini** tanımlıyor (nadiren değişir, yüksek
+risk); kişi listesi ise sık değişiyor ve ileride dashboard yazacak. Bir stajyer eklemek
+için yetki tanımlarının bulunduğu dosyayı açmak zorunda kalmak yanlıştı.
+
+### Yetki yükseltme tartışması — ve fikir değiştirdiğim yer
+
+Ozan iyi bir soru sordu: dashboard `people.yml`'a yazacaksa, yetkili biri oradan kendini
+org owner yapamaz mı?
+
+Yapabilir. Bu gerçek bir problem ve adı var — Terraform'u çalıştıran kimlik çok yetkili,
+config'i kontrol eden dolaylı olarak onu kontrol ediyor. Terraform Cloud'un Sentinel/OPA
+politikaları, Kubernetes'in `escalate`/`bind` fiilleri hep bunun için var.
+
+**Önce HCP workspace değişkeni önerdim, sonra kendi önerimi geri aldım.** Sebep: allowlist
+git'in dışına çıkarsa organizasyon hakkındaki en kritik gerçek — kim owner olabilir —
+PR'da hiç görünmez. Bu, `billing_email`'de bugün yaşadığımız görünmez-drift probleminin
+aynısı; bilerek üretmenin anlamı yok. Üstelik **Faz 8 aynı korumayı git içinde veriyor**:
+motor mentörün yazamadığı repoya taşınınca precondition zaten dokunulmaz oluyor. Yani HCP
+değişkeni aslında Faz 8'i yapmamanın yaması.
+
+Ozan da CODEOWNERS ile korumayı önerdi. Orada bir kısıt var: **CODEOWNERS dosyanın bir
+bölümünü koruyamaz, yalnızca yolunu.** `org_role`'ü korumak istiyorsan dosyayı bölmek
+zorundasın; bölmezsen tüm `people.yml`'ı korursun ve her stajyer eklemek org yönetici
+onayına takılır. Sık işlemi nadir işlemin hızına düşürmek.
+
+Sonunda **ertelendi** — bugün koruyacağı kimse yok, çünkü kontrol düzlemi reposunun
+`mentors` listesinde tek kişi var. Üç seçenek de gerekçeleriyle TODO'ya yazıldı.
+
+**Ve tartışmanın asıl kazancı bu oldu:** bugünkü gerçek sınır kurduğumuz hiçbir kilit
+değil, **`Tidyorg.yml`'ın `mentors` listesinin tek kişilik olması.**
+`mentor` org geneli bir rol değil — başka repoda mentör olmak burada hiçbir yetki
+vermiyor. O listeye ikinci bir isim eklemek, projedeki tüm yetki kontrollerinin kapsamını
+sessizce genişletir. Ve bu hiçbir yerde yazmıyordu. Artık config dosyasının başında
+büyük harflerle yazıyor.
+
+### Yol bazlı CODEOWNERS — açık bir TODO kapandı
+
+`/terraform/` ve `/.github/workflows/` yolları `platform-admins` takımına bağlandı
+(ACCESS-MODEL Karar 13). İkincisini ben ekledim: apply'ı çalıştıran iş akışlarına
+yazabilen biri, Terraform'un yetkisini **dolaylı olarak** ele geçirir — kodu değiştirmeye
+gerek yok, workflow'u değiştirmek yeter.
+
+Karar E gereği bu kural repo admin'ine karşı zorlanamıyor, bilgilendirici kalıyor. Ama
+developer'a karşı gerçek bir engel ve Faz 8'de kilide dönüşüyor.
+
+Bir de bunu yaparken üretilen CODEOWNERS'ın başlığındaki `# Kaynak: config/organization.yml`
+satırının **yanlış** olduğunu gördüm — dosya repo config'inden üretiliyor. Küçük ama
+dosyayı okuyan birini yanlış yere gönderiyordu.
+
 ### 13. Uyarıları CI'ya taşıdım — "yeşil" yeterli bir sinyal değilmiş
 
 Sabahki deprecation olayının asıl dersi teknik değil, **sinyal tasarımıyla** ilgiliydi:

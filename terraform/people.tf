@@ -18,7 +18,10 @@
 # =============================================================================
 
 locals {
-  people = try(local.org_config.people, {})
+  # Kişi listesi 2026-08-18'de organization.yml'dan ayrıldı. Sebep: organization.yml
+  # ROLLERİN NE ANLAMA GELDİĞİNİ tanımlıyor (nadiren değişir, yüksek risk); kişi
+  # listesi sık değişir ve ileride dashboard tarafından yazılacak (Karar 16).
+  people = try(yamldecode(file("${path.module}/config/people.yml")).people, {})
 
   # ---------------------------------------------------------------------------
   # BREAK-GLASS — bilinçli olarak yönetim dışında bırakılanlar
@@ -80,6 +83,46 @@ locals {
   people_without_org_role = sort([
     for user, cfg in local.people : user
     if !can(cfg.org_role)
+  ])
+
+  # 3) Geçersiz `org_role` değeri.
+  #    ⚠️ Buradaki asıl tuzak: GitHub ARAYÜZÜ bu rolü "Owner" diye gösterir ama API
+  #    `admin` ister. `org_role: owner` yazmak son derece doğal bir hatadır ve
+  #    doğrulama olmadan PLAN'I GEÇİP APPLY'DA patlardı — yani hata en pahalı yerde,
+  #    değişiklik canlıya uygulanırken çıkardı.
+  valid_org_roles = ["admin", "member"]
+
+  people_with_invalid_org_role = sort([
+    for user, cfg in local.people :
+    "${user} → ${try(cfg.org_role, "")}"
+    if can(cfg.org_role) && !contains(local.valid_org_roles, tostring(try(cfg.org_role, "")))
+  ])
+
+  # 4) Repo dosyalarında geçtiği halde `people`'da olmayan kişiler.
+  #
+  #    Bunlar sessizce org'a giriyordu: modül `github_team_membership` üretiyor,
+  #    GitHub da kişiyi otomatik davet ediyor. Kişi org'a `member` olarak katılıyor
+  #    ama merkezi listede HİÇ görünmüyor.
+  #
+  #    İki somut zararı var:
+  #      - Offboarding: kişiyi çıkarmak için adının geçtiği HER repo dosyasını
+  #        bulmak gerekir. Gözden kaçan tek bir kayıt, kişinin organizasyonda
+  #        sessizce kalmasına yol açar. 2026-08-15'te yaşananın küçük hâli.
+  #      - Görünürlük: "org'da kim var" sorusunu cevaplamak için tüm repo
+  #        dosyalarını taramak gerekir; bypass raporu da onları göremez.
+  #
+  #    Otomatik org üyeliği üretmek yerine HATA veriyoruz (fail-fast): sisteme
+  #    önce organizasyondan dahil olunur, sonra repo'ya atanır.
+  people_referenced_in_repos = toset(flatten([
+    for repo_name, repo in local.repos : concat(
+      try(repo.mentors, []),
+      try(repo.developers, []),
+    )
+  ]))
+
+  repo_people_missing_from_people = sort([
+    for user in local.people_referenced_in_repos : user
+    if !contains(keys(local.people), user)
   ])
 }
 

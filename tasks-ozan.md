@@ -717,6 +717,35 @@ bunu zaten böyle tarif ediyor, canlı config bu kurala uydurulmalı.
    üretmek için değil, hata sırasını düzeltmek için var** — o varsayılan asla uygulanmaz,
    çünkü precondition planı zaten durdurur.
 
+**Ertesi adım — 2026-08-18 (aynı gün, sorular üzerine):**
+
+- [x] `people` bölümü [`config/people.yml`](terraform/config/people.yml) dosyasına ayrıldı.
+      `organization.yml` **rollerin ne anlama geldiğini** tanımlıyor (nadiren değişir,
+      yüksek risk); kişi listesi sık değişir ve dashboard yazacak. Bir stajyer eklemek için
+      yetki tanımlarının dosyasını açmak yanlıştı.
+- [x] **Fail-fast:** repo dosyalarında geçen herkes `people.yml`'da tanımlı olmalı.
+      ⚠️ Bu boşluk bir soru sayesinde bulundu: `people`'a yazmak **zorunlu değildi** —
+      birini yalnızca repo dosyasına yazınca modül takım üyeliği üretiyor, GitHub otomatik
+      davet ediyor, kişi org'a giriyor ama merkezi listede hiç görünmüyordu.
+      Otomatik üyelik üretmek yerine hata veriliyor: offboarding'de kişiyi çıkarmak için
+      adının geçtiği HER repo dosyasını bulmak gerekirdi — Emre vakasının dağınık hâli.
+- [x] **`org_role` değer doğrulaması** (`admin` | `member`).
+      ⚠️ Tuzak: **GitHub arayüzü bu rolü "Owner" diye gösterir, API `admin` ister.**
+      `org_role: owner` yazmak doğal bir hata ve doğrulama olmadan **plan'ı geçip APPLY'da**
+      patlardı — hata en pahalı yerde çıkardı.
+- [x] **Yol bazlı CODEOWNERS** — `/terraform/` ve `/.github/workflows/` → `platform-admins`
+      _(ACCESS-MODEL Karar 13, açık TODO'ydu)_. İkincisi ayrıca kritik: apply'ı çalıştıran
+      iş akışlarına yazabilen biri Terraform'un yetkisini **dolaylı olarak** ele geçirir.
+      ⚠️ Karar E gereği repo admin'ine karşı zorlanamaz — bilgilendirici kalır, Faz 8'de kilide döner.
+- [x] **Bugünkü gerçek sınır belgelendi:** kontrol düzlemi reposunun `mentors` listesi
+      tek kişilik. `mentor` org geneli rol DEĞİL — başka repoda mentör olmak burada hiçbir
+      yetki vermiyor. O listeye ikinci isim eklemek tüm yetki kontrollerinin kapsamını
+      sessizce genişletir. Artık config dosyasının başında yazıyor.
+- [ ] ⏸️ **Yetki yükseltme kapısı ertelendi** — `org_role: admin` bugün tek satırlık işlem.
+      Üç seçenek (HCP değişkeni / HCL allowlist / dosya bölme) gerekçeleriyle
+      [`TODO.md`](TODO.md)'de. Bugün koruyacağı kimse yok; tetikleyici owner olmayan ikinci
+      bir kontrol düzlemi mentörü ya da dashboard yazma modu.
+
 **Bypass raporundaki `_uyari` daraldı, kalkmadı.** Artık şunu söylüyor: tüm org rolleri
 zorlanıyor, **tek istisna `uslanozan`** — break-glass gereği yönetim dışı, yani onun rolü
 hâlâ beyan ve arayüzden değiştirilirse plan sessiz kalır. Uyarıyı tamamen kaldırmak bu

@@ -1,0 +1,67 @@
+# =============================================================================
+# Kişiler — CANLI DOSYA
+# =============================================================================
+# terraform/people.tf tarafından okunur. Buradaki her satır GitHub'a yansır.
+#
+# ⚠️ Kişi EKLEMEK gerçek bir org daveti üretir.
+#    Kişi ÇIKARMAK onu org'dan atmaz, yalnızca `member`a düşürür
+#    (`downgrade_on_destroy = true`) — gerçekten çıkarmak bilinçli bir adımdır.
+#
+# -----------------------------------------------------------------------------
+# ALANLAR
+# -----------------------------------------------------------------------------
+# org_role  ZORUNLU. Yalnızca `admin` veya `member`.
+#
+#           ⚠️ GitHub ARAYÜZÜ bu rolü "Owner" diye gösterir ama API "admin" ister.
+#           `org_role: owner` yazmak plan'ı geçip APPLY'da patlardı; bu yüzden
+#           izinli değerler plan aşamasında doğrulanıyor.
+#
+#           Yazılmazsa varsayılana düşürülmez, hata verir: org rolü kişinin branch
+#           protection dahil her kuralı atlayıp atlayamayacağını belirler —
+#           unutulmuş olması ile bilinçli `member` olması aynı şey değildir.
+#
+# roles     YALNIZCA org kapsamlı roller (bugün: head-of-engineering).
+#           mentor/developer REPO kapsamlıdır, config/repositories/*.yml içinde
+#           yaşar. Kural `organization.yml` → `roles.*.scope` alanından türetilir
+#           ve plan aşamasında zorlanır.
+#
+# -----------------------------------------------------------------------------
+# YÜKSELTME KAPISI
+# -----------------------------------------------------------------------------
+# Buraya `org_role: admin` yazmak TEK BAŞINA YETMEZ. Kişinin ayrıca
+# terraform/people.tf içindeki `allowed_org_owners` listesinde olması gerekir.
+#
+# Sebep: org owner organizasyondaki HER ŞEYE tam yetkilidir — her repoda admin,
+# her korumalı dalda muaf, üye ekleme/çıkarma, org ayarları, repo silme.
+# Bu dosya sık değişiyor ve ileride dashboard tarafından yazılacak; yükseltmenin
+# buradan tek satırla yapılabilmesi, yetki yükseltmeyi sıradan bir işlem yapardı.
+#
+# `.tf` dosyaları yol bazlı CODEOWNERS ile korunuyor, yani yükseltme mevcut bir
+# org owner'ın onayını gerektiriyor. Bu bir KAPI, kilit değil: Karar E gereği
+# repo admini CODEOWNERS'ı atlayabilir. Kilit Faz 8'de repo sınırıyla gelir.
+# =============================================================================
+
+version: 1
+
+people:
+  # Break-glass: bu kişinin ÜYELİĞİ Terraform tarafından yönetilmiyor
+  # (people.tf → unmanaged_people). En az bir org owner motorun dışında kalmalı,
+  # yoksa hatalı bir apply organizasyonu geri dönüşü olmayan biçimde kilitler.
+  # Bedeli görünürlük: bu satır beyandır, zorlanmaz. Bypass raporu bunu söylüyor.
+  uslanozan:
+    org_role: admin
+    roles: [head-of-engineering]
+
+  # 2026-08-15 — projeden ayrıldı, head-of-engineering'den developer'a indirildi.
+  # Repo erişimi config/repositories/*.yml içindeki `developers` listelerinden gelir.
+  paitblack:
+    org_role: member
+
+  # 2026-08-16 — dashboard geliştiricisi. Repo yetkisi
+  # config/repositories/Tidyorg.yml içinde `developers` olarak
+  # veriliyor; burada yalnızca org rolü beyan ediliyor.
+  #
+  # ⚠️ Pilot repo'lara erişimi YOK ve base permission `none` olduğu için onları
+  # göremiyor. Beklenen davranış — takip: TODO.md
+  medine2906:
+    org_role: member

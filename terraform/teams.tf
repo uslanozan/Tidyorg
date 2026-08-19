@@ -37,7 +37,7 @@ resource "github_team" "platform_admins" {
     precondition { #! plan aşamasında çalışıp hatalı config'i durduruyor.
       condition = length(local.people_with_repo_scoped_roles) == 0
       error_message = join(" ", [
-        "config/organization.yml → `people.*.roles` yalnızca ORG KAPSAMLI rol taşıyabilir",
+        "config/people.yml → `roles` yalnızca ORG KAPSAMLI rol taşıyabilir",
         "(bugün: ${join(", ", local.org_scoped_roles)}).",
         "Repo kapsamlı roller config/repositories/*.yml içindeki `mentors` / `developers`",
         "listelerinde yaşar; `people`'a yazılan böyle bir rol hiçbir şey yapmaz ama",
@@ -49,11 +49,36 @@ resource "github_team" "platform_admins" {
     precondition {
       condition = length(local.people_without_org_role) == 0
       error_message = join(" ", [
-        "config/organization.yml → `people` altındaki her kişide `org_role` YAZILI olmalı",
-        "(`admin` veya `member`). Varsayılana düşürmek yerine hata veriliyor: org rolü,",
-        "kişinin branch protection dahil her kuralı atlayıp atlayamayacağını belirler —",
-        "unutulmuş olması ile bilinçli `member` olması aynı şey değildir.",
+        "config/people.yml → her kişide `org_role` YAZILI olmalı (`admin` veya `member`).",
+        "Varsayılana düşürmek yerine hata veriliyor: org rolü, kişinin branch protection",
+        "dahil her kuralı atlayıp atlayamayacağını belirler — unutulmuş olması ile",
+        "bilinçli `member` olması aynı şey değildir.",
         "Eksik olanlar: ${join(", ", local.people_without_org_role)}",
+      ])
+    }
+
+    precondition {
+      condition = length(local.people_with_invalid_org_role) == 0
+      error_message = join(" ", [
+        "config/people.yml → `org_role` yalnızca şu değerleri alabilir:",
+        "${join(", ", local.valid_org_roles)}.",
+        "⚠️ GitHub ARAYÜZÜ bu rolü \"Owner\" diye gösterir ama API `admin` ister —",
+        "`org_role: owner` yazmak doğal bir hatadır ve bu doğrulama olmadan plan'ı",
+        "geçip APPLY sırasında patlardı.",
+        "Geçersiz olanlar: ${join(" · ", local.people_with_invalid_org_role)}",
+      ])
+    }
+
+    precondition {
+      condition = length(local.repo_people_missing_from_people) == 0
+      error_message = join(" ", [
+        "config/repositories/*.yml içinde geçen herkes config/people.yml içinde de",
+        "TANIMLI OLMALI. Aksi halde kişi sessizce org'a girer: modül takım üyeliği",
+        "üretir, GitHub otomatik davet gönderir, ama merkezi listede hiç görünmez.",
+        "Bunun bedeli offboarding'de ödenir — kişiyi çıkarmak için adının geçtiği HER",
+        "repo dosyasını bulmak gerekir ve gözden kaçan tek kayıt onu organizasyonda",
+        "bırakır. Önce organizasyona dahil et, sonra repo'ya ata.",
+        "Eksik olanlar: ${join(", ", local.repo_people_missing_from_people)}",
       ])
     }
   }

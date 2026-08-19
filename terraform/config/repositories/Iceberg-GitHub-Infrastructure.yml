@@ -1,15 +1,46 @@
 description: "Infrastructure as Code for managing the Tidyorg organization"
 language: typescript
+
+# ⚠️ BU LİSTE BUGÜNKÜ EN ÖNEMLİ GÜVENLİK SINIRIDIR — kilitlerden daha önemli.
+#
+# `mentor` ORG GENELİ BİR ROL DEĞİL, repo kapsamlıdır. Yani `pilot-intern-api`'ye
+# mentör olan biri BU repo'da hiçbir yetkiye sahip değil. Buradaki mentör ise
+# kontrol düzleminin tamamında admin: Terraform kodunu, config'i ve branch
+# protection'ı değiştirebilir.
+#
+# Ve Karar E gereği `enforce_admins = false` olduğu için bu kişi CODEOWNERS'ı da
+# branch protection'ı da ATLAYABİLİR. Aşağıdaki `code_owners` kuralları ona karşı
+# bilgilendiricidir, zorlayıcı değil.
+#
+# Yani projedeki tüm yetki kontrollerinin kapsamı bu listenin uzunluğuna bağlı.
+# Buraya ikinci bir isim eklemek, o kişiye organizasyonun motoru üzerinde sınırsız
+# yetki verir — sessizce. Gerçek yapısal sınır Faz 8'de gelir (motor / durum ayrımı).
 mentors:
   - uslanozan
+
 developers:
   - paitblack
   - medine2906
+
 default_branch: main
 
-# Kontrol düzlemi repo'su — `develop` dalı yok (ROADMAP.md Karar F,
-# docs/branching-strategy.md Bölüm 8). Varsayılanlardan gelen `develop` koruması
-# `null` ile düşürülüyor; aksi halde var olmayan bir dala işaret eden ölü bir kural
-# kalırdı.
+# Yol bazlı sahiplik — ACCESS-MODEL Karar 13.
+#
+# Varsayılan sahiplik `*` → bu repo'nun mentörleri (modül otomatik ekler).
+# Aşağıdaki yollar ondan daha dar bir gruba, org geneli yönetici takımına bağlı.
+#
+# Neden bu iki yol:
+#   terraform/        → organizasyonun tamamını üreten kod. Dashboard'un (ve
+#                       ileride agent'ların) HCL'e dokunmasına karşı ikinci önlem.
+#   .github/workflows → apply'ı çalıştıran iş akışları. Buraya yazabilen biri,
+#                       Terraform'un yetkisini dolaylı olarak ele geçirir.
+#
+# ⚠️ `config/people.yml` bilerek BURADA DEĞİL. Onu da bağlamak her stajyer eklemeyi
+# org yönetici onayına takardı — sık işlemi nadir işlemin hızına düşürürdü.
+# Yetki yükseltme (`org_role: admin`) için ayrı bir kapı tasarımı TODO.md'de.
+code_owners:
+  "/terraform/": [your-org/platform-admins]
+  "/.github/workflows/": [your-org/platform-admins]
+
 protected_branches:
   develop: null

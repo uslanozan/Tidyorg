@@ -24,7 +24,7 @@ locals {
   codeowners_content = join("\n", concat(
     [
       "# Bu dosya Terraform tarafından üretilmiştir — elle düzenlemeyin.",
-      "# Kaynak: config/organization.yml",
+      "# Kaynak: config/repositories/${var.name}.yml (mentors, code_owners)",
       "",
       "# Varsayılan sahiplik · Default ownership",
       "*                       @${var.org_name}/${github_team.mentors.slug}",

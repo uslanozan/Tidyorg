@@ -46,6 +46,38 @@ Son güncelleme: 2026-08-18
 
 ---
 
+## 🔐 Yetki yükseltme kapısı — tasarım kararı bekliyor _(2026-08-18)_
+
+- [ ] **`org_role: admin` yükseltmesi bugün tek satırlık bir işlem.**
+      `config/people.yml` içinde bir kişinin `org_role`'ünü `member` → `admin` yapmak
+      onu org owner yapar: her repoda admin, her korumalı dalda muaf, üye ekleme/çıkarma,
+      org ayarları, repo silme. Ve bu satır, stajyer eklemekle **aynı onay yolundan**
+      geçiyor.
+
+      **Bugün gerçek risk yok** çünkü kontrol düzlemi reposunun `mentors` listesinde tek
+      kişi var ve o zaten org owner. Risk, o listeye owner OLMAYAN ikinci bir isim
+      eklendiği gün başlar.
+
+      **Değerlendirilen üç yol:**
+
+      | Yol | Nasıl | Neden bugün seçilmedi |
+      | :--- | :--- | :--- |
+      | HCP workspace değişkeni | Allowlist git'in dışında | Projenin "her şey config'de, PR'da görünür" iddiasını deler; `billing_email` ile aynı görünmez-drift sınıfı; Faz 8 aynı korumayı git içinde veriyor |
+      | HCL'de `allowed_org_owners` + precondition | YAML beyanı, `.tf` yetkiyi verir; `.tf` zaten CODEOWNERS korumalı | Ertelendi — bugün koruyacağı kimse yok |
+      | `people.yml` / `privileged.yml` bölmesi | Dashboard'un yazdığı dosya yetkiyi **ifade edemez** (secure by construction) | Ek makine (`merge()` + çakışma tespiti); dashboard yazma moduna geçince asıl doğru olan bu |
+
+      ⚠️ **CODEOWNERS ile `people.yml`'ı korumak çözüm DEĞİL:** CODEOWNERS dosyanın bir
+      bölümünü koruyamaz, yalnızca yolunu. Tüm dosyayı korumak her stajyer eklemeyi org
+      yönetici onayına bağlar — sık işlemi nadir işlemin hızına düşürür.
+
+      ⚠️ Bölerken `org_role: admin` **tek başına yetmez**: `roles: [head-of-engineering]`
+      de bir yükseltme yoludur (her repoda admin + bypass). İkisi birlikte taşınmalı.
+
+      **Tetikleyici:** kontrol düzlemi reposuna owner olmayan ikinci bir mentör eklenmesi,
+      ya da dashboard yazma moduna geçmesi — hangisi önce olursa.
+
+---
+
 ## 🟠 Import'un ortaya çıkardığı org bulguları _(2026-08-18)_
 
 Bunlar `org-settings.tf` import'unun yan ürünü — daha önce hiçbir yerde görünmüyorlardı.
@@ -117,12 +149,14 @@ Bunlar `org-settings.tf` import'unun yan ürünü — daha önce hiçbir yerde g
       ⚠️ O güne kadar [`docs/release-process.md`](docs/release-process.md) akışı
       **yürürlükte değil** — doküman durumu not ediyor.
 
-- [ ] **Bu repo'nun `.github/CODEOWNERS`'ında yol bazlı kural yok.**
-      [`ACCESS-MODEL.md`](ACCESS-MODEL.md) Karar 13, dashboard'un HCL'i değiştirmesine
-      karşı ikinci önlem olarak `terraform/*.tf` yollarının insan onayına bağlanmasını
-      öngörüyor. Config'de `code_owners` alanı boş.
-      ⚠️ Karar E ışığında bu kural **mentöre karşı zorlanamaz** — bilgilendirici kalır;
-      gerçek sınır Faz 8'de (repo ayrımı) gelir.
+- [x] ~~**Bu repo'nun `.github/CODEOWNERS`'ında yol bazlı kural yok.**~~ ✅ **2026-08-18**
+      [`ACCESS-MODEL.md`](ACCESS-MODEL.md) Karar 13 uygulandı: `/terraform/` ve
+      `/.github/workflows/` yolları `platform-admins` takımına bağlandı.
+      İkincisi ayrıca önemli — apply'ı çalıştıran iş akışlarına yazabilen biri,
+      Terraform'un yetkisini dolaylı olarak ele geçirir.
+      ⚠️ Karar E ışığında bu kural **repo admin'ine karşı zorlanamaz** — bilgilendirici
+      kalır; gerçek sınır Faz 8'de (repo ayrımı) gelir.
+      `config/people.yml` bilerek kapsam dışı — gerekçe yukarıdaki yükseltme kapısı maddesi.
 
 - [ ] **Yerelde bekleyen iki dal:** `docs/engineering-standards-fixes`,
       `feat/branch-protection-fixes`.
