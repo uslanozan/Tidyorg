@@ -44,7 +44,7 @@ jobs:
       released: ${{ steps.version.outputs.released }}
       version: ${{ steps.version.outputs.next }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # Full history and tags are required to find the previous release.
           fetch-depth: 0
@@ -145,7 +145,7 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Check for Dockerfile
         id: dockerfile

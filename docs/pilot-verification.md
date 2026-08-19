@@ -539,6 +539,262 @@ en somut kanıtı — ve Faz 8'de repo ayrımının neden yapıldığının da y
 
 ---
 
+## 9. Erişim İzolasyonu ve Org Ayarları — 2026-08-18
+
+Bu bölüm, org düzlemine yapılan değişikliklerin canlı doğrulamasıdır. Öncekilerden farkı:
+buradaki testlerin konusu **repo kuralları değil, organizasyonun kendisi**.
+
+### 9.1 `default_repository_permission` = `none` — ✅ Doğrulandı
+
+**Değişiklik:** org taban yetkisi `read` → `none`. Öncesinde org'a eklenen herkes, hiçbir
+takımda olmasa bile **bütün repo'ları okuyabiliyordu**. Artık erişimin tek kaynağı takım
+üyeliği.
+
+**Test kurulumu — kontrol grubu bilerek tasarlandı.** `pilot-access-test` adında yeni bir
+repo config'den açıldı; `mentors: [uslanozan]`, `developers: []`, yani **kimseye yetki
+verilmedi**.
+
+> ⚠️ **`visibility: private` zorunluydu, yoksa test geçersiz olurdu.** `defaults.visibility`
+> `public` ve public repo'yu internetteki herkes görür — görebilmeleri base permission'dan
+> değil public olmasından gelirdi. Bu, testi kurarken az kalsın kaçırılan bir hataydı.
+>
+> Bedeli: free plan'de private repo'da branch protection çalışmıyor, bu yüzden repo'nun
+> `protected_branches` ayarları `null` ile kaldırıldı. Dal koruması zaten diğer üç repo'da
+> doğrulanmıştı (Bölüm 6).
+
+**Sonuç — 2026-08-18, iki ayrı hesaptan teyit alındı:**
+
+| Hesap | Takım üyeliği | Beklenen | Gözlenen |
+| :--- | :--- | :--- | :--- |
+| `paitblack` | 3 repo'da developer | O 3 repo görünür, `pilot-access-test` **404** | ✅ Beklendiği gibi |
+| `medine2906` | 1 repo'da developer | Yalnızca o repo; diğer 3'ü **404** | ✅ Beklendiği gibi |
+
+`medine2906`'nın **iki pilot repo'yu kaybetmesi** bu testin asıl kanıtı: o erişim bir takım
+üyeliğinden değil, **org varsayılanından** geliyordu. Varsayılan kalkınca erişim de kalktı.
+
+**Bağımsız teyit — organizasyon People ekranı.** Takım sayıları config ile birebir uyuşuyor;
+yani yetkinin tek kaynağının takım üyeliği olduğu sayısal olarak da görünüyor:
+
+| Kişi | Takım | Karşılığı |
+| :--- | :--- | :--- |
+| `medine2906` | 1 | `Tidyorg` devs |
+| `paitblack` | 3 | Üç repo'da developer |
+| `uslanozan` | 5 | `platform-admins` + 4 repo mentors |
+
+> ⚠️ **Bu, beklenen ama bedeli olan bir sonuçtur.** Dashboard org'daki repo'ları kullanıcının
+> kendi kimliğiyle listeliyor (ACCESS-MODEL Karar 15), yani Medine'nin ekranından iki repo
+> kayboldu. Test sırasında "dashboard bozuldu" sanılabilir; bozulmadı.
+>
+> **Alınan ders:** taban yetkiyi daraltmak sessiz bir ayar değişikliği değil, bir **erişim
+> kaldırma** işlemidir. "Bu varsayılana kim bağımlı?" sorusu apply'dan *önce* cevaplanmalıydı;
+> bu kez sonra bakıldı.
+
+### 9.2 Repo açma kısıtı GitHub App'i etkilemiyor — ✅ Doğrulandı
+
+**Değişiklik:** `members_can_create_repositories = false` (üç alt anahtarıyla birlikte).
+Artık yalnızca org owner elle repo açabilir.
+
+**Risk:** eğer bu ayar App'i de kısıtlasaydı **config'den repo yaratma tamamen bozulurdu** —
+yani projenin ana akışı. Varsayım "App org üyesi değil, kurulu bir entegrasyon" idi ama
+doğrulanmamıştı.
+
+**Test:** kısıt yürürlükteyken geçici bir repo config'den yaratıldı.
+
+```
+module.repositories["tmp-app-create-test"].github_repository.this:
+  Creation complete after 11s [id=tmp-app-create-test]
+Apply complete! Resources: 11 added, 0 changed, 0 destroyed.
+```
+
+**Sonuç:** ayar org **üyelerini** kısıtlıyor; App kendi izinleriyle çalışıyor. Kısıtın aldığı
+şekil tam olarak istenen: **insan elle açamıyor, config açabiliyor.**
+
+### 9.3 Yol açılırken çıkan üçüncü 403 — App izin sınıfları ayrı
+
+Org ayarlarını yönetmenin ilk apply denemesi şu hatayla durdu:
+
+```
+Error: PATCH https://api.github.com/orgs/your-org:
+       403 Resource not accessible by integration
+```
+
+App'te `Repository → Administration: write` **vardı**. Ama org ayarları için gereken izin o
+değil:
+
+| Manifest anahtarı | Neyi açar |
+| :--- | :--- |
+| `administration` | Repo ayarları, branch protection, takım erişimi |
+| `organization_administration` | **Org ayarları**, base permission, üye izinleri |
+
+**Bu, `Issues` ve `Workflows` 403'lerinin üçüncüsü.** Üçünde de sebep aynı: geniş sanılan bir
+izin GitHub tarafında daha dar tanımlanmış. Yeni bir kaynak türüne ilk kez dokunulurken bu
+403 beklenmelidir — hata değil, en az yetkiyle kurulmuş bir App'in normal davranışı.
+
+### 9.4 Import'un ortaya çıkardıkları — test değil, keşif
+
+`github_organization_settings` Terraform'a `import` bloğuyla alındı ve `plan` ile provider
+varsayılanı/gerçek farkı okundu. Amaç tek bir alanı değiştirmekti; çıktı dört bulgu verdi:
+
+| Bulgu | Durum |
+| :--- | :--- |
+| Altı org güvenlik varsayılanının **hepsi kapalı** | Beşi açıldı; `advanced_security` GHAS ister, bilerek kapalı |
+| Org üyeleri **public repo açabiliyor** | Kapatıldı |
+| Fatura e-postası **ayrılan ekip üyesinde** | Düzeltildi ve Terraform'a alındı |
+| `vulnerability_alerts` **bu repo'da kapalı** | Açıldı |
+
+Son satır en çok ders çıkaranı: **kontrol düzleminin kendisi** aylardır Dependabot zafiyet
+uyarısı almıyormuş. Sebep, bu repo'nun Terraform'dan **önce elle** açılmış olması; pilot
+repo'lar modülden doğduğu için onlarda açıktı.
+
+> **Yöntem notu:** `import` burada bir "state'e alma" mekaniği olarak kullanıldı ama asıl işi
+> **keşif** oldu. Terraform'a hiç bağlanmamış bir kaynağı import edip plan almak, o kaynağın
+> gerçek durumunu **hiçbir şeyi değiştirmeden** okumanın en ucuz yolu.
+
+### 9.5 Org üyeliği doğrulamaları — ✅ İkisi de canlı test edildi
+
+`people` bölümü Terraform'a bağlandıktan sonra eklenen `precondition`'lar, hatalı config ile
+denenerek gerçekten çalıştıkları görüldü.
+
+| Test | Girdi | Sonuç |
+| :--- | :--- | :--- |
+| Geçersiz `org_role` | `org_role: owner` | ✅ Plan durdu — arayüz/API isim farkı açıklandı |
+| Yönetim dışı üye | Repo dosyasında olup `people.yml`'da olmayan kullanıcı | ✅ Plan durdu, eksik isim raporlandı |
+| Yanlış kapsamda rol | `people.roles: [developer]` | ✅ Plan durdu, hatalı atama raporlandı |
+
+`org_role: owner` testi bir tuzağı ortaya çıkardı: **GitHub arayüzü bu rolü "Owner" diye
+gösterir, API `admin` ister.** Doğrulama olmasaydı bu değer plan'ı geçip **apply sırasında**
+patlardı — yani hata, değişiklik canlıya uygulanırken çıkardı.
+
+> **Yöntem notu:** ikinci doğrulama ilk yazıldığında **yanlış hata mesajı** üretiyordu;
+> kaynak, precondition çalışmadan önce çöküyordu. Yalnızca test edildiği için fark edildi.
+> **Ateşlendiği görülmemiş bir doğrulama, yazılmış sayılmaz.**
+
+### 9.6 Yol bazlı CODEOWNERS — ✅ Canlı doğrulandı (kendiliğinden)
+
+Bölüm 9.7'de "canlı denenmedi" diye not düşülecek olan kural, eklendiği gün kendiliğinden
+denendi. Kanıt, açık duran Dependabot PR'ında (#18):
+
+```
+dependabot Bot requested a review from
+  your-org/tidyorg-github-infrastructure-mentors as a code owner  · 3 gün önce
+  your-org/platform-admins                     as a code owner  · 11 dakika önce
+```
+
+PR üç gün önce açıldığında yalnızca varsayılan sahiplik (`*` → repo mentörleri) geçerliydi.
+2026-08-19'da `/.github/workflows/` yolu `platform-admins`'e bağlanınca GitHub **yeni bir
+review isteği üretti** — çünkü PR o yolun altındaki dosyalara dokunuyor.
+
+**Bloklama da işliyor:**
+
+```
+Merging is blocked
+Waiting on code owner review from your-org/platform-admins.
+```
+
+**Ve Karar E'nin görünür kanıtı aynı ekranda:**
+
+```
+Merge without waiting for requirements to be met (bypass rules)
+```
+
+Kural repo admin'ini de bloklıyor, ancak bypass düğmesi önünde duruyor. `enforce_admins = false`
+kararının pratikteki hâli tam olarak budur: kural **görünür ve varsayılan olarak zorlayıcı**,
+ama muafiyet bir tık uzakta.
+
+### 9.7 🔴 Dependabot ile `strict` şablonlar çakışıyor — 2026-08-19
+
+Aynı PR ikinci bir sorunu ortaya çıkardı.
+
+**Gözlenen:** `Terraform Plan` check'i **9 saniyede** kırmızı yandı.
+
+**Sebep:** GitHub, Dependabot'un açtığı PR'lara normal Actions secret'larını **vermez** —
+ayrı bir kasa kullanır (Settings → Secrets → Dependabot). `secrets.TF_API_TOKEN` boş geldiği
+için `terraform init` HCP'ye bağlanamadan patlıyor. 9 saniye de "checkout + setup + init
+başarısız" süresine denk düşüyor.
+
+**Alınan önlem:** job Dependabot PR'larında atlanıyor (`if: github.actor != 'dependabot[bot]'`).
+Token'ı ikinci bir kasaya yaymak yerine bu seçildi; Dependabot bu repo'da yalnızca action
+sürümlerini yükseltiyor, `terraform/` altına dokunmuyor — plan çalışsa `No changes` derdi.
+Job zorunlu status check değil, atlanması PR'ı bloklamaz.
+
+**İkinci ve daha önemli bulgu — sessiz bir geri alma döngüsü.** PR üç dosya değiştiriyor;
+ikisi elle yazılmış (`terraform-plan.yml`, `terraform-apply.yml`) ama üçüncüsü
+`.github/workflows/ci.yml` ve o **`strict` modda Terraform'a ait**:
+
+```
+PR merge edilir  → ci.yml v7 olur
+bir sonraki apply → şablondan v4 geri yazılır
+Dependabot        → aynı PR'ı yeniden açar
+```
+
+Kaynak dosya `terraform/templates/.github/workflows/ci.yml` ve **Dependabot orayı göremiyor**:
+`github-actions` ekosistemi yalnızca gerçek `.github/workflows/` klasörünü tarar,
+`terraform/templates/` altındakiler onun için sıradan YAML dosyalarıdır.
+
+**Alınan önlem:** PR'ın verdiği sürümler şablonlara elle taşındı. Kalıcı çözüm kararı
+açık — bkz. [`TODO.md`](../TODO.md).
+
+> **Alınan ders:** bir dosyanın içeriğini Terraform sahipleniyorsa, o dosyayı güncelleyen
+> her otomasyon (Dependabot, bot, agent) **kaynağı değil kopyayı** görür. Kopyaya yapılan
+> her değişiklik bir sonraki apply'da kaybolur — hata vermeden, sessizce.
+
+### 9.8 🔴 Örnek config'deki takma adlara gerçek davet gitmiş — 2026-08-15
+
+`people` bölümü Terraform'a bağlanırken koda şu uyarı yazılmıştı:
+
+> `config/organization.example.yml` asla `for_each`'e sokulmamalı: içindeki `mentor-a`,
+> `dev-1` gibi örnek kullanıcılara **gerçek davet gider**.
+
+Uyarı teorik olarak yazıldı. 2026-08-19'da organizasyonun **Invitations** sekmesinde
+görüldü ki bu çoktan olmuş:
+
+| Davet edilen | Tarih | Durum |
+| :--- | :--- | :--- |
+| `Dev-1` | 2026-08-15 | Bekliyor — iptal edildi |
+| `dev-2` | 2026-08-15 | Bekliyor — iptal edildi |
+
+**Sebep:** şema örneğindeki takma adlar (`dev-1`, `dev-2`) **gerçek GitHub kullanıcı
+adları**. O hesapların sahibi olan yabancı iki kişiye private bir organizasyona davet
+gitmiş. `mentor-a`, `mentor-b`, `dev-3` muhtemelen kayıtlı hesap olmadığı için "Failed
+invitations" tarafına düşmüş.
+
+**Neden dört gün fark edilmedi:** bekleyen davetler People ekranının ayrı bir sekmesinde
+duruyor ve üye sayısına dahil değil. Bakılacak bir yer olmadığı için görünmüyorlardı —
+bu oturumun tekrar eden temasının bir örneği daha.
+
+**Kabul edilselerdi ne olurdu:** org'a `member` olarak katılırlardı ve `people.yml`'da
+karşılıkları olmadığı için **hiçbir raporda görünmezlerdi**. 2026-08-18'de eklenen
+fail-fast doğrulaması bunu artık config tarafında engelliyor — ama davet zaten
+gönderilmişse doğrulama devreye girmez, çünkü daveti Terraform üretmedi.
+
+**Alınan önlem — aynı hatanın repo tarafındaki karşılığı kapatıldı.** `repositories.tf`
+şu klasörü `*.yml` ile tarıyordu:
+
+```
+config/repositories/
+```
+
+Bu klasördeki **her dosya gerçek bir repo yaratır**. Şema örneği niyetine buraya konan bir
+dosya `repository.example` adında canlı bir repo açardı. Glob'a `.example.yml` istisnası
+eklendi ve örnek dosya klasöre kopyalanıp `plan` ile doğrulandı: `No changes`.
+
+> **Alınan ders:** örnek/şablon dosyalardaki *placeholder* değerler zararsız değildir.
+> Gerçek bir isim alanında (GitHub kullanıcı adları, repo adları) her placeholder aslında
+> **var olabilecek bir kimliktir**. Örnek dosyalar motorun okuduğu yollardan fiziksel
+> olarak uzak tutulmalı, ayrıca kod seviyesinde dışlanmalıdır.
+
+### 9.9 Açık kalan
+
+- [ ] **`main` akışında code owner testi** — Bölüm 6.5'teki durumunu koruyor: iki developer
+      hesabı gerekiyor.
+      _Not: yol bazlı CODEOWNERS kuralları bu maddeden bağımsız olarak doğrulandı — bkz. 9.6._
+- [ ] **Bu bölümdeki değişikliklerin GitOps döngüsünden geçmesi** — 9.1–9.5'teki apply'lar
+      **lokalden** çalıştırıldı. `main`'e push edildiğinde `terraform-apply.yml`'ın
+      `No changes` demesi beklenir; farklı bir sonuç, lokal ve CI ortamlarının ayrıştığını
+      gösterir.
+
+---
+
 ## 8. Doğrulamayı Tekrarlamak
 
 ```powershell

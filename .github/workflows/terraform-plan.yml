@@ -16,6 +16,23 @@ permissions:
 jobs:
   plan:
     name: "Terraform Plan"
+
+    # Dependabot PR'larında atlanıyor.
+    #
+    # Sebep teknik: GitHub, Dependabot'un açtığı PR'lara normal Actions secret'larını
+    # VERMEZ — ayrı bir kasa kullanır (Settings → Secrets → Dependabot). Yani
+    # `secrets.TF_API_TOKEN` boş gelir ve `terraform init` HCP'ye bağlanamadan patlar.
+    # 2026-08-19'da PR #18'de tam olarak bu görüldü: job 9 saniyede kırmızı yandı.
+    #
+    # Token'ı ikinci bir kasaya koymak yerine job'ı atlıyoruz, çünkü Dependabot bu
+    # repoda yalnızca action sürümlerini yükseltiyor — `terraform/` altına hiç
+    # dokunmuyor. Plan çalışsa `No changes` derdi. HCP token'ını fazladan bir yere
+    # yaymak, karşılığı olmayan bir saldırı yüzeyi olurdu.
+    #
+    # ⚠️ Bu job zorunlu status check DEĞİL (`require_status_checks: [ci/test]`),
+    # dolayısıyla atlanması PR'ı bloklamaz.
+    if: github.actor != 'dependabot[bot]'
+
     runs-on: ubuntu-latest
     defaults:
       run:

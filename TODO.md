@@ -46,6 +46,59 @@ Son güncelleme: 2026-08-18
 
 ---
 
+## ⚙️ Action sürümleri — şablonlar Dependabot'un kör noktasında _(2026-08-19)_
+
+- [x] ✅ **Şablon workflow'ları elle güncellendi.** Dependabot PR #18'in verdiği sürümler
+      `terraform/templates/.github/workflows/{ci,release}.yml` içine taşındı.
+      **Neden elle:** Dependabot'un `github-actions` ekosistemi yalnızca **gerçek**
+      `.github/workflows/` klasörünü tarar. `terraform/templates/` altındakiler onun için
+      sıradan YAML — hiç güncellenmezler.
+      ⚠️ Ve tehlikeli kısmı: bu repodaki `.github/workflows/ci.yml` **`strict` modda
+      Terraform'a ait**. PR #18 onu da yükseltiyor ama kaynak şablon eski kalsaydı bir
+      sonraki apply **geri alırdı**. Şablon güncellenmeden merge edilirse döngü oluşur:
+      `Dependabot PR → merge → apply geri alır → Dependabot yine açar`.
+
+- [ ] ⚠️ **`golangci/golangci-lint-action` v6 → v9 — kırıcı olabilir.**
+      v7'den itibaren action, golangci-lint **v2** bekliyor ve v2 farklı bir config
+      şeması kullanıyor (`.golangci.yml` formatı değişti). Bugün pilot repo'larda Go kodu
+      olmadığı için job atlanıyor, yani etkisi görünmüyor — **ilk gerçek Go repo'sunda
+      patlar.** O gün ya action v6'ya sabitlenmeli ya da config v2'ye taşınmalı.
+      Diğer yükseltmeler (checkout, setup-*, cache, github-script) rutin.
+
+- [x] ✅ **Dependabot PR'larında `Terraform Plan` job'ı atlanıyor.**
+      GitHub, Dependabot PR'larına normal Actions secret'larını vermez (ayrı kasa), yani
+      `TF_API_TOKEN` boş gelip `terraform init` patlıyordu — PR #18'de 9 saniyede kırmızı.
+      Token'ı ikinci bir kasaya koymak yerine job atlandı: Dependabot bu repoda yalnızca
+      action sürümlerini yükseltiyor, `terraform/` altına dokunmuyor.
+      ⚠️ Bu job zorunlu status check değil, atlanması PR'ı bloklamaz.
+
+- [ ] 🔁 **Yönetilen repo'larda workflow Dependabot'u susturulsun mu?**
+      `pilot-intern-*` repolarındaki `.github/workflows/ci.yml` de `strict` — orada açılan
+      her Dependabot workflow PR'ı merge edilse bile apply tarafından geri alınır.
+      **Kontrol edilecek:** o repolarda böyle bekleyen PR var mı?
+      Seçenekler: şablon `dependabot.yml`'dan `github-actions` ekosistemini çıkarmak
+      (diğer ekosistemler kalır — onlar repo'nun gerçek bağımlılıkları), ya da durumu
+      belgeleyip kabul etmek.
+
+---
+
+## 🔴 Örnek config'den gerçek davet gitmiş _(2026-08-19'da fark edildi)_
+
+- [ ] **Bekleyen iki daveti iptal et** — `Dev-1` ve `dev-2`, 2026-08-15'te davet edilmiş.
+      Bunlar `organization.example.yml` içindeki **takma adlar** ama aynı kullanıcı adları
+      GitHub'da gerçekten var; yabancı iki kişiye private org daveti gitmiş.
+      Yol: Organization → People → **Invitations** → ⋯ → Cancel invitation
+- [ ] **"Failed invitations" sekmesine de bak** — `mentor-a`, `mentor-b`, `dev-3` muhtemelen
+      oraya düşmüştür. Varsa temizle.
+- [x] ✅ **Repo tarafındaki aynı mayın kapatıldı** — `repositories.tf` glob'una
+      `.example.yml` istisnası eklendi. Öncesinde `config/repositories/` klasörüne konan
+      bir örnek dosya `repository.example` adında **gerçek bir repo** açardı.
+      Örnek dosya klasöre kopyalanıp `plan` ile doğrulandı: `No changes`.
+      ⚠️ Ders: placeholder değerler zararsız değildir — gerçek bir isim alanında her
+      placeholder **var olabilecek bir kimliktir**.
+
+---
+
 ## 🔐 Yetki yükseltme kapısı — tasarım kararı bekliyor _(2026-08-18)_
 
 - [ ] **`org_role: admin` yükseltmesi bugün tek satırlık bir işlem.**

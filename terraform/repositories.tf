@@ -14,11 +14,21 @@ locals {
 
   # Her .yml dosyasını oku; dosya adının .yml uzantısını at → repo adı olur.
   # config/repositories/pilot-intern-web.yml → "pilot-intern-web"
+  #
+  # ⚠️ `.example.yml` BİLEREK dışlanıyor. Bu klasördeki her dosya gerçek bir repo
+  # yaratır; şema örneği niyetine buraya konan bir dosya `repository.example` adında
+  # canlı bir repo açardı.
+  #
+  # Bu teorik bir kaygı değil: 2026-08-15'te `organization.example.yml` içindeki
+  # `dev-1` / `dev-2` takma adlarına GERÇEK org daveti gitti — o kullanıcı adları
+  # GitHub'da gerçekten var. Örnek dosyaların "zararsız" olduğu varsayımı orada
+  # kırıldı; aynı varsayımın repo tarafındaki karşılığı burada kapatılıyor.
   repos = {
     for f in fileset("${path.module}/config/repositories", "*.yml") :
     trimsuffix(f, ".yml") => yamldecode(
       file("${path.module}/config/repositories/${f}")
     )
+    if !endswith(f, ".example.yml")
   }
 
   repo_defaults = local.org_config.defaults
