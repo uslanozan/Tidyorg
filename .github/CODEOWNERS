@@ -3,3 +3,7 @@
 
 # Varsayılan sahiplik · Default ownership
 *                       @your-org/tidyorg-github-infrastructure-mentors
+
+# Yola özel sahiplik · Path-specific ownership
+/.github/workflows/     @your-org/platform-admins
+/terraform/             @your-org/platform-admins
