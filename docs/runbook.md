@@ -51,6 +51,19 @@ Bir kişi aynı anda birden fazla projede yer alabilir (many-to-many).
       hesap erişimi kesilince geçersizleşir, ancak organizasyon adına oluşturulmuş
       token'lar varsa iptal edilmeli
 
+**Org ayarlarında ona bağlı bir şey var mı:**
+- [ ] 💳 **`billing_email` bu kişiyi mi gösteriyor?** Gösteriyorsa
+      [`terraform/org-settings.tf`](../terraform/org-settings.tf) içinde değiştir.
+      **2026-08-15'te bu atlandı:** kişinin tüm yetkileri alınmıştı ama fatura
+      bildirimleri üç gün daha ona gitti; 08-18'de import sırasında fark edildi.
+      ⚠️ Provider bu alanı **okuyamıyor** — import'ta boş geliyor. Yani drift'ini
+      `plan` göstermez ve arayüzden değiştirilse kimse fark etmez. `org-settings.tf`'teki
+      satır bir kayıt değil, **tek doğruluk kaynağı**; bu maddenin listede olması da
+      o yüzden zorunlu.
+- [ ] Org owner'ları arasında mıydı? `people.yml` → `org_role` kontrol edildi mi
+      _(break-glass olarak yönetim dışı bırakılmış kişiler `people.tf` →
+      `unmanaged_people` içinde; onların rolü Terraform'dan değil arayüzden alınır)_
+
 **GitHub dışı (elle):**
 - [ ] Linear erişimi
 - [ ] Slack kanalları

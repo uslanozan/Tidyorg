@@ -39,14 +39,16 @@ Son güncelleme: 2026-08-19
       [`app-manifest.json`](integrations/github-app/app-manifest.json) ·
       [`README.md`](integrations/github-app/README.md)_
 
-- [ ] 💳 **Fatura e-postası offboarding'de gözden kaçmıştı** _(kapandı ama ders kayda değer)_
+- [x] ✅ **Fatura e-postası offboarding'de gözden kaçmıştı** _(kapandı — ders kayda değer)_
       Org'un "Billing email" adresi 2026-08-18'e kadar **ayrılan ekip üyesindeydi**. Erişim
       yetkileri 15 Ağustos'ta alınmıştı; fatura bildirimleri üç gün daha ona gitti.
       Arayüzden düzeltildi ve Terraform'a alındı.
       ⚠️ Provider bu alanı **okuyamıyor** (import'ta boş geldi) — yani drift'ini de göremez.
       `org-settings.tf`'teki satır bir kayıt değil, **tek doğruluk kaynağı**.
-      **Yapılacak:** offboarding kontrol listesine "fatura e-postası" maddesi eklensin
-      _(bkz. [`docs/runbook.md`](docs/runbook.md))_.
+      **Yapıldı (2026-08-20):** [`docs/runbook.md`](docs/runbook.md) § 1.4'e
+      "Org ayarlarında ona bağlı bir şey var mı" bloğu eklendi — `billing_email` maddesi
+      ve provider'ın bu alanı okuyamadığı uyarısıyla. Org owner kontrolü de aynı bloğa
+      girdi, çünkü aynı sınıftan bir gözden kaçma.
 
 ---
 
@@ -95,6 +97,40 @@ anda yapılmayacak:
       repo "yönetim dışı" olarak görünür — **doğru davranış**: arşivli olmak yönetilmek
       değildir.
 
+      ⚠️ **İkinci sınır: kontrol yalnızca İSİMLERE bakıyor.** Config dosyası yazıldığı
+      anda uyarı kalkıyor — config'in repo'nun gerçek ayarlarıyla uyuşup uyuşmadığına
+      bakmadan. Yani kontrol *"bu repo yönetim altında"* diyor, *"bu repo doğru
+      ayarlanmış"* demiyor. İkinci soruyu `plan` cevaplıyor. Bu bir kusur değil, kapsam
+      tespiti ile drift tespitinin farklı işler olması — ama karıştırılmamalı.
+
+- [ ] 💡 **Bilinçli yönetim dışı repo'lar için allowlist** _(2026-08-20'de doğdu)_
+
+      **Sorun.** Bir repo'yu **kasten** yönetmemeye karar verilirse kapsama uyarısı
+      sonsuza kadar kalır ve gürültüye dönüşür. Gürültüye dönüşen uyarı, okunmayan
+      uyarıdır — ve okunmayan bir uyarı, olmayan uyarıdan daha kötüdür, çünkü "kontrolümüz
+      var" hissi verir.
+
+      **Çözüm — kurulu bir desenin aynısı.** `people.tf` bu sorunu zaten çözmüş:
+      ```hcl
+      unmanaged_people = ["uslanozan"]   # break-glass, bilerek yönetim dışı
+      ```
+      ve bypass raporu bu kişiyi `_warning` alanında **ismen** söylüyor. Yani "istisna"
+      görünmez olmuyor, sadece alarm olmaktan çıkıp beyan haline geliyor. Repo tarafında
+      aynısı:
+      ```hcl
+      # terraform/coverage.tf
+      unmanaged_repos_allowlist = ["arsiv-2019"]   # gerekçe yorumda ZORUNLU
+      ```
+
+      **Tasarım şartı — istisna sessiz olmamalı.** Allowlist'e giren repo `check`
+      bloğundan düşer ama `repository_coverage` output'unda **ayrı bir alanda ismen
+      görünmeye devam eder** (`deliberately_unmanaged`). Aksi halde allowlist bir
+      susturma düğmesine dönüşür ve tam olarak kapatmaya çalıştığımız körlüğü üretir.
+
+      **Bugün yapılmıyor, çünkü ihtiyaç yok:** org'da bilinçli yönetim dışı repo sıfır
+      (4/4 kapsanmış). İlk "bunu yönetmeyeceğiz" kararında yapılacak iş bu.
+      Erken eklemek, kullanılmayan bir kaçış yolu açmak olurdu.
+
 ### Devralma prosedürü — üç senaryo, ikisi farklı
 
 **A. GitLab'dan (veya herhangi bir dış sistemden) gelen repo — brownfield DEĞİL.**
@@ -140,9 +176,9 @@ araç yazmaya gerek yok._
 
 ---
 
-## 🔁 Rutin PR'lar iki onay istiyor — bypass alışkanlığa dönüşüyor _(2026-08-19)_
+## ✅ Rutin PR'lar iki onay istiyor — bypass alışkanlığa dönüşüyor _(2026-08-19 · kapandı 2026-08-20)_
 
-- [ ] **`main` → `required_reviews: 2`, ekip üç kişi.**
+- [x] ✅ **`main` → `required_reviews: 2`, ekip üç kişi.** _(çözüldü: org varsayılanı 1)_
       Dependabot PR #19 bunu somutlaştırdı: bir action sürüm yükseltmesi **iki insan
       onayı** istiyor. Sen `platform-admins` olarak code owner onayını verebilirsin ama
       ikinci onay için Emre ya da Medine gerekiyor.
@@ -352,16 +388,27 @@ Bunlar `org-settings.tf` import'unun yan ürünü — daha önce hiçbir yerde g
       entegrasyon ve kendi izinleriyle çalışıyor. Config'den repo yaratma akışı sağlam.
       Bu, kısıtın **istenen** şekli: insan elle açamıyor, config açabiliyor.
 
-- [ ] 🗑️ **Test artıklarını sil — elle yapılman gereken 3 nesne** _(2026-08-18)_
-      `tmp-app-create-test` Terraform state'inden çıkarıldı ve config'i silindi, ama
-      **GitHub'da hâlâ duruyor** (`prevent_destroy` yüzünden Terraform silemedi).
-      Şu an yönetim dışı — yani tam da ROADMAP'teki "Geçmişi kim koruyacak?" notunun
-      örneği, kendi elimizle üretilmiş hâli.
-      Silinecekler:
-      1. Repo: `https://github.com/your-org/tmp-app-create-test` → Settings → Danger Zone
-      2. Takım: `tmp-app-create-test-mentors`
-      3. Takım: `tmp-app-create-test-devs`
-      _(Repo silinince takımlar silinmez, ayrıca kaldırılmalı.)_
+- [ ] 🗑️ **Test artıkları — repo silindi, İKİ TAKIM DOĞRULANMADI** _(2026-08-18 · durum
+      güncellendi 2026-08-20)_
+      `tmp-app-create-test` state'ten çıkarılmış, config'i silinmiş ama GitHub'da kalmıştı
+      (`prevent_destroy` Terraform'un silmesini engelledi → `state rm` → öksüz nesne).
+      Kendi elimizle ürettiğimiz "Geçmişi kim koruyacak?" örneği.
+
+      | Nesne | Durum |
+      | :--- | :--- |
+      | Repo `tmp-app-create-test` | ✅ **Silinmiş** — kapsama kontrolü kanıtlıyor: org'da 4 repo, yönetim dışı 0 |
+      | Takım `tmp-app-create-test-mentors` | ❓ **Doğrulanmadı** |
+      | Takım `tmp-app-create-test-devs` | ❓ **Doğrulanmadı** |
+
+      ⚠️ **Kapsama kontrolü takımları görmüyor** — yalnızca repo'lara bakıyor. Yani bu iki
+      takım varsa hiçbir raporda çıkmaz. Elle bakılacak:
+      `https://github.com/orgs/your-org/teams`
+      _(Repo silinince takımlar silinmez.)_
+
+      💡 Buradan doğan asıl soru: **takımlar için de kapsama kontrolü gerekir mi?** Aynı
+      körlük takım düzleminde de var — config'de olmayan bir takım kimseye görünmüyor.
+      Bugün 9 takım silinmişken (Karar 12) bu düşünülmemişti. Ayrı bir madde olarak
+      değerlendirilmeli.
 
 - [x] ✅ ~~**Terraform uyarılarını CI'da görünür kıl**~~ _(2026-08-18)_
       `plan` yorumu artık uyarıları ayrı bir bölümde sayıp listeliyor (drift sayacının
@@ -439,11 +486,18 @@ Bunlar `org-settings.tf` import'unun yan ürünü — daha önce hiçbir yerde g
       kalır; gerçek sınır Faz 8'de (repo ayrımı) gelir.
       `config/people.yml` bilerek kapsam dışı — gerekçe yukarıdaki yükseltme kapısı maddesi.
 
-- [ ] **Yerelde bekleyen iki dal:** `docs/engineering-standards-fixes`,
-      `feat/branch-protection-fixes`.
+- [ ] **Yerelde bekleyen dallar — iki değil, BEŞ** _(2026-08-20'de sayıldı)_
+      `git branch` çıktısı: `develop`, `docs/engineering-standards-fixes`,
+      `feat/branch-protection-fixes`, `feat/gitops-templates`, `feat/repository-module`.
+      Bu madde "iki dal" diyordu; üçü gözden kaçmış.
       ⚠️ `docs/engineering-standards-fixes` **kısmen geçersiz** — içindeki
       `rbac-and-permissions.md` artık var olmayan takım yapısını anlatıyor; doküman
       2026-08-16'da baştan yazıldı. Push etmeden önce çakışmayı çöz veya dalı sil.
+      ⚠️ `feat/gitops-templates` ve `feat/repository-module` muhtemelen çoktan merge
+      edilmiş işlerin artığı — silmeden önce `git log main..<dal>` ile boş olduklarını
+      doğrula.
+      ⚠️ `develop` Karar F gereği Faz 8 göçünde **kaldırılacak**; şimdi silinmemeli,
+      göçün parçası.
 
 ---
 
