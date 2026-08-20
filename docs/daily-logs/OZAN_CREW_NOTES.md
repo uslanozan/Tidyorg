@@ -208,11 +208,46 @@ olaya bağlı. Bende en çok karşılık bulan üçü:
 Bir de bütünün adı: yaptığımız iş **Platform Engineering**, ürettiğimiz şey **Internal
 Developer Platform**, `templates/` + `config/` ikilisi de **"paved road"**.
 
+### 9. Kapsama kontrolü yazıldı — ve iki hoş sürpriz
+
+Günün sonunda GIT-34'ün kapsama yarısını yazdım (`terraform/coverage.tf`). İki şey
+beklediğimden ucuz çıktı:
+
+**Yeni data source gerekmedi.** `data.github_organization.this` zaten `org-settings.tf`'te
+duruyordu ve `repositories` alanını bugüne kadar hiç okumamışız. Yani ekstra API çağrısı
+bile doğmuyor — ihtiyacım olan veri aylardan beri elimizde, sadece bakmıyormuşuz. Bu,
+notun kendi temasının bir örneği: eksik olan veri değil, bakılacak yer.
+
+**Yeni CI kodu da gerekmedi.** `check` bloğu kullandım: başarısız assert plan'da
+**Warning** üretiyor, ve 2026-08-18'de uyarıları PR yorumuna + step summary'ye taşıyan
+mekanizmayı zaten kurmuşuz. İki gün önce yazdığım bir şeyin bugün bedava altyapı olması
+beklemediğim bir şeydi.
+
+`check` seçtim, `precondition` değil — yani **warning, error değil.** Ayrımı şöyle
+düşündüm: `people.tf`'teki doğrulamalar bir **config hatasını** yakalıyor, o yüzden
+fail-closed olmalı. Bu ise **dünyayla ilgili bir gözlem**: org'a birinin repo transfer
+etmesi, alakasız bir stajyer eklemesinin apply'ını bloklamamalı. Fail-loud yeterli, ve
+uyarı kaybolmuyor.
+
+**Ve test etmeyi neredeyse atlıyordum.** İlk plan "org'da 4, config'de 4, yönetim dışı 0"
+dedi ve bu iyi görünüyordu. Sonra durdum: **sıfır bulgu, kontrolün çalıştığının kanıtı
+değil.** `korumasiz_repolar` alanını eklerken tam bunu öğrenmişiz — boş liste iki farklı
+şeyi aynı biçimde söyler: "bakıldı, temiz" ile "hiç bakılmadı".
+
+Geçici olarak `pilot-intern-web`'i yönetilmiyormuş gibi gösterip plan'ı tekrar çalıştırdım.
+Uyarı düştü, repo adını ve dört adımlı devralma yönlendirmesini yazdı. Sonra geri aldım.
+Kontrolün kendisi kadar önemli olan şey bu: **alarmın çaldığını bir kez duymak.**
+
+Bilinen sınır: arşivlenmiş repo'lar org sayısına dahil ve buradan ayırt edilemiyor. Ama
+arşivli-ama-config-dışı bir repo "yönetim dışı" olarak görünmeye devam ediyor ve bu doğru —
+arşivli olmak yönetilmek değil.
+
 ### Sırada
 
 Bir "faz" yok: Faz 5 Medine'de, Faz 6 bitti, Faz 7 plan engelli, Faz 8'in üç koşulundan
-hiçbiri gerçekleşmedi. Sıradaki iş **GIT-34'ün kapsama yarısı** — bugünkü en büyük gerçek
-açık, ve bir faza bağlı değil.
+hiçbiri gerçekleşmedi. GIT-34'ün kapsama yarısı bugün kapandı; devralma yarısı Faz 8'i
+bekliyor. Kalan küçük işler: şablon action sürümü takipçisi (GIT-37'nin açık bıraktığı yer)
+ve GIT-32'nin karara bağlanması.
 
 ---
 

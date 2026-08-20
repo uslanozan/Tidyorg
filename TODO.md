@@ -63,13 +63,37 @@ anda yapılmayacak:
 | **Kapsama (push)** | Org'daki repo'ları listeler, config'de karşılığı olmayanları raporlar | **Şimdi** | Faz 8'e bağımlı değil; bugünkü açığı görünür kılar |
 | Keşif + uzlaştırma (pull) | Mevcut repo'nun ayarlarını okuyup config üretir | Faz 8'den sonra | `config/`'in nereye taşınacağına bağımlı; erken yapılırsa araç iki kez kurulur |
 
-- [ ] 🔨 **Kapsama kontrolü yaz.** `github_repositories` data source ile org okunur,
-      `local.repos` ile karşılaştırılır, config'de olmayanlar bir output + CI uyarısı
-      olarak yüzeye çıkar. Bugünkü hâliyle org'a sessizce bir repo girip **hiçbir
-      kontrolün kapsamına girmeden** durabilir: Terraform görmez, güvenlik varsayılanları
-      (`*_for_new_repositories`) uygulanmaz, bypass raporunda çıkmaz.
-      _Kanıt: `vulnerability_alerts` bu repo'da kapalıydı — elle açılmış tek repo,
-      denetlenmeyen tek repo oydu._
+- [x] ✅ **Kapsama kontrolü yazıldı — [`terraform/coverage.tf`](terraform/coverage.tf)**
+      _(2026-08-20)_
+
+      **Nasıl kuruldu.** Yeni data source gerekmedi: `data.github_organization.this`
+      `org-settings.tf`'te zaten vardı ve `repositories` alanı bugüne kadar hiç
+      okunmamıştı. Ekstra API çağrısı doğmuyor.
+
+      **CI'a taşınması da bedava oldu.** Bir `check` bloğu kullanıldı; başarısız assert'i
+      Terraform **uyarısı** üretiyor ve 2026-08-18'de kurulan mekanizma uyarıları PR
+      yorumuna + apply step summary'ye zaten taşıyor. **Sıfır satır yeni CI kodu.**
+
+      **Neden `check` (warning), `precondition` (error) değil.** Bu bir config hatası
+      değil, dünyayla ilgili bir gözlem: org'a birinin repo transfer etmesi, alakasız bir
+      stajyer eklemesinin apply'ını bloklamamalı. `people.tf`'teki doğrulamalar
+      **fail-closed** çünkü onlar config hatası; bu **fail-loud** çünkü bu bir bulgu.
+
+      **Doğrulama — iki yönlü.**
+      | Test | Sonuç |
+      | :--- | :--- |
+      | Bugünkü durum | org'da 4 repo, config'de 4, yönetim dışı **0** |
+      | Alarm yolu _(geçici olarak `pilot-intern-web` yönetilmiyor gibi davranıldı)_ | plan **Warning** üretti, repo adını ve dört adımlı devralma yönlendirmesini yazdı ✅ |
+
+      ⚠️ İkinci test bilerek yapıldı: **sıfır bulgu, kontrolün çalıştığının kanıtı
+      değildir.** `korumasiz_repolar` alanını eklerken öğrendiğimiz şeyin aynısı — boş
+      liste iki farklı anlama gelebilir ("bakıldı, temiz" / "hiç bakılmadı") ve ikisini
+      ayırmanın tek yolu alarmı bilerek tetiklemek.
+
+      **Bilinen sınır.** Arşivlenmiş repo'lar org sayısına dahil ve buradan
+      ayırt edilemiyor (data source yalnızca isim döndürüyor). Arşivli ama config dışı bir
+      repo "yönetim dışı" olarak görünür — **doğru davranış**: arşivli olmak yönetilmek
+      değildir.
 
 ### Devralma prosedürü — üç senaryo, ikisi farklı
 

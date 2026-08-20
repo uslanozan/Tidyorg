@@ -290,10 +290,24 @@ reddedilir. Denetim izi gerçektir — commit'ler işlemi yapan kişinin adına 
 
 ---
 
-### 📌 Konuşulacak — "Geçmişi kim koruyacak?" _(2026-08-18'de açıldı, faz atanmadı)_
+### 📌 "Geçmişi kim koruyacak?" _(2026-08-18'de açıldı · 2026-08-20'de ikiye bölündü)_
 
-> **Durum: tartışma notu.** Karar verilmedi, faz atanmadı. Şu anki işler bitince
-> masaya gelecek. Burada duruyor ki unutulmasın.
+> **Durum: karara bağlandı ve yarısı yapıldı** _(2026-08-20)_.
+>
+> | Yarı | Ne | Durum |
+> | :--- | :--- | :--- |
+> | **Kapsama (yaklaşım 2)** | Yönetim dışı repo'ları görünür kılar | ✅ **Yapıldı** — [`terraform/coverage.tf`](terraform/coverage.tf) |
+> | Keşif + uzlaştırma (yaklaşım 1) | Mevcut repo'dan config üretir | ⏭️ **Faz 8'i bekliyor** |
+>
+> Bölme gerekçesi: yaklaşım 1 `config/`'in nereye taşınacağına bağımlı, erken yapılırsa
+> araç iki kez kurulur. Yaklaşım 2 hiçbir şeye bağımlı değildi ve bugünkü açığı kapattı.
+>
+> Devralma prosedürü, üç senaryo (dış sistemden gelen / org'dan org'a / bireysel hesaptan)
+> ve iki pürüz — takımların transfer olmaması, repo oluşturma kısıtının transferi
+> engelleyebilmesi — [`TODO.md`](TODO.md) → GIT-34 bölümünde.
+>
+> Aşağıdaki analiz **sorunun tanımı** olarak duruyor; hâlâ geçerli, çünkü kapsama kontrolü
+> sorunu *görünür* kıldı, *çözmedi*.
 
 **Sorunu doğuran bulgu.** Org geneli güvenlik varsayılanlarını açtık ama bunlar
 `*_for_new_repositories` — yani **yalnızca geleceği koruyorlar**. Mevcut repo'lar

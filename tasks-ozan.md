@@ -853,11 +853,22 @@ boşluğu gizlemek olurdu.
       repo'yu sil-yarat turuna sokardı. Asıl bulgu şu: `prevent_destroy` silinmeyi değil
       **yönetilerek** silinmeyi engelledi, `state rm`'e itti ve GitHub'da öksüz nesne
       bıraktı. İki tasarım ve gerekçeleri: [`TODO.md`](TODO.md).
-- [ ] 🔨 **GIT-34 — önce kapsama kontrolü** _(karar: 2026-08-20)_
-      Org'daki repo'ları config ile karşılaştırıp yönetim dışı olanları raporlayan kontrol.
-      Faz 8'e bağımlı değil. Devralma prosedürü (GitLab'dan gelen / org'dan org'a transfer /
-      bireysel hesaptan transfer) ve iki pürüz — takımların transfer olmaması, repo
-      oluşturma kısıtının transferi engelleyebilmesi — [`TODO.md`](TODO.md)'de.
+- [x] ✅ **GIT-34 / kapsama kontrolü yazıldı** — [`terraform/coverage.tf`](terraform/coverage.tf)
+      _(2026-08-20)_
+      Org'daki repo'ları config ile karşılaştırıp yönetim dışı olanları raporluyor.
+      **Yeni data source gerekmedi** (`data.github_organization.this` zaten vardı,
+      `repositories` alanı hiç okunmamış) ve **yeni CI kodu gerekmedi**: `check` bloğu
+      Terraform uyarısı üretiyor, uyarı taşıma mekanizması 2026-08-18'de kurulmuştu.
+      `check` (warning) seçildi, `precondition` (error) değil — bu bir config hatası değil
+      dünyayla ilgili bir gözlem; org'a repo transfer edilmesi alakasız bir apply'ı
+      bloklamamalı. Yani **fail-loud**, fail-closed değil.
+      **Doğrulandı iki yönlü:** bugün 4/4 kapsanmış (yönetim dışı 0) **ve** alarm yolu
+      geçici bir kurgu ile tetiklenip uyarının repo adıyla düştüğü görüldü — çünkü sıfır
+      bulgu, kontrolün çalıştığının kanıtı değil.
+- [ ] ⏭️ **GIT-34 / devralma aracı** — Faz 8'i bekliyor (`config/`'in nereye taşınacağına
+      bağımlı; erken yazılırsa araç iki kez kurulur). Prosedür ve iki pürüz — takımların
+      transfer olmaması, repo oluşturma kısıtının transferi engelleyebilmesi —
+      [`TODO.md`](TODO.md)'de.
 - [ ] ⚠️ **`golangci-lint-action` v6 → v9 kırıcı olabilir** — v7'den itibaren
       golangci-lint **v2** bekleniyor ve config şeması farklı. Bugün Go kodu olmadığı için
       job atlanıyor; **ilk gerçek Go reposunda patlar.**
