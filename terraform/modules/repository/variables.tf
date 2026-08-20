@@ -10,26 +10,26 @@
 
 variable "org_name" {
   type        = string
-  description = "GitHub organizasyon adı (takım slug'larını kurmak için gerekir)"
+  description = "GitHub organization name (required to build team slugs)"
 }
 
 variable "name" {
   type        = string
-  description = "Repo adı"
+  description = "Repository name"
 }
 
 variable "description" {
   type        = string
-  description = "Repo açıklaması"
+  description = "Repository description"
 }
 
 variable "language" {
   type        = string
-  description = "Ana programlama dili — CI şablonu ve label seçimini etkiler"
+  description = "Primary programming language - drives CI template and label selection"
 
   validation {
     condition     = contains(["go", "python", "typescript", "php"], var.language)
-    error_message = "language şu değerlerden biri olmalı: go, python, typescript, php."
+    error_message = "language must be one of: go, python, typescript, php."
   }
 }
 
@@ -37,32 +37,34 @@ variable "language" {
 
 variable "visibility" {
   type        = string
-  description = "Repo görünürlüğü"
+  description = "Repository visibility"
   default     = "private"
 
   validation {
     condition     = contains(["private", "public"], var.visibility)
-    error_message = "visibility 'private' veya 'public' olmalı."
+    error_message = "visibility must be 'private' or 'public'."
   }
 }
 
 variable "archived" {
   type        = bool
-  description = "Repo arşivlenmiş mi? Silme yerine arşivleme tercih edilir."
+  description = "Is the repository archived? Archiving is preferred over deletion."
   default     = false
 }
 
 variable "vulnerability_alerts" {
   type        = bool
   description = <<-EOT
-    Dependabot güvenlik uyarıları. Bağımlılıklarda bilinen açık çıktığında GitHub
-    uyarı üretir.
+    Dependabot security alerts. GitHub raises an alert when a known vulnerability
+    appears in a dependency.
 
-    Her plan ve her görünürlükte çalışır — GHAS gerektirmez. Bu yüzden varsayılanı
-    `true`: kapatmak bilinçli bir karar olmalı, açmak değil.
+    Works on every plan and every visibility - no GHAS required. That is why the
+    default is `true`: turning it off should be a deliberate decision, turning it
+    on should not.
 
-    ⚠️ Arşivlenmiş repo'da değiştirilemez; GitHub arşiv repo'nun ayarlarını salt
-    okunur yapar. Arşivlenecek repo'da önce bu ayar bugünkü değerinde bırakılmalı.
+    WARNING: cannot be changed on an archived repository; GitHub makes an archived
+    repository's settings read-only. Before archiving, leave this setting at its
+    current value.
   EOT
   default     = true
 }
@@ -70,47 +72,50 @@ variable "vulnerability_alerts" {
 variable "secret_scanning" {
   type        = bool
   description = <<-EOT
-    Secret scanning + push protection. İkincisi asıl değerli olan: sızdırılmış
-    anahtar repo'ya GİRMEDEN push'u reddeder, sonradan uyarmaz.
+    Secret scanning + push protection. The second one is what actually matters: it
+    rejects the push BEFORE a leaked key enters the repository, instead of warning
+    afterwards.
 
-    ⚠️ Yalnızca PUBLIC repo'larda ücretsiz. Private repo'da GitHub Advanced Security
-    (Enterprise lisansı) ister. Modül bu yüzden ayarı yalnızca `visibility == "public"`
-    iken uygular; private repo'da config `true` olsa bile sessizce atlanır —
-    aksi halde apply `422` ile patlardı.
+    WARNING: free only on PUBLIC repositories. On a private repository it requires
+    GitHub Secret Protection (a paid add-on, purchasable on Team and Enterprise).
+    The module therefore applies the setting only while `visibility == "public"`;
+    on a private repository it is skipped silently even when config says `true` -
+    otherwise apply would fail with `422`.
 
-    `advanced_security` bilerek hiç yönetilmiyor: public repo'da zaten örtük açık,
-    private repo'da lisans gerektiriyor. Yönetmeye çalışmak iki durumda da hata.
+    `advanced_security` is deliberately left unmanaged: implicitly on for public
+    repositories, license-gated for private ones. Managing it would be wrong in
+    both cases.
   EOT
   default     = true
 }
 
 variable "has_issues" {
   type        = bool
-  description = "Issues sekmesi açık mı"
+  description = "Is the Issues tab enabled"
   default     = true
 }
 
 variable "has_projects" {
   type        = bool
-  description = "Projects sekmesi açık mı"
+  description = "Is the Projects tab enabled"
   default     = false
 }
 
 variable "has_wiki" {
   type        = bool
-  description = "Wiki sekmesi açık mı"
+  description = "Is the Wiki tab enabled"
   default     = false
 }
 
 variable "auto_init" {
   type        = bool
-  description = "Repo ilk commit ile oluşturulsun mu (default branch'in var olabilmesi için gerekir)"
+  description = "Create the repository with an initial commit (required for the default branch to exist)"
   default     = true
 }
 
 variable "default_branch" {
   type        = string
-  description = "Varsayılan dal"
+  description = "Default branch"
   default     = "develop"
 }
 
@@ -119,7 +124,7 @@ variable "template_repo" {
     owner      = string
     repository = string
   })
-  description = "Repo'nun türetileceği template repo (opsiyonel)"
+  description = "Template repository to derive this repository from (optional)"
   default     = null
 }
 
@@ -128,24 +133,26 @@ variable "template_repo" {
 variable "mentors" {
   type        = list(string)
   description = <<-EOT
-    Repo'nun mentörlerinin GitHub kullanıcı adları.
-    Bugün tek eleman beklenir; tekil alanı sonradan listeye çevirmek hem config'i
-    hem modülü kıracağı için baştan liste olarak tanımlanmıştır.
+    GitHub usernames of the repository's mentors.
+    A single element is expected today; it is declared as a list from the start
+    because turning a scalar field into a list later would break both the config
+    and the module.
   EOT
   default     = []
 }
 
 variable "developers" {
   type        = list(string)
-  description = "Repo'da çalışan developer'ların GitHub kullanıcı adları (many-to-many)"
+  description = "GitHub usernames of the developers working on the repository (many-to-many)"
   default     = []
 }
 
 variable "role_permissions" {
   type        = map(string)
   description = <<-EOT
-    Rol adı → GitHub repo yetkisi eşlemesi. Config'in `roles` bölümünden gelir.
-    Yetkinin ne anlama geldiği tek yerde tanımlıdır; modül burayı okur.
+    Role name -> GitHub repository permission mapping. Comes from the `roles`
+    section of the config. What a permission means is defined in exactly one
+    place; the module reads it from here.
   EOT
   default = {
     mentor    = "admin"
@@ -155,7 +162,7 @@ variable "role_permissions" {
 
 variable "org_admin_team_slug" {
   type        = string
-  description = "head-of-engineering rolünü taşıyan organizasyon seviyesi takımın slug'ı"
+  description = "Slug of the organization-level team carrying the head-of-engineering role"
   default     = "platform-admins"
 }
 
@@ -174,14 +181,14 @@ variable "protected_branches" {
     enforce_admins                  = optional(bool, false)
   }))
   description = <<-EOT
-    Dal adı (pattern) → koruma kuralları.
+    Branch name (pattern) -> protection rules.
 
-    `enforce_admins` varsayılan olarak false'tur: true olsaydı admin yetkisindeki
-    mentörler de korumalı dala push atamazdı ve ACCESS-MODEL.md'de tanımlanan
-    davranış bozulurdu.
+    `enforce_admins` defaults to false: were it true, mentors holding admin
+    permission could not push to a protected branch either, breaking the behaviour
+    defined in ACCESS-MODEL.md.
 
-    `push_allowed_roles` kişi listesi değil ROL listesi alır; kişi değiştiğinde
-    kural metni değişmez.
+    `push_allowed_roles` takes a list of ROLES, not people; the rule text does not
+    change when the people change.
   EOT
   default     = {}
 }
@@ -194,20 +201,21 @@ variable "labels" {
     color       = string
     description = optional(string, "")
   }))
-  description = "Repo'da oluşturulacak standart label seti"
+  description = "Standard label set to create in the repository"
   default     = []
 }
 
 variable "code_owners" {
   type        = map(list(string))
   description = <<-EOT
-    Yol → sahip listesi. OPSİYONEL; yalnızca içinde gerçekten ayrışma olan
-    repo'larda (monorepo vb.) kullanılır. Boş bırakılırsa CODEOWNERS tüm dosyaları
-    mentör takımına yönlendirir.
+    Path -> owner list. OPTIONAL; only used in repositories with genuine internal
+    separation (monorepos and the like). Left empty, CODEOWNERS routes every file
+    to the mentors team.
 
-    DİKKAT: Bu tanım merge YETKİSİNİ kısıtlamaz. GitHub'da write yetkisi daima repo
-    geneline verilir. Buradaki tanım yalnızca "şu yol değiştiyse şu kişinin ONAYI
-    gerekir" anlamına gelir ve ancak require_code_owner_review true iken zorlayıcıdır.
+    CAUTION: this definition does not restrict merge PERMISSION. On GitHub, write
+    access is always granted repository-wide. What is defined here only means "if
+    this path changed, this person's APPROVAL is required", and it is enforcing
+    only while require_code_owner_review is true.
   EOT
   default     = {}
 }
@@ -215,9 +223,9 @@ variable "code_owners" {
 variable "manage_codeowners_file" {
   type        = bool
   description = <<-EOT
-    CODEOWNERS dosyası repo içine Terraform tarafından yazılsın mı?
-    require_code_owner_review kullanan repo'larda true olmalıdır; CODEOWNERS
-    dosyası yoksa o ayar hiçbir şey zorlamaz.
+    Should the CODEOWNERS file be written into the repository by Terraform?
+    Must be true in repositories that use require_code_owner_review; without a
+    CODEOWNERS file that setting enforces nothing.
   EOT
   default     = true
 }
@@ -227,34 +235,35 @@ variable "manage_codeowners_file" {
 variable "files" {
   type        = map(string)
   description = <<-EOT
-    Mantıksal dosya adı → dağıtım modu.
+    Logical file name -> delivery mode.
 
-      strict → Terraform içeriği sahiplenir; elle değişiklik apply'da geri alınır
-      seed   → yalnızca ilk oluşturmada yazılır, repo sonra değiştirebilir
-      none   → hiç yazılmaz
+      strict -> Terraform owns the content; manual edits are reverted on apply
+      seed   -> written only on creation, the repository may change it afterwards
+      none   -> never written
 
-    Mantıksal adların hangi dosyaya karşılık geldiği modüldeki `file_catalog`
-    yerel değişkeninde tanımlıdır. Config'de dosya yolu yazılmaz — böylece şablon
-    ağacı değiştiğinde config'e dokunmak gerekmez.
+    Which file each logical name maps to is defined in the module's `file_catalog`
+    local. File paths are never written in config, so the config does not have to
+    be touched when the template tree changes.
   EOT
   default     = {}
 
   validation {
     condition     = alltrue([for mode in values(var.files) : contains(["strict", "seed", "none"], mode)])
-    error_message = "files içindeki her değer 'strict', 'seed' veya 'none' olmalı."
+    error_message = "every value in files must be 'strict', 'seed' or 'none'."
   }
 }
 
 variable "workflows" {
   type        = list(string)
   description = <<-EOT
-    Repo'ya dağıtılacak workflow adları (uzantısız). Kaynak:
-    templates/.github/workflows/<ad>.yml
+    Names of the workflows to deliver to the repository (without extension).
+    Source: templates/.github/workflows/<name>.yml
 
-    Workflow'lar daima `strict` modda yazılır — yönetişim dosyasıdır.
+    Workflows are always written in `strict` mode - they are governance files.
 
-    DİKKAT: Listede `ci` yoksa o repo'da `ci/test` status check'i hiç raporlanmaz.
-    protected_branches içinde `ci/test` zorunluysa modül `precondition` ile hata verir.
+    CAUTION: if `ci` is not in the list, the `ci/test` status check is never
+    reported in that repository. If `ci/test` is required in protected_branches,
+    the module raises an error via `precondition`.
   EOT
   default     = []
 }

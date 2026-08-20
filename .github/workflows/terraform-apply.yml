@@ -53,7 +53,7 @@ jobs:
         if: always()
         run: |
           if [ ! -f apply_output.txt ]; then
-            echo "Apply çıktısı bulunamadı — uyarı taraması atlandı." >> "$GITHUB_STEP_SUMMARY"
+            echo "Apply output not found - warning scan skipped." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
 
@@ -74,18 +74,18 @@ jobs:
           total=$(extract | wc -l | tr -d ' ')
 
           if [ "$total" -eq 0 ]; then
-            echo "### ✅ Uyarı yok" >> "$GITHUB_STEP_SUMMARY"
+            echo "### ✅ No warnings" >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
 
           warnings=$(extract | sort | uniq -c | sort -rn)
           distinct=$(printf '%s\n' "$warnings" | wc -l | tr -d ' ')
 
-          echo "### ⚠️ ${total} uyarı — ${distinct} farklı" >> "$GITHUB_STEP_SUMMARY"
+          echo "### ⚠️ ${total} warnings - ${distinct} distinct" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           printf '%s\n' "$warnings" | while read -r count title; do
             echo "- **${title}** — ${count}×" >> "$GITHUB_STEP_SUMMARY"
             echo "::warning title=Terraform::${title} (${count}×)"
           done
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "_Deprecation uyarıları provider yükseltmesinde apply'ı kırar — birikmeye bırakmayın._" >> "$GITHUB_STEP_SUMMARY"
+          echo "_Deprecation warnings break apply on the next provider upgrade - do not let them pile up._" >> "$GITHUB_STEP_SUMMARY"

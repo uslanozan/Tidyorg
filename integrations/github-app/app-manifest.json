@@ -1,7 +1,7 @@
 {
   "name": "tidyorg-infra-bot",
   "url": "https://github.com/your-org",
-  "description": "Terraform GitHub provider için organizasyona ait bot kimliği. Kişisel token bağımlılığını ortadan kaldırır; audit log'da işlemler bot adına görünür.",
+  "description": "Organization-owned bot identity for the Terraform GitHub provider. Removes the dependency on personal tokens; operations appear under the bot name in the audit log.",
   "public": false,
   "hook_attributes": {
     "active": false

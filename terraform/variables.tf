@@ -11,11 +11,11 @@ variable "github_app_id" {
 
 variable "github_app_installation_id" {
   type        = string
-  description = "GitHub App Installation ID (org kurulumu)"
+  description = "GitHub App Installation ID (organization installation)"
 }
 
 variable "github_app_pem_file" {
   type        = string
-  description = "GitHub App private key (PEM içeriği, newline'lar \\n olarak)"
+  description = "GitHub App private key (PEM contents, newlines escaped as \n)"
   sensitive   = true
 }

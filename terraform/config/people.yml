@@ -26,19 +26,23 @@
 #           ve plan aşamasında zorlanır.
 #
 # -----------------------------------------------------------------------------
-# YÜKSELTME KAPISI
+# YÜKSELTME KAPISI — ⏸️ PLANLANIYOR, HENÜZ YOK (GIT-36)
 # -----------------------------------------------------------------------------
-# Buraya `org_role: admin` yazmak TEK BAŞINA YETMEZ. Kişinin ayrıca
-# terraform/people.tf içindeki `allowed_org_owners` listesinde olması gerekir.
+# ⚠️ BUGÜN KURULU BİR KAPI YOK. Buraya `org_role: admin` yazmak, PR merge edilip
+#    apply çalıştığında kişiyi org owner YAPAR. Tek engel PR incelemesidir.
+#
+# Planlanan kural: `admin` yazmak tek başına yetmeyecek, kişinin ayrıca
+# terraform/people.tf içindeki `allowed_org_owners` listesinde olması gerekecek.
+# Bu liste henüz yazılmadı — dosyada arama yapıp bulamazsan sebebi budur.
 #
 # Sebep: org owner organizasyondaki HER ŞEYE tam yetkilidir — her repoda admin,
 # her korumalı dalda muaf, üye ekleme/çıkarma, org ayarları, repo silme.
 # Bu dosya sık değişiyor ve ileride dashboard tarafından yazılacak; yükseltmenin
-# buradan tek satırla yapılabilmesi, yetki yükseltmeyi sıradan bir işlem yapardı.
+# buradan tek satırla yapılabilmesi, yetki yükseltmeyi sıradan bir işlem yapıyor.
 #
-# `.tf` dosyaları yol bazlı CODEOWNERS ile korunuyor, yani yükseltme mevcut bir
-# org owner'ın onayını gerektiriyor. Bu bir KAPI, kilit değil: Karar E gereği
-# repo admini CODEOWNERS'ı atlayabilir. Kilit Faz 8'de repo sınırıyla gelir.
+# Kapı kurulduğunda bile KİLİT olmayacak: `.tf` dosyaları yol bazlı CODEOWNERS
+# ile korunuyor, yani mevcut bir org owner'ın onayını gerektiriyor — ama Karar E
+# gereği repo admini CODEOWNERS'ı atlayabilir. Kilit Faz 8'de repo sınırıyla gelir.
 # =============================================================================
 
 version: 1
@@ -60,8 +64,5 @@ people:
   # 2026-08-16 — dashboard geliştiricisi. Repo yetkisi
   # config/repositories/Tidyorg.yml içinde `developers` olarak
   # veriliyor; burada yalnızca org rolü beyan ediliyor.
-  #
-  # ⚠️ Pilot repo'lara erişimi YOK ve base permission `none` olduğu için onları
-  # göremiyor. Beklenen davranış — takip: TODO.md
   medine2906:
     org_role: member

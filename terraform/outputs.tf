@@ -6,7 +6,7 @@
 # =============================================================================
 
 output "repositories" {
-  description = "Config'den üretilen repo'ların adresleri ve takımları"
+  description = "URLs and teams of the repositories generated from config"
   value = {
     for name, repo in module.repositories : name => {
       url        = repo.repo_html_url
@@ -21,12 +21,12 @@ output "repositories" {
 }
 
 output "repository_count" {
-  description = "Konfigürasyondan yönetilen repo sayısı"
+  description = "Number of repositories managed from configuration"
   value       = length(module.repositories)
 }
 
 output "org_admin_team" {
-  description = "head-of-engineering rolünü taşıyan organizasyon takımı"
+  description = "Organization team carrying the head-of-engineering role"
   value       = github_team.platform_admins.slug
 }
 
@@ -49,7 +49,7 @@ locals {
   #
   # Tek istisna `local.unmanaged_people`: break-glass gereği yönetim dışında
   # bırakılan kişiler. Onların org rolü hâlâ beyandır ve arayüzden değiştirilirse
-  # plan sessiz kalır. Rapor bunu `_uyari` alanında ismen söylüyor.
+  # plan sessiz kalır. Rapor bunu `_warning` alanında ismen söylüyor.
   unenforced_owners = sort([
     for user in local.org_owners : user
     if contains(local.unmanaged_people, user)
@@ -57,7 +57,7 @@ locals {
 
   # Hiç korumalı dalı olmayan repo'lar.
   #
-  # Bu liste raporun bir zayıflığını kapatıyor: `repolar` haritasında böyle bir repo
+  # Bu liste raporun bir zayıflığını kapatıyor: `repositories` haritasında böyle bir repo
   # `{}` olarak görünüyordu ve `{}` iki farklı şeyi aynı biçimde söylüyordu —
   # "burada atlanacak kural yok" ile "endişelenecek bir şey yok". İlki bir ALARM,
   # ikincisi sessizlik. 2026-08-18'de `pilot-access-test` eklenince fark edildi.
@@ -72,59 +72,63 @@ locals {
 
 output "branch_protection_bypass" {
   description = <<-EOT
-    Korumalı dal kurallarını kim atlayabilir — repo × dal kırılımında.
+    Who can bypass branch protection rules, broken down by repository x branch.
 
-    `enforce_admins = false` iken repo'da admin yetkisi olan herkes PR zorunluluğunu,
-    onay sayısını, status check'i, force push ve dal silme korumasını atlar. Bu
-    kapsam 2026-08-17'de canlı doğrulandı (pilot-verification.md 6.5).
+    While `enforce_admins = false`, anyone with admin permission on a repository
+    bypasses the pull request requirement, the review count, status checks, force
+    push protection and branch deletion protection. This scope was verified live on
+    2026-08-17 (see pilot-verification.md 6.5).
 
-    Okuma sırası:
-      korumasiz_repolar → hiç korumalı dalı olmayanlar. ÖNCE buraya bakılır:
-                          bu repo'larda bypass sorusu anlamsızdır, koruma yoktur.
-      repolar           → korumalı dalı olanlarda kim, hangi dalda muaf.
+    Reading order:
+      unprotected_repos → repositories with no protected branch at all. Look here
+                          FIRST: asking who can bypass is meaningless there,
+                          because there is no protection to bypass.
+      repositories      → for repositories that do have protection, who is exempt
+                          on which branch.
   EOT
 
   value = {
     # 2026-08-18'e kadar bu alan "org rolleri hiç zorlanmıyor, hepsi beyan" diyordu.
     # `github_membership.people` devreye girince kapsam daraldı: artık yalnızca
     # break-glass için yönetim dışı bırakılanlar beyan.
-    _uyari = length(local.unenforced_owners) == 0 ? "Tüm org rolleri Terraform tarafından zorlanıyor." : join(" ", [
-      "Şu org owner'ın rolü Terraform tarafından ZORLANMIYOR:",
+    _warning = length(local.unenforced_owners) == 0 ? "Every org role is enforced by Terraform." : join(" ", [
+      "The role of this org owner is NOT ENFORCED by Terraform:",
       "${join(", ", local.unenforced_owners)}.",
-      "Break-glass gereği bilerek yönetim dışında (people.tf → unmanaged_people):",
-      "tüm owner'ları Terraform'a bağlamak, hatalı bir apply'da geri dönüşü olmayan",
-      "kilitlenme riski taşır. Bedeli görünürlük: bu kişinin rolü arayüzden",
-      "değiştirilirse plan sessiz kalır. Diğer herkes zorlanıyor.",
+      "Deliberately left unmanaged as break-glass (people.tf -> unmanaged_people):",
+      "binding every owner to Terraform risks an irreversible lockout on a faulty",
+      "apply. The price is visibility: if this person's role is changed through the",
+      "UI, the plan stays silent. Everyone else is enforced.",
     ])
 
-    organizasyon_geneli = {
+    organization_wide = {
       org_owner           = local.org_owners
       head_of_engineering = local.head_of_engineering
-      not                 = "Bu iki grup HER repo'da admin'dir; repo bazlı listede tekrar görünür."
+      note                = "Both groups are admin on EVERY repository; they appear again in the per-repository list."
     }
 
-    # `repolar` altında bu repo'lar `{}` olarak görünür — ve boş harita tek başına
-    # yanıltıcıdır: "atlanacak kural yok" ile "sorun yok" aynı biçimde okunuyor.
-    # Burada ayrıca listelenmelerinin sebebi bu; sessizlik değil alarm olmalılar.
-    korumasiz_repolar = {
-      liste = local.unprotected_repos
-      not = length(local.unprotected_repos) == 0 ? "Her repo'nun en az bir korumalı dalı var." : join(" ", [
-        "Bu repo'larda HİÇBİR dal korunmuyor — yani bypass sorusu anlamsız,",
-        "herkes zaten her şeyi yapabilir. Free plan'de private repo'da branch",
-        "protection çalışmadığı için bu beklenen bir durum olabilir; beklenen",
-        "olması görünmez olmasını gerektirmez. Public bir repo bu listedeyse",
-        "gerçek bir açıktır.",
+    # `repositories` altında bu repo'lar `{}` olarak görünür — ve boş harita tek
+    # başına yanıltıcıdır: "atlanacak kural yok" ile "sorun yok" aynı biçimde
+    # okunuyor. Burada ayrıca listelenmelerinin sebebi bu; sessizlik değil alarm
+    # olmalılar.
+    unprotected_repos = {
+      list = local.unprotected_repos
+      note = length(local.unprotected_repos) == 0 ? "Every repository has at least one protected branch." : join(" ", [
+        "NO branch is protected in these repositories, so asking who can bypass is",
+        "meaningless: everyone can already do everything. This may be expected,",
+        "because branch protection does not work on private repositories on the Free",
+        "plan; being expected does not justify being invisible. A public repository",
+        "on this list is a real gap.",
       ])
     }
 
-    repolar = {
+    repositories = {
       for repo_name, repo in local.repos : repo_name => {
         for branch, rules in local.protected_branches[repo_name] : branch => {
           enforce_admins = try(rules.enforce_admins, false)
 
           # enforce_admins true ise kimse muaf değildir; false ise repo'da admin
           # yetkisi taşıyan herkes muaftır.
-          tum_kurallardan_muaf = try(rules.enforce_admins, false) ? [] : sort(distinct(concat(
+          exempt_from_all_rules = try(rules.enforce_admins, false) ? [] : sort(distinct(concat(
             try(repo.mentors, []),
             local.head_of_engineering,
             local.org_owners,
@@ -132,7 +136,7 @@ output "branch_protection_bypass" {
 
           # Bu roller ayrıca push allowlist'inde de yazılı — muafiyetten bağımsız
           # ikinci bir kapı (bkz. rbac-and-permissions.md Bölüm 3).
-          push_allowlist_rolleri = try(rules.push_allowed_roles, [])
+          push_allowlist_roles = try(rules.push_allowed_roles, [])
         }
       }
     }

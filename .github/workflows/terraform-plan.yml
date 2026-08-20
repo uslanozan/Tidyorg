@@ -101,7 +101,7 @@ jobs:
             // log'daki duvarı açıklıyor (bkz. docs/daily-logs/OZAN_CREW_NOTES.md).
             const driftCount = (planOutput.match(/Drift detected/g) || []).length;
             const driftNote = driftCount > 0
-              ? `\n\n_${driftCount} × \`Drift detected\` — kozmetik, apply gerektirmez._`
+              ? `\n\n_${driftCount} × \`Drift detected\` - cosmetic, no apply required._`
               : '';
 
             // Uyarılar plan ÖZETİNİ etkilemiyor: "No changes" diyen bir plan da uyarı
@@ -126,11 +126,11 @@ jobs:
 
             const warningLines = warningEntries.length === 0 ? [] : [
               '',
-              `### ⚠️ ${warningTitles.length} uyarı — ${warningEntries.length} farklı`,
+              `### ⚠️ ${warningTitles.length} warnings - ${warningEntries.length} distinct`,
               '',
               ...warningEntries.map(([title, n]) => `- **${title}**${n > 1 ? ` — ${n}×` : ''}`),
               '',
-              "_Uyarılar plan özetini etkilemez; temiz görünen bir plan da uyarı taşıyabilir. Deprecation uyarıları provider yükseltmesinde apply'ı kırar._",
+              "_Warnings do not affect the plan summary; a plan that looks clean can still carry them. Deprecation warnings break apply on the next provider upgrade._",
             ];
 
             let summaryText = '⚠️ Plan summary line not found in output — check the full log below.';
@@ -157,7 +157,7 @@ jobs:
             // kesilir; özet ve tablo yorumun başında olduğu için okunabilirliği bozmaz.
             const MAX_LOG = 55000;
             const planLog = planOutput.length > MAX_LOG
-              ? planOutput.slice(0, MAX_LOG) + '\n\n... (çıktı kısaltıldı — tamamı için Actions log)'
+              ? planOutput.slice(0, MAX_LOG) + '\n\n... (output truncated - see the Actions log for the full plan)'
               : planOutput;
 
             // DİKKAT: Bu blok bir YAML block scalar'ın (`script: |`) içindedir; her satır

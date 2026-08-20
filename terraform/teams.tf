@@ -22,7 +22,7 @@
 # çözümleniyor. Silinirse apply hata verir ve mentörlerin push izni de çöker.
 resource "github_team" "platform_admins" {
   name        = "platform-admins"
-  description = "Platform Administrators — head-of-engineering rolü"
+  description = "Platform Administrators - carries the head-of-engineering role"
   privacy     = "closed"
 
   # --- `people` bölümünün doğrulaması ---------------------------------------
@@ -37,48 +37,49 @@ resource "github_team" "platform_admins" {
     precondition { #! plan aşamasında çalışıp hatalı config'i durduruyor.
       condition = length(local.people_with_repo_scoped_roles) == 0
       error_message = join(" ", [
-        "config/people.yml → `roles` yalnızca ORG KAPSAMLI rol taşıyabilir",
-        "(bugün: ${join(", ", local.org_scoped_roles)}).",
-        "Repo kapsamlı roller config/repositories/*.yml içindeki `mentors` / `developers`",
-        "listelerinde yaşar; `people`'a yazılan böyle bir rol hiçbir şey yapmaz ama",
-        "dosyayı okuyan kişiyi yanıltır — config sessizce yalan söyler.",
-        "Hatalı atamalar: ${join(" · ", local.people_with_repo_scoped_roles)}",
+        "config/people.yml -> `roles` may only carry ORGANIZATION-SCOPED roles",
+        "(today: ${join(", ", local.org_scoped_roles)}).",
+        "Repository-scoped roles live in the `mentors` / `developers` lists inside",
+        "config/repositories/*.yml; such a role written into `people` does nothing,",
+        "but it misleads whoever reads the file - the config lies silently.",
+        "Invalid assignments: ${join(" · ", local.people_with_repo_scoped_roles)}",
       ])
     }
 
     precondition {
       condition = length(local.people_without_org_role) == 0
       error_message = join(" ", [
-        "config/people.yml → her kişide `org_role` YAZILI olmalı (`admin` veya `member`).",
-        "Varsayılana düşürmek yerine hata veriliyor: org rolü, kişinin branch protection",
-        "dahil her kuralı atlayıp atlayamayacağını belirler — unutulmuş olması ile",
-        "bilinçli `member` olması aynı şey değildir.",
-        "Eksik olanlar: ${join(", ", local.people_without_org_role)}",
+        "config/people.yml -> `org_role` must be WRITTEN OUT for every person (`admin` or `member`).",
+        "An error is raised instead of falling back to a default: the org role decides",
+        "whether a person can bypass every rule, branch protection included - having",
+        "been forgotten is not the same thing as being deliberately `member`.",
+        "Missing for: ${join(", ", local.people_without_org_role)}",
       ])
     }
 
     precondition {
       condition = length(local.people_with_invalid_org_role) == 0
       error_message = join(" ", [
-        "config/people.yml → `org_role` yalnızca şu değerleri alabilir:",
+        "config/people.yml -> `org_role` accepts only these values:",
         "${join(", ", local.valid_org_roles)}.",
-        "⚠️ GitHub ARAYÜZÜ bu rolü \"Owner\" diye gösterir ama API `admin` ister —",
-        "`org_role: owner` yazmak doğal bir hatadır ve bu doğrulama olmadan plan'ı",
-        "geçip APPLY sırasında patlardı.",
-        "Geçersiz olanlar: ${join(" · ", local.people_with_invalid_org_role)}",
+        "⚠️ The GitHub UI shows this role as \"Owner\" but the API expects `admin` -",
+        "writing `org_role: owner` is a natural mistake, and without this validation it",
+        "would pass plan and blow up during APPLY.",
+        "Invalid values: ${join(" · ", local.people_with_invalid_org_role)}",
       ])
     }
 
     precondition {
       condition = length(local.repo_people_missing_from_people) == 0
       error_message = join(" ", [
-        "config/repositories/*.yml içinde geçen herkes config/people.yml içinde de",
-        "TANIMLI OLMALI. Aksi halde kişi sessizce org'a girer: modül takım üyeliği",
-        "üretir, GitHub otomatik davet gönderir, ama merkezi listede hiç görünmez.",
-        "Bunun bedeli offboarding'de ödenir — kişiyi çıkarmak için adının geçtiği HER",
-        "repo dosyasını bulmak gerekir ve gözden kaçan tek kayıt onu organizasyonda",
-        "bırakır. Önce organizasyona dahil et, sonra repo'ya ata.",
-        "Eksik olanlar: ${join(", ", local.repo_people_missing_from_people)}",
+        "Everyone named in config/repositories/*.yml MUST ALSO BE DEFINED in",
+        "config/people.yml. Otherwise a person enters the org silently: the module",
+        "creates a team membership, GitHub sends an automatic invitation, yet they",
+        "never appear on the central list. The price is paid at offboarding - removing",
+        "them means finding EVERY repository file that names them, and a single missed",
+        "entry leaves them in the organization. Add to the organization first, then",
+        "assign to a repository.",
+        "Missing from people.yml: ${join(", ", local.repo_people_missing_from_people)}",
       ])
     }
   }
