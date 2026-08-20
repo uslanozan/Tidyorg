@@ -8,6 +8,214 @@ Resmî dokümantasyon değil — düşünce sürecinin kaydı. Hafta 4'teki sunu
 
 ---
 
+## 2026-08-20 — Fiyatlandırma araştırması, dil temizliği ve üç kararın gerekçelendirilmesi
+
+Kod yazmaktan çok **karar verme ve doğrulama** günü. İlginç olan şu: günün en değerli iki
+bulgusu da "zaten bildiğimiz" sandığımız şeylerin yanlış olmasıydı.
+
+### 1. Faz 7'yi konuşurken kendi hatamı buldum
+
+Ozan "Team planı alamam ama alırsak kodda ne değişir" diye sordu. Cevabı hafızadan
+yazmak yerine koddaki free-plan varsayımlarını `grep`'leyip repo görünürlüklerini
+state'ten okudum:
+
+```
+Tidyorg -> public
+pilot-intern-api              -> public
+pilot-intern-web              -> public
+pilot-access-test             -> private
+```
+
+Ve dün yazdığım şey çöktü: "Medine iki pilot repo'yu kaybetti" demişim. Public bir repo'yu
+internetteki herkes okur; `default_repository_permission` orada hiçbir şey değiştirmiyor.
+Geçerli olan tek test `pilot-access-test`'ti. İddiayı beş dokümana yaymışım, hepsini
+düzelttim.
+
+**Ders — dünkünün aynısı ama daha keskin:** bir testin *sonucunu* değil, **kapsamını**
+doğrulamak gerek. Test doğruydu; ben onu doğrulanmamış üç repo'ya genişlettim. Genişletme
+adımı hiçbir yerde görünmüyordu, çünkü test raporunda "hangi repo" sütunu yoktu.
+
+Bunun asıl sonucu şu: **Faz 7 bir iyileştirme değil, Faz 6'nın karşılığını ödeyen faz.**
+Onsuz `none` ayarı üç repo'da etkisiz duruyor. Free planda izolasyon ile dal koruması
+aynı anda elde edilemiyor ve biz dal korumasını seçmişiz.
+
+### 2. Fiyatlandırma araştırması — iki yerleşik varsayım yanlış çıktı
+
+`docs/plans-and-pricing.md` yazdım. Jenerik özellik dökümü değil; koddaki karşılığı olan
+özelliklere indirgenmiş bir rapor.
+
+**Yanlış varsayım #1 — "private repo'da secret scanning Enterprise ister."**
+Kodun içinde iki yerde böyle yazıyordu. Değil: GitHub 2025-03'te Advanced Security'yi
+ikiye böldü (Secret Protection / Code Security) ve **2025-04-01'de Team planına açtı**.
+Secret Protection **$19/ay/aktif committer** ve Team'de satın alınabiliyor.
+
+**Yanlış varsayım #2 — ters yönde.** "Enterprise'a geçersek secret scanning gelir" de
+yanlış. Private repo'da **hiçbir plan** onu kendisiyle vermiyor; her iki planda da eklenti
+ayrıca alınıyor. Yani Team → Enterprise geçişi bu konuda hiçbir şey çözmüyor.
+
+**Plan tablolarında görünmeyen kalem:** public repo'da Actions **bedava ve sınırsız**.
+2.000/3.000/50.000 dakika kotası yalnızca private için. Bugün CI'ımız hiç dakika yemiyor;
+Faz 7'de yemeye başlayacak. 3 kişi için 3.000 dk bol ama `windows`/`macos` runner'lar
+**10× katsayı** ile düşüyor — `ubuntu-latest`'te kaldığımız sürece rahatız.
+
+**Faz 5'i ilgilendiren ayrı tuzak:** Team planında private repo'dan Pages yayınlanabiliyor
+ama **yayınlanan site public oluyor**. Dashboard org yetki dağılımını gösterecek; repo'yu
+kapatmak siteyi kapatmıyor. Private Pages yalnızca Enterprise Cloud'da.
+
+Doğrulayamadığım iki şey var ve raporda işaretledim: fiyat sayfası "**first 12 months\***"
+diyor ve 13. ay fiyatını hiçbir yerde yazmıyor; ve `tidyorg-infra-bot`'un aktif committer
+sayılıp sayılmadığı belirsiz.
+
+### 3. Kod içindeki Türkçe temizlendi
+
+Ozan "yorum satırları hariç bütün kodlar İngilizce olsun" dedi. Taradığımda ilginç bir
+şey çıktı: **`variable`, `output`, `local`, `resource` isimlerinin hepsi zaten
+İngilizceydi.** Türkçe olan tek gerçek identifier grubu bypass raporunun map anahtarlarıydı
+(`korumasiz_repolar`, `_uyari`, `tum_kurallardan_muaf`…). Geri kalanı `description`,
+`error_message`, precondition metinleri ve CI çıktı satırlarıydı — yorum değil, kod içi
+string. Dil konvansiyonu bunlar için zaten İngilizce diyordu.
+
+İki yan etkisi var ve ikisi de gerçek:
+- Üretilen CODEOWNERS başlığı değişti → bir sonraki apply dört repo'da o dosyayı yeniden
+  yazacak (`strict`).
+- `terraform output branch_protection_bypass` şemasının anahtarları değişti. Bugün
+  tüketen yok ama Faz 5 dashboard'u bu çıktıyı okuyacaksa sözleşme bu.
+
+Yorumlarda yalnızca **yeniden adlandırdığım alanlara atıf yapan** üç satırı güncelledim —
+yoksa yorum olmayan bir alanı işaret ediyor olurdu.
+
+### 4. GIT-37 — döngü kırıldı, ama kararın ucu bana çarptı
+
+Karar: şablon `dependabot.yml`'dan `github-actions` ekosistemini çıkarmak. Yönetilen
+repo'larda `ci.yml` `strict`, yani Dependabot'un açtığı her sürüm PR'ı ölü doğuyor.
+
+Araştırdığımda **konfigürasyonla düzeltilemeyeceğini** doğruladım: Dependabot'un
+`github-actions` ekosistemi yalnızca `/.github/workflows/*.yml` ve kökteki `action.yml`'ı
+tarıyor, `terraform/templates/` yoluna yönlendirilemiyor
+([dependabot-core#5970](https://github.com/dependabot/dependabot-core/issues/5970)), ve
+bir repo'nun `dependabot.yml`'ı başka repo'ya bakamıyor. Yani "Dependabot'u kaynağa
+yönlendirelim" seçeneği teknik olarak yok.
+
+**Sonra fark ettiğim şey kararı yarım bıraktı:** bu repo kendi `.github/dependabot.yml`'ını
+**aynı şablondan** alıyor (dogfooding). Değişikliği olduğu gibi bıraksam apply
+`github-actions` bloğunu **buradan da** silecekti. Oysa bu repo'nun `terraform-plan.yml` /
+`terraform-apply.yml` dosyaları Terraform'un değil — elle yazıldılar, döngü yok, ve
+Dependabot orada gerçekten çalışıyor (PR #19 sürüm yükseltti).
+
+Yani şablon değişikliği **döngüsü olmayan tek yerdeki çalışan otomasyonu** kapatacaktı.
+`files: { dependabot: none }` ile istisna tuttum.
+
+⚠️ Bunun bir sıralama detayı var: mod `strict` → `none` olunca Terraform dosya kaynağını
+yok ediyor, yani dosya repo'dan **siliniyor**. Önce apply, sonra elle yazılmış dosyayı
+commit etmek gerek.
+
+**Geriye kalan gerçek açık:** şablonlardaki action sürümlerini artık hiçbir şey izlemiyor.
+"Elle takip ederiz" demek bu projenin tekrar yakaladığı hata kalıbı olurdu. Çözüm
+araştırıldı ve ucuz: haftalık `schedule` + `gh api` ile son sürüm karşılaştırması.
+**Yeni token/secret gerekmiyor** — runner'daki hazır `GITHUB_TOKEN` yetiyor.
+
+### 5. GIT-32 — "hard delete tuşu" neden tasarlanamıyor
+
+Ozan sordu: bir tuş olsun, basınca hard delete yapsın, basmazsan arşive atsın.
+
+Araştırdım ve iki katmanlı bir duvara çarptım:
+
+1. `prevent_destroy` **literal olmak zorunda** — değişkenden gelemez. Bunu `strict`/`seed`
+   ayrımında Faz 2'de öğrenmişiz; aynı sebep (`lifecycle` bloğu grafiği kurarken okunuyor,
+   değişkenler çözülmeden önce).
+2. Terraform dokümanı *"argüman konfigürasyonda kaldığı sürece"* der — bu bir kaçış yolu
+   gibi duruyor ama **`for_each`'li modülde yok**: config'den bir repo satırını silmek
+   modül **çağrısını** silmiyor, yalnızca bir instance'ı düşürüyor. `lifecycle` bloğu
+   konfigürasyonda kalıyor. Yani `for_each` altında `prevent_destroy` **mutlak.**
+3. İki ayrı kaynakla kurulsa bile bayrağı **sonradan açmak** `this`'i yok edip
+   `ephemeral`'i yaratmak demek → `prevent_destroy` blokluyor, kilit. Bloklamasaydı repo
+   silinip yeniden yaratılırdı, çok daha kötü. **Yani `ephemeral` ancak doğum anında
+   yazılabilen bir alan olabilir, basılan bir tuş olamaz.**
+
+Ama asıl bulgu bunların hiçbiri değil:
+
+> `prevent_destroy` repo'nun silinmesini engellemedi. **Yönetilerek** silinmesini engelledi,
+> beni `state rm`'e itti, ve geriye GitHub'da öksüz bir repo + iki takım bıraktı.
+
+Yani koruma, korumaya çalıştığı durumu **kendi eliyle üretti** — ROADMAP'teki "Geçmişi kim
+koruyacak?" notunun örneği. Bir korumanın kaçamağı, korumanın kendisinden daha zararlı
+olabiliyor.
+
+Karar ertelendi. Seçim özünde şu: **imkânsız ama kaçamaklı** mı, **mümkün ama görünür** mü.
+Ben ikinciyi savunuyorum ama Ozan haklı olarak "kafam karışık, dursun" dedi — bu bir
+garantiden vazgeçme kararı, aceleyle verilmemeli.
+
+### 6. GIT-34 — ikiye bölündü ve devralma prosedürü yazıldı
+
+Karar: **önce kapsama kontrolü.** Keşif/uzlaştırma aracı Faz 8'den sonra, çünkü
+`config/`'in nereye taşınacağına bağımlı ve erken yapılırsa araç iki kez kurulur.
+
+Ozan üç senaryo sordu (GitLab'dan gelen / başka org'dan transfer / bireysel hesaptan
+transfer) ve ilki diğerlerinden **tamamen farklı** çıktı:
+
+- **GitLab'dan gelen brownfield değil.** Transfer yok; yeni repo açılıp geçmiş push'lanıyor.
+  Yani config'den doğabilir ve ilk günden yönetim altında olur. Tek şart: `auto_init: true`
+  bir ilk commit yaratıyor ve mevcut geçmişi push ederken "unrelated histories" çarpıyor →
+  o repo'da `auto_init: false` olmalı.
+- **Transferler gerçek brownfield.** Prosedür `imports.tf`'te zaten bir kez uyguladığımız
+  şey: keşif (`import` + `plan`, hiçbir şeyi değiştirmez) → uzlaştırma → devralma →
+  doğrulama.
+
+İki pürüz buldum:
+- **Takımlar transfer olmaz, doğrudan collaborator'lar olur.** Modül `-mentors`/`-devs`'i
+  yaratır ama **eski doğrudan collaborator'ları temizlemez** — Terraform onları görmüyor.
+  Devralma listesine madde girdi.
+- **`members_can_create_repositories = false` transferi de kısıtlıyor olabilir.**
+  Doğrulamadım; ilk gerçek transferde test edilecek.
+
+Ve sıralamanın gerekçesi netleşti: bu dört adım repo'nun geldiğini **bildiğin** durumda
+çalışıyor. Kimse haber vermezse hiçbiri devreye girmez. **Kapsama kontrolü o haberi veren
+şey** — bu yüzden önce o.
+
+### 7. `main` → `required_reviews: 2` → `1`
+
+GIT-37 tartışmasından doğdu: Dependabot PR'ı da dahil `main`'e giden her PR iki onay
+istiyordu ve ekip üç kişi. PR #19 bypass ile merge edilmişti.
+
+Karar: **org varsayılanı olarak 1.** Tek repo yerine varsayılan, çünkü sorun bu repo'ya
+özgü değil; riskli repo'lar kendi dosyasında sayıyı yükseltebiliyor.
+
+Gerekçe: bir kuralın en kötü hâli düzenli olarak atlanan hâlidir — kâğıtta durur, fiilen
+yoktur, ve atlamak refleks olur. 1 onay **dört göz ilkesini koruyor** (yazan + onaylayan);
+kaybedilen üçüncü çift göz, üç kişilik ekipte faydasından pahalı.
+
+⚠️ `require_code_owner_review: true` kaldı. Bu repo'da `/terraform/` ve
+`/.github/workflows/` değişiklikleri hâlâ `platform-admins` onayı istiyor — **düşen sayı o
+kapıyı açmıyor.** Tek onay, doğru kişinin onayı olmak zorunda.
+
+### 8. Sektör terimleri notu
+
+Ozan "bu yaşadığımız sorunların sektörde bir ismi var mı" diye sordu.
+`docs/notes/industry-terms.md` yazdım — genel sözlük değil, her başlık burada yaşanmış bir
+olaya bağlı. Bende en çok karşılık bulan üçü:
+
+- **`*_for_new_repositories` bulgusunun adı: preventive vs detective control.** Kural olarak
+  akılda tutulacak: *bir ayarın adında "for new" geçiyorsa o preventive kontrol değil,
+  sadece bir varsayılan.*
+- **GIT-37'nin adı: fighting controllers.** Kubernetes bunu resmen çözdü — Server-Side
+  Apply + **field ownership**. Bizim `strict`/`seed`/`none` tablomuz elle yazılmış, dosya
+  seviyesinde bir field ownership modeli. Aynı çözüme bağımsız ulaşmışız.
+- **Tekrar eden hata kalıbımızın adı: fail-open.** Bir koruma sessizce kayboluyor ve kimse
+  fark etmiyor. `precondition`'ları bilinçli **fail-closed** yapmamızın sebebi bu. Ve
+  yazılı ama zorlanmayan kurala **paper control** deniyor — `people.yml`'deki yükseltme
+  kapısı yorumu tam olarak buydu, bugün "PLANLANIYOR, HENÜZ YOK" diye işaretlendi.
+
+Bir de bütünün adı: yaptığımız iş **Platform Engineering**, ürettiğimiz şey **Internal
+Developer Platform**, `templates/` + `config/` ikilisi de **"paved road"**.
+
+### Sırada
+
+Bir "faz" yok: Faz 5 Medine'de, Faz 6 bitti, Faz 7 plan engelli, Faz 8'in üç koşulundan
+hiçbiri gerçekleşmedi. Sıradaki iş **GIT-34'ün kapsama yarısı** — bugünkü en büyük gerçek
+açık, ve bir faza bağlı değil.
+
+---
+
 ## 2026-08-19 — Testlerin cevabı geldi, ve Dependabot bir mimari boşluk gösterdi
 
 Dünkü işlerin doğrulama günü. Üç şey bekliyordum, üçü de cevap verdi — ama en öğreticisi

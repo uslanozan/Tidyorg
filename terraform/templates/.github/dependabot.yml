@@ -8,22 +8,31 @@
 # Reviewed by the repository mentor — see docs/security-policy.md.
 #
 # GROUPING · GRUPLAMA
-# Every ecosystem groups its updates, but not identically — the split is
-# deliberate:
-#
-#   Package ecosystems (gomod, npm, pip, composer)
+# Package ecosystems (gomod, npm, pip, composer) group their updates:
 #     minor + patch  -> one PR      (routine, low risk)
 #     major          -> its own PR  (may break the build; deserves its own review)
 #
-#   GitHub Actions
-#     everything     -> one PR
-#     Action majors are routine (actions/checkout v4 -> v5 and the like) and
-#     carry far less risk than a library major. Splitting them produced one PR
-#     per action — five notifications in a single afternoon on 2026-08-16, which
-#     is what prompted this change.
-#
 # Ungrouped updates still open individual PRs; grouping only batches what the
 # rules below match.
+#
+# NO `github-actions` ECOSYSTEM — DELIBERATE · BİLEREK YOK
+# Workflow files in repositories managed by this control plane are delivered in
+# `strict` mode: Terraform owns their content and rewrites them on every apply.
+# A Dependabot pull request bumping an action version could therefore be merged
+# and would still be reverted by the next apply, which reopens the same pull
+# request — an endless loop. Observed on 2026-08-19 (pull requests #18 / #19).
+#
+# The action versions used by these workflows live in the control plane, in
+# terraform/templates/.github/workflows/. Dependabot cannot watch that path:
+# its `github-actions` ecosystem only scans `/.github/workflows/*.yml` and a
+# root `action.yml`, and a repository's own dependabot.yml cannot point at
+# another repository. So the loop cannot be fixed by configuration — only by
+# removing the ecosystem here and tracking template action versions in the
+# control plane instead.
+#
+# ⚠️ The cost is real: after this change nothing automatically watches the
+# action versions inside the templates. Whatever replaces that watch lives in
+# the control plane, not here. See TODO.md.
 # =============================================================================
 
 version: 2
@@ -84,19 +93,3 @@ updates:
       # Patch and minor bumps arrive as one PR to keep review load manageable.
       minor-and-patch:
         update-types: [minor, patch]
-
-  - package-ecosystem: github-actions
-    directory: "/"
-    schedule:
-      interval: weekly
-      day: monday
-    open-pull-requests-limit: 5
-    labels: ["type: chore"]
-    commit-message:
-      prefix: "chore(ci)"
-    groups:
-      # Everything in one PR, majors included — see the note in the header.
-      # `patterns: ["*"]` matches every action; without it each action bump
-      # opens its own pull request.
-      all-actions:
-        patterns: ["*"]

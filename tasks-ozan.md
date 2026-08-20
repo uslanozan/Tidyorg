@@ -828,15 +828,81 @@ boşluğu gizlemek olurdu.
 - [x] ✅ **`.example.yml` config glob'undan dışlandı** — `config/repositories/` klasöründeki
       her dosya gerçek bir repo yaratıyor. Örnek dosya klasöre kopyalanıp `plan` ile
       doğrulandı: `No changes`.
-- [ ] 🔁 **Yönetilen repo'larda workflow Dependabot'u susturulsun mu?**
-      `pilot-intern-*` içindeki `ci.yml` de `strict` — orada açılan workflow PR'ları merge
-      edilse bile apply geri alır. Seçenekler ve karar: [`TODO.md`](TODO.md).
+- [x] ✅ **GIT-37 — şablon `dependabot.yml`'dan `github-actions` çıkarıldı** _(2026-08-20)_
+      `pilot-intern-*` içindeki `ci.yml` de `strict`; orada açılan workflow PR'ları merge
+      edilse bile apply geri alıyordu. **Doğrulandı ki konfigürasyonla düzeltilemez:**
+      Dependabot yalnızca `/.github/workflows/*.yml` ve kök `action.yml`'ı tarıyor,
+      `terraform/templates/` yoluna yönlendirilemiyor, başka repo'ya da bakamıyor.
+      Gerekçeler ve elenen seçenekler: [`TODO.md`](TODO.md).
+- [x] ✅ **Kontrol düzlemi istisnası: bu repo `dependabot: none`** _(2026-08-20)_
+      Bu repo kendi `dependabot.yml`'ını şablondan alıyordu; değişiklik uygulansaydı
+      `github-actions` **buradan da** silinecekti. Oysa bu repo'nun `terraform-plan.yml` /
+      `terraform-apply.yml` dosyaları Terraform'un değil — döngü yok, Dependabot fiilen
+      çalışıyor. Yani şablon değişikliği **döngüsü olmayan tek yerdeki çalışan
+      otomasyonu** kapatacaktı.
+      ⚠️ Apply sırası: mod `strict` → `none` olunca Terraform dosyayı **siliyor**; önce
+      apply, sonra elle yazılmış `dependabot.yml` commit'lenir.
+- [ ] 🔨 **Şablon action sürümlerini izleyecek bir şey yaz** — GIT-37'nin açık bıraktığı
+      yer. Haftalık `schedule` + şablonlardaki `uses:` satırlarını GitHub REST API ile
+      karşılaştıran bir workflow. **Yeni token/secret gerekmiyor**, runner'daki hazır
+      `GITHUB_TOKEN` yetiyor. ~30 satır. Detay: [`TODO.md`](TODO.md).
+- [ ] ⏸️ **GIT-32 — repo silme / `prevent_destroy`: karar ertelendi** _(2026-08-20)_
+      Araştırıldı: `for_each`'li modülde `prevent_destroy` **mutlak** — config'den satır
+      silmek modül çağrısını silmediği için `lifecycle` bloğu konfigürasyonda kalıyor.
+      Ve "sonradan basılan bir hard-delete tuşu" tasarlanamıyor: bayrağı sonradan açmak
+      repo'yu sil-yarat turuna sokardı. Asıl bulgu şu: `prevent_destroy` silinmeyi değil
+      **yönetilerek** silinmeyi engelledi, `state rm`'e itti ve GitHub'da öksüz nesne
+      bıraktı. İki tasarım ve gerekçeleri: [`TODO.md`](TODO.md).
+- [ ] 🔨 **GIT-34 — önce kapsama kontrolü** _(karar: 2026-08-20)_
+      Org'daki repo'ları config ile karşılaştırıp yönetim dışı olanları raporlayan kontrol.
+      Faz 8'e bağımlı değil. Devralma prosedürü (GitLab'dan gelen / org'dan org'a transfer /
+      bireysel hesaptan transfer) ve iki pürüz — takımların transfer olmaması, repo
+      oluşturma kısıtının transferi engelleyebilmesi — [`TODO.md`](TODO.md)'de.
 - [ ] ⚠️ **`golangci-lint-action` v6 → v9 kırıcı olabilir** — v7'den itibaren
       golangci-lint **v2** bekleniyor ve config şeması farklı. Bugün Go kodu olmadığı için
       job atlanıyor; **ilk gerçek Go reposunda patlar.**
-- [ ] 🔁 **Rutin PR iki onay istiyor** — `required_reviews: 2`, ekip üç kişi. PR #19 bypass
-      ile merge edildi. Risk teknik değil davranışsal: bypass rutinleşirse kural fiilen
-      ortadan kalkar. Seçenekler: [`TODO.md`](TODO.md).
+- [x] ✅ **`main` → `required_reviews: 2` → `1`** _(karar: 2026-08-20, org varsayılanı)_
+      Dependabot PR'ı dahil `main`'e giden her PR iki onay istiyordu, ekip üç kişi; PR #19
+      bypass ile merge edilmişti. **Tek repo yerine org varsayılanı** düşürüldü, çünkü
+      sorun bu repo'ya özgü değil — riskli repo'lar kendi dosyasında sayıyı yükseltebilir.
+      **Gerekçe:** bir kuralın en kötü hâli düzenli olarak atlanan hâlidir; kâğıtta durur,
+      fiilen yoktur, atlamak refleks olur. 1 onay **dört göz ilkesini koruyor**
+      (yazan + onaylayan); kaybedilen üçüncü çift göz üç kişilik ekipte faydasından pahalı.
+      ⚠️ `require_code_owner_review: true` **kaldı** — bu repo'da `/terraform/` ve
+      `/.github/workflows/` hâlâ `platform-admins` onayı istiyor. Düşen sayı o kapıyı
+      açmıyor; tek onay *doğru kişinin* onayı olmak zorunda.
+
+### 📄 Plan / fiyatlandırma ve dil temizliği _(plan dışı — 2026-08-20)_
+
+- [x] ✅ **`docs/plans-and-pricing.md` yazıldı** — Free / Team / Enterprise karşılaştırması,
+      bu repo'nun kodundaki karşılıklarına indirgenmiş. **İki yerleşik varsayım yanlış
+      çıktı:**
+      (1) "private repo'da secret scanning Enterprise ister" → **değil**, GitHub 2025-04-01'de
+      Secret Protection'ı ($19/ay/aktif committer) Team planına açtı;
+      (2) "Enterprise'a geçersek gelir" → **o da değil**, private repo'da hiçbir plan onu
+      kendisiyle vermiyor, iki planda da eklenti ayrıca alınıyor.
+      Ayrıca plan tablolarında görünmeyen kalem: **public repo'da Actions bedava**, kota
+      yalnızca private için — Faz 7'de sayaç başlıyor.
+      ⚠️ Doğrulanamayan iki şey raporda işaretli: fiyat sayfasının "first 12 months\*"
+      dipnotu (13. ay fiyatı yazmıyor) ve bot'un aktif committer sayılıp sayılmadığı.
+- [x] ✅ **Kod içindeki Türkçe temizlendi** _(yorumlar Türkçe kaldı)_
+      Tarama sonucu ilginç: `variable`/`output`/`local`/`resource` isimleri **zaten
+      İngilizceydi**. Türkçe olan tek identifier grubu bypass raporunun map anahtarlarıydı
+      (`korumasiz_repolar`, `_uyari`, `tum_kurallardan_muaf`…); gerisi `description`,
+      `error_message`, precondition ve CI çıktı string'leriydi.
+      ⚠️ İki yan etki: üretilen **CODEOWNERS başlığı değişti** → sonraki apply dört repo'da
+      o dosyayı yeniden yazacak (`strict`); ve **`branch_protection_bypass` output şeması**
+      değişti → Faz 5 dashboard'u bu çıktıyı okuyacaksa sözleşme bu.
+      Config YAML'lardaki veri değerleri (label açıklamaları, repo `description`'ları)
+      bilerek Türkçe bırakıldı — kod değil, GitHub arayüzünde ekibe görünen içerik.
+- [x] ✅ **`docs/notes/industry-terms.md` yazıldı** — yaşadığımız sorunların sektördeki
+      adları, her başlık burada yaşanmış bir olaya bağlı. Öne çıkanlar:
+      **preventive vs detective control** (`*_for_new_repositories` bulgusu),
+      **IaC coverage / unmanaged resources** (GIT-34), **fighting controllers** +
+      Kubernetes'in **field ownership** çözümü (GIT-37 — bizim `strict`/`seed`/`none`
+      tablomuz elle yazılmış bir field ownership modeli), **policy as code** (GIT-32'nin
+      üçüncü yolu: HCP'de zaten olan Sentinel), ve tekrar eden hata kalıbımızın adı:
+      **fail-open** / **paper control**.
 
 - [ ] ✅ **Hafta Sonu Sync:** Medine ile dashboard okuma + yazma modunu birlikte gözden geçir
 

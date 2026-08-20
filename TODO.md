@@ -50,6 +50,72 @@ Son güncelleme: 2026-08-19
 
 ---
 
+## 🟠 GIT-34 — Dışarıdan gelen repo: kapsama ve devralma _(2026-08-20'de detaylandırıldı)_
+
+> Arka plan ve iki yaklaşımın gerekçesi: [`ROADMAP.md`](ROADMAP.md) →
+> *"📌 Konuşulacak — Geçmişi kim koruyacak?"*. Burada **karar** ve **prosedür** var.
+
+**Karar (Ozan, 2026-08-20): önce kapsama kontrolü.** İş ikiye ayrılıyor ve ikisi aynı
+anda yapılmayacak:
+
+| Yarı | Ne yapar | Ne zaman | Neden |
+| :--- | :--- | :--- | :--- |
+| **Kapsama (push)** | Org'daki repo'ları listeler, config'de karşılığı olmayanları raporlar | **Şimdi** | Faz 8'e bağımlı değil; bugünkü açığı görünür kılar |
+| Keşif + uzlaştırma (pull) | Mevcut repo'nun ayarlarını okuyup config üretir | Faz 8'den sonra | `config/`'in nereye taşınacağına bağımlı; erken yapılırsa araç iki kez kurulur |
+
+- [ ] 🔨 **Kapsama kontrolü yaz.** `github_repositories` data source ile org okunur,
+      `local.repos` ile karşılaştırılır, config'de olmayanlar bir output + CI uyarısı
+      olarak yüzeye çıkar. Bugünkü hâliyle org'a sessizce bir repo girip **hiçbir
+      kontrolün kapsamına girmeden** durabilir: Terraform görmez, güvenlik varsayılanları
+      (`*_for_new_repositories`) uygulanmaz, bypass raporunda çıkmaz.
+      _Kanıt: `vulnerability_alerts` bu repo'da kapalıydı — elle açılmış tek repo,
+      denetlenmeyen tek repo oydu._
+
+### Devralma prosedürü — üç senaryo, ikisi farklı
+
+**A. GitLab'dan (veya herhangi bir dış sistemden) gelen repo — brownfield DEĞİL.**
+Transfer yok; yeni repo açılıp geçmiş push'lanıyor. Yani **config'den doğabilir** ve ilk
+günden yönetim altındadır. Tek şart:
+
+> ⚠️ `defaults.auto_init: true` repo'yu bir ilk commit'le yaratıyor. Mevcut geçmiş
+> push'lanacaksa bu "unrelated histories" çakışması üretir. O repo'nun dosyasında
+> **`auto_init: false`** olmalı.
+> Sıra: config → apply → boş repo → `git push --mirror`.
+
+**B. Başka bir GitHub org'undan transfer · C. Bireysel hesaptan org'a transfer.**
+İkisi de gerçek brownfield; repo kendi ayarlarıyla geliyor ve Terraform onu tanımıyor.
+Prosedür — `terraform/imports.tf` bu deseni zaten bir kez uyguluyor:
+
+| Adım | Ne | Araç |
+| :--- | :--- | :--- |
+| 1. Keşif | Repo'nun bugünkü ayarları ne? | `import` bloğu + `plan` — **hiçbir şeyi değiştirmez**, yalnızca okur |
+| 2. Uzlaştırma | Neyi kabul, neyi ezeceğiz? | İnsan kararı, PR'da |
+| 3. Devralma | `config/repositories/<ad>.yml` yaz | plan artık gerçek farkı gösterir |
+| 4. Doğrulama | Bypass raporunda ve kapsama kontrolünde çıkıyor mu? | apply sonrası |
+
+_Aynı teknik org ayarlarında 2026-08-18'de kullanıldı ve dört bulgu çıkardı; sıfırdan
+araç yazmaya gerek yok._
+
+**İki pürüz — devralma listesine girmeli:**
+
+- [ ] ⚠️ **Takımlar transfer olmaz, doğrudan collaborator'lar olur.** Takımlar org'a
+      özeldir. Repo geldiğinde erişimi eski takımlarından değil **doğrudan
+      collaborator** kayıtlarından alır. Modül `<repo>-mentors` / `<repo>-devs`'i
+      yaratır ama **eski doğrudan collaborator'ları temizlemez** — Terraform onları
+      görmüyor. Devralma adımına "doğrudan collaborator'ları denetle" maddesi girmeli,
+      yoksa yönetim dışı bir erişim yolu sessizce hayatta kalır.
+- [ ] ⚠️ **`members_can_create_repositories = false` transferi de kısıtlıyor olabilir.**
+      GitHub, hedef org'da repo yaratma yetkisi ister. Öyleyse transferi bir org owner
+      yapmak zorunda — bu aslında **istenen** davranış, ama transfer günü sürpriz
+      olmaması için önceden doğrulanmalı. _(Doğrulanmadı; ilk gerçek transferde test
+      edilecek.)_
+
+> **Sıralama gerekçesi:** yukarıdaki dört adım, repo'nun geldiğini **bildiğin** durumda
+> çalışır. Kimse haber vermezse hiçbiri devreye girmez. Kapsama kontrolü o haberi veren
+> şeydir — bu yüzden önce o.
+
+---
+
 ## 🔁 Rutin PR'lar iki onay istiyor — bypass alışkanlığa dönüşüyor _(2026-08-19)_
 
 - [ ] **`main` → `required_reviews: 2`, ekip üç kişi.**
@@ -75,8 +141,22 @@ Son güncelleme: 2026-08-19
       | Developer'lardan ikinci onay iste | Kural bozulmaz | Her hafta iki kişiyi meşgul eder |
       | Bugünkü hâl: bypass | Hızlı | Yukarıdaki davranışsal risk |
 
-      **Karar bekliyor.** Faz 8 sonrası config repo ayrıldığında bu soru yeniden şekillenir:
-      motor repo'da 2 onay mantıklı, config repo'da muhtemelen değil.
+      **✅ KARAR (Ozan, 2026-08-20): org varsayılanı `main` → `required_reviews: 1`.**
+
+      Tabloda ilk satır seçildi, ama **tek repo yerine org varsayılanı** olarak — çünkü
+      sorun bu repo'ya özgü değil, üç kişilik bir ekibin genel hâli. Riskli repo'lar kendi
+      dosyalarında sayıyı yükseltebilir; `required_reviews` repo bazında ezilebiliyor.
+
+      **Gerekçe.** Bir kuralın en kötü hâli, düzenli olarak atlanan hâlidir: kâğıtta durur,
+      fiilen yoktur, ve atlamak refleks olur. 1 onay **dört göz ilkesini koruyor**
+      (yazan + onaylayan); kaybedilen üçüncü çift göz, üç kişilik ekipte faydasından pahalı.
+
+      ⚠️ **`require_code_owner_review: true` kaldı.** Yani bu repo'da `/terraform/` ve
+      `/.github/workflows/` değişiklikleri hâlâ `platform-admins` onayı istiyor — düşen
+      sayı o kapıyı açmıyor. Tek onay, *doğru kişinin* onayı olmak zorunda.
+
+      Faz 8'den sonra bu soru yeniden şekillenir: motor repo'da 2 onay mantıklı olabilir,
+      config repo'da muhtemelen değil. O gün varsayılan değil, **repo bazlı** ayarlanır.
 
 ---
 
@@ -106,13 +186,68 @@ Son güncelleme: 2026-08-19
       action sürümlerini yükseltiyor, `terraform/` altına dokunmuyor.
       ⚠️ Bu job zorunlu status check değil, atlanması PR'ı bloklamaz.
 
-- [ ] 🔁 **Yönetilen repo'larda workflow Dependabot'u susturulsun mu?**
-      `pilot-intern-*` repolarındaki `.github/workflows/ci.yml` de `strict` — orada açılan
-      her Dependabot workflow PR'ı merge edilse bile apply tarafından geri alınır.
-      **Kontrol edilecek:** o repolarda böyle bekleyen PR var mı?
-      Seçenekler: şablon `dependabot.yml`'dan `github-actions` ekosistemini çıkarmak
-      (diğer ekosistemler kalır — onlar repo'nun gerçek bağımlılıkları), ya da durumu
-      belgeleyip kabul etmek.
+- [x] ✅ **GIT-37 — Şablon `dependabot.yml`'dan `github-actions` ekosistemi çıkarıldı**
+      _(karar: 2026-08-20, Ozan)_
+
+      **Sorun.** Yönetilen repo'lardaki `.github/workflows/ci.yml` `strict` modda, yani
+      Terraform'un. Dependabot orada bir action sürümü yükseltir, PR merge edilir, bir
+      sonraki apply dosyayı geri alır, Dependabot aynı PR'ı yeniden açar. Sonsuz döngü.
+      2026-08-19'da PR #18/#19 ile canlıda görüldü.
+
+      **Neden konfigürasyonla düzeltilemiyor _(2026-08-20'de doğrulandı)_.** Dependabot'un
+      `github-actions` ekosistemi yalnızca `/.github/workflows/*.yml` ve kökteki
+      `action.yml` dosyasını tarıyor; `terraform/templates/.github/workflows/` yolunu
+      **göremiyor**, `directory` ayarı da oraya yönlendirilemiyor
+      ([dependabot-core#5970](https://github.com/dependabot/dependabot-core/issues/5970)).
+      Bir repo'nun `dependabot.yml`'ı başka bir repo'ya da bakamaz. Yani "Dependabot'u
+      kaynağa yönlendirelim" seçeneği **teknik olarak yok**.
+
+      **Değerlendirilen seçenekler.**
+      | Seçenek | Neden seçilmedi / seçildi |
+      | :--- | :--- |
+      | **Ekosistemi şablondan çıkar** | ✅ Seçildi. Döngüyü kökten kırar. |
+      | Dependabot'u kaynağa yönlendir | ❌ Teknik olarak mümkün değil (yukarı). |
+      | `ci.yml`'ı `seed` moda al | ❌ Yönetişim dosyası; repo'ların kendi CI'ını değiştirmesi bu projenin tezine aykırı. |
+      | Döngüyü belgeleyip kabul et | ❌ Her hafta ölü PR üretir, gürültü kalıcı hale gelir. |
+
+      **Bedeli — kabul edildi.** Yönetilen repo'ların diğer ekosistemleri (gomod, npm,
+      pip, composer) korunuyor; yalnızca action sürümleri Dependabot'suz kalıyor. Şablon
+      action sürümlerini artık hiçbir şey izlemiyor → alttaki maddeye bak.
+
+- [x] ✅ **Kontrol düzlemi istisnası: bu repo `dependabot: none`** _(2026-08-20)_
+      Bu repo kendi `.github/dependabot.yml`'ını **şablondan** alıyordu (`strict`,
+      dogfooding). Üstteki değişiklik uygulanınca `github-actions` bloğu buradan da
+      silinecekti — oysa bu repo'nun `terraform-plan.yml` / `terraform-apply.yml`
+      dosyaları Terraform'un **değil**, elle yazıldılar, şablonda yoklar. Orada döngü yok
+      ve Dependabot fiilen çalışıyor (PR #19 gerçekten sürüm yükseltti).
+      Yani şablon değişikliği, **döngüsü olmayan tek yerdeki çalışan otomasyonu**
+      kapatacaktı. `config/repositories/Tidyorg.yml` içine
+      `files: { dependabot: none }` eklendi.
+
+      ⚠️ **Apply sırası önemli.** Mod `strict` → `none` olduğunda Terraform dosya
+      kaynağını yok eder, yani `.github/dependabot.yml` repo'dan **silinir**. Doğru sıra:
+      (1) apply → dosya silinir, (2) elle yazılmış `dependabot.yml` commit'lenir.
+      Arada Dependabot'un birkaç dakika konfigürasyonsuz kaldığı bir boşluk var; kabul.
+
+      ⚠️ Bu, dogfooding'de bilinçli bir delik: bu repo bir dosyada artık kendi şablonunu
+      tüketmiyor. Alternatifi (ikinci şablon varyantı) iki dosya arasında drift üretirdi.
+
+- [ ] 🔁 **Şablon action sürümlerini kim izleyecek? — GIT-37'nin açık bıraktığı yer**
+      Üstteki karardan sonra `terraform/templates/.github/workflows/*.yml` içindeki action
+      sürümlerini **hiçbir otomasyon izlemiyor**. "Elle takip ederiz" demek, bu projenin
+      tekrar tekrar yakaladığı hata kalıbının aynısı olur: kaybolan korumayı kimsenin fark
+      etmemesi.
+      **Önerilen çözüm (araştırıldı, ucuz):** bu repoda haftalık `schedule` ile çalışan bir
+      workflow; şablonlardaki `uses:` satırlarını ayıklayıp her action'ın son sürümünü
+      GitHub REST API'den sorar, eskiyen varsa issue açar.
+      **Kimlik doğrulama gerekmiyor:** runner'daki hazır `GITHUB_TOKEN` yeterli
+      (`gh api repos/<owner>/<action>/releases/latest`). Yeni secret, yeni App izni,
+      yeni token yok. ~30 satır.
+
+- [ ] 🔍 **Yönetilen repo'larda bekleyen ölü Dependabot PR'ı var mı?**
+      `pilot-intern-api` ve `pilot-intern-web`'de, ekosistem çıkarılmadan önce açılmış
+      workflow PR'ı kalmış olabilir. Varsa kapatılmalı — artık merge edilseler bile apply
+      geri alır.
 
 ---
 
@@ -216,13 +351,48 @@ Bunlar `org-settings.tf` import'unun yan ürünü — daha önce hiçbir yerde g
       `awk` locale'den bağımsız. Dört senaryo fixture ile test edildi (temiz plan /
       uyarılı plan / destroy + uyarı / apply çıktısı yok).
 
-- [ ] 💡 **Öneri: config'e `ephemeral: true` alanı** _(2026-08-18'de doğdu)_
-      Bugünkü test gösterdi ki **atılabilir repo açmak pahalı**: `prevent_destroy`
-      yüzünden temizlik üç adımlı ve elle yapılıyor, arkasında yönetim dışı nesneler
-      kalıyor. `ephemeral: true` yazan repo'da modül `prevent_destroy`'u uygulamasın —
-      config'den satır silinince Terraform temizlesin.
-      ⚠️ `lifecycle` bloğu dinamik olamıyor (Faz 2'de öğrenildi), yani `strict`/`seed`
-      ayrımındaki gibi **iki ayrı kaynak** gerekir. Maliyeti buna değer mi, konuşulmalı.
+- [ ] ⏸️ **GIT-32 — Repo silme: `prevent_destroy` ne koruyor?** _(2026-08-18'de doğdu,
+      2026-08-20'de araştırıldı, **karar ertelendi**)_
+
+      **Sorun.** Atılabilir repo açmak pahalı: `prevent_destroy` yüzünden temizlik üç
+      adımlı ve elle yapılıyor, arkasında yönetim dışı nesneler kalıyor.
+
+      **2026-08-20'de bulunan asıl mesele — koruma ters çalıştı.**
+      `prevent_destroy` repo'nun silinmesini engellemedi; **yönetilerek** silinmesini
+      engelledi. `tmp-app-create-test`'te sonuç şu oldu: `state rm` yapıldı, repo GitHub'da
+      öksüz kaldı, iki takım arkada bırakıldı. Yani koruma, korumaya çalıştığı durumun ta
+      kendisini üretti — ROADMAP'teki *"Geçmişi kim koruyacak?"* notunun kendi elimizle
+      yapılmış örneği.
+
+      **Neden "hard delete tuşu" istendiği gibi yapılamıyor _(2026-08-20'de doğrulandı)_.**
+      1. `prevent_destroy` **literal olmak zorunda** — değişkenden gelemez
+         (`strict`/`seed` ayrımında Faz 2'de öğrenilen kısıtın aynısı).
+      2. Terraform dokümanı *"argüman konfigürasyonda kaldığı sürece"* der. Ama
+         **`for_each`'li modülde** config'den bir repo satırını silmek modül **çağrısını**
+         silmiyor, yalnızca bir instance'ı düşürüyor — `lifecycle` bloğu konfigürasyonda
+         duruyor. Yani `for_each` altında `prevent_destroy` **mutlak**: kaçış yolu yok.
+      3. İki ayrı kaynakla (`this` / `ephemeral`, `count` ile seçilen) kurulursa bayrağı
+         **sonradan açmak** `this`'i yok edip `ephemeral`'i yaratmak demek. Birincisi
+         `prevent_destroy` tarafından bloklanır → kilit. Bloklanmasaydı repo silinip
+         yeniden yaratılırdı → çok daha kötü.
+         **Sonuç: `ephemeral` ancak DOĞUM ANINDA yazılabilen bir alan olabilir, sonradan
+         basılan bir tuş değil.** Artı `github_repository.this`'e 17 referansın
+         `one(...)` ile sarılması.
+
+      **Değerlendirilen iki tasarım.**
+      | | Nasıl | Kazanç | Kayıp |
+      | :--- | :--- | :--- | :--- |
+      | **A — doğum bayrağı** | `ephemeral: true`, iki kaynak, `count` | Test repo'ları temiz silinir | Sonradan değiştirilemez; 17 referans `one()`; modül karmaşıklaşır |
+      | **B — tuş yerine kapı** | `prevent_destroy` kaldırılır; plan bir repo yok ediyorsa PR'da `allow-destroy` etiketi yoksa check kırmızı | Silme *imkânsız* olmaktan çıkıp *kasıtlı ve loglanmış* olur; `state rm` refleksi biter | Sert garanti yumuşak kapıya döner; Karar E gereği repo admini zorunlu check'i atlayabilir |
+
+      **Durum: ertelendi** _(Ozan, 2026-08-20 — "bu konuda kafam karışık, şimdilik kalsın")_.
+      Seçim özünde şu: **imkânsız ama kaçamaklı** mı, **mümkün ama görünür** mü.
+      `archived: true` her iki tasarımda da varsayılan yumuşak yol olarak kalıyor.
+      **Araştırılacak üçüncü yol:** HCP Terraform'da zaten kullandığımız **Sentinel**
+      (policy-as-code) ile destroy'u plan seviyesinde politikaya bağlamak — `prevent_destroy`'u
+      HCL'den çıkarıp kararı politika motoruna taşır. Sektörde bu kalıbın adı
+      **policy as code / preventive control**; bkz. `docs/plans-and-pricing.md` ve
+      aşağıdaki "sektör terimleri" notu.
 
 ---
 

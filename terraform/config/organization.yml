@@ -115,7 +115,23 @@ defaults:
 
   protected_branches:
     main:
-      required_reviews: 2
+      # 2026-08-20: 2 → 1 düşürüldü (GIT-37 tartışmasından doğdu).
+      #
+      # Sebep davranışsal, teknik değil. Ekip üç kişi ve `main`'e giden PR'ların
+      # çoğu rutin: Dependabot sürüm yükseltmesi, doküman düzeltmesi. İki onay
+      # istemek bunları bekletiyordu ve bekleyen PR'lar bypass ile merge edilmeye
+      # başlandı (PR #19). Bir kuralın en kötü hali, düzenli olarak atlanan hali:
+      # kâğıtta duruyor, fiilen yok, ve atlamak alışkanlığa dönüşüyor.
+      #
+      # 1 onay dört göz ilkesini (four-eyes) KORUYOR — yazan + onaylayan. Kaybedilen
+      # şey üçüncü çift göz; üç kişilik bir ekipte onun bedeli faydasından fazla.
+      #
+      # ⚠️ Bu bir ORG VARSAYILANI. Daha yüksek risk taşıyan bir repo kendi
+      # dosyasında `required_reviews`'ü yükseltebilir — repodan repoya değişir.
+      # `require_code_owner_review` burada `true` kaldığı için, bu repo'da
+      # `/terraform/` ve `/.github/workflows/` değişiklikleri hâlâ platform-admins
+      # onayı istiyor; düşen sayı o kapıyı açmıyor.
+      required_reviews: 1
       require_code_owner_review: true
       dismiss_stale_reviews: true
       require_status_checks: [ci/test]

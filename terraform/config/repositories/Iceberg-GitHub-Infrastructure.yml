@@ -42,5 +42,30 @@ code_owners:
   "/terraform/": [your-org/platform-admins]
   "/.github/workflows/": [your-org/platform-admins]
 
+# -----------------------------------------------------------------------------
+# ŞABLON İSTİSNASI — dependabot: none  (2026-08-20)
+# -----------------------------------------------------------------------------
+# Bu repo şablon `dependabot.yml`'ını almıyor; kendi dosyasını elle yönetiyor.
+#
+# Sebep: şablondan `github-actions` ekosistemi çıkarıldı (GIT-37). Yönetilen
+# repo'larda doğru karar — oradaki workflow'lar `strict`, yani Terraform'un;
+# Dependabot'un açtığı sürüm PR'ı merge edilse bile bir sonraki apply geri alıyor
+# ve Dependabot aynı PR'ı yeniden açıyor. Sonsuz döngü (2026-08-19, PR #18/#19).
+#
+# Ama BU repo'nun `terraform-plan.yml` ve `terraform-apply.yml` dosyaları
+# Terraform'un DEĞİL — elle yazıldılar, şablonda yoklar. Onlarda döngü yok,
+# Dependabot orada sorunsuz çalışıyor ve PR #19 ile gerçekten sürüm yükseltti.
+# Şablonu olduğu gibi almak, döngüsü olmayan tek yerdeki çalışan otomasyonu da
+# kapatırdı.
+#
+# ⚠️ Bedeli dogfooding'de bilinçli bir delik: bu repo bir dosyada kendi
+# şablonunu tüketmiyor. Alternatifi (ikinci bir şablon varyantı) iki dosya
+# arasında drift üretirdi.
+#
+# ⚠️ Şablondaki action sürümlerini (templates/.github/workflows/) artık hiçbir
+# şey izlemiyor — Dependabot o yolu göremiyor. Yerine ne konacağı TODO.md'de.
+files:
+  dependabot: none
+
 protected_branches:
   develop: null
