@@ -263,8 +263,10 @@ reddedilir. Denetim izi gerçektir — commit'ler işlemi yapan kişinin adına 
       Kural hardcode değil — `roles:` bloğundaki `scope` alanından türetiliyor.
 - [x] ✅ **`default_repository_permission` → `none`** _(2026-08-18)_
       Bugünkü değer `Read`'ti — yazma deliği yoktu ama izolasyon da yoktu. Artık
-      erişimin tek kaynağı takım üyeliği. Yan etki: `medine2906` iki pilot repo'yu
-      görmeyi kaybetti (beklenen davranış, [`TODO.md`](TODO.md)'de takipte).
+      erişimin tek kaynağı takım üyeliği.
+      🔴 **Ama etkisi bugün TEK repo ile sınırlı:** diğer üçü `public` ve public repo'yu
+      internetteki herkes okur — ayar orada hiçbir şey değiştirmiyor. Gerçek izolasyon
+      repo'lar private olduğunda oluşur, o da **Faz 7'ye bağlı**. Bkz. Faz 7 notu.
 - [x] ✅ **Repo güvenlik ayarları** _(2026-08-18)_ — `vulnerability_alerts` (her plan,
       her görünürlük) ve `secret_scanning` + push protection (yalnızca public; private
       GHAS ister, modül sessizce atlar).
@@ -348,11 +350,50 @@ ve bugünkü boşluğu görünür kılar.
 
 Bu işler GitHub Team planı olmadan **yapılamaz**, denenemez.
 
+> 🔴 **Faz 7 "iyi olur" değil, Faz 6'nın karşılığını ödeyen faz.**
+> `default_repository_permission = none` bugün üç repo'da **hiçbir şey yapmıyor**, çünkü
+> onlar `public` ve public repo'yu internetteki herkes okur. Repo'lar ancak private
+> olduğunda ayar anlam kazanıyor — ve private repo'da branch protection için Team planı
+> gerekiyor. Yani **izolasyon ile dal koruması bugün aynı anda elde edilemiyor**; ikisini
+> birleştiren tek şey bu faz.
+
 - [ ] Private repo'larda branch protection'ın çalıştığını doğrula
 - [ ] Yeni repo'ların varsayılanını `private` yap
 - [ ] Mevcut repo'ları private'a çevir
 - [ ] Engellenme testlerini gerçek koşullarda tekrarla
 - [ ] Ruleset'e geçişi değerlendir ve ADR yaz
+
+**Kodda ne değişecek — envanter** _(2026-08-19'da çıkarıldı)_:
+
+| Yer | Değişiklik | Boyut |
+| :--- | :--- | :--- |
+| [`config/organization.yml`](terraform/config/organization.yml) → `defaults.visibility` | `public` → `private` | **1 satır** |
+| [`config/repositories/pilot-access-test.yml`](terraform/config/repositories/pilot-access-test.yml) | `protected_branches: {main,develop} = null` kaldırılabilir | 3 satır _(repo zaten geçici)_ |
+| [`outputs.tf`](terraform/outputs.tf) → `korumasiz_repolar` notu | "free plan'de beklenen" ifadesi güncellenir | Yorum |
+| Doküman/rapor notları | "public üzerinde doğrulandı" uyarıları | Yorum |
+
+**Motor kodu (`modules/repository/`) değişmiyor.** `visibility` zaten config'den geliyor
+ve modül private'ı destekliyor — `pilot-access-test` bugün private ve modülden doğdu.
+
+> ⚠️ **Değişmeyecek olan — ve bunun bir bedeli var: secret scanning kapanır.**
+> Modüldeki koşul `visibility == "public"` ve bu **kasıtlı**: secret scanning + push
+> protection yalnızca public repo'da ücretsiz, private repo'da **GitHub Advanced Security
+> (Enterprise)** ister — Team planı bunu açmaz.
+>
+> Yani repo'ları private yapmak saf kazanç değil, bir **takas**:
+>
+> | | Bugün (public) | Faz 7 sonrası (private) |
+> | :--- | :--- | :--- |
+> | Dünyaya kapalı | ❌ | ✅ |
+> | `none` izolasyonu anlamlı | ❌ | ✅ |
+> | Dal koruması | ✅ | ✅ |
+> | Secret scanning + push protection | ✅ | ❌ _(Enterprise ister)_ |
+> | Dependabot uyarıları | ✅ | ✅ |
+>
+> Kaybedilen şey önemsiz değil: **push protection**, sızdırılmış anahtarın repo'ya
+> girmesini engelleyen tek mekanizma. Private'a geçerken bunun yerine ne konacağı
+> (pre-commit hook, CI adımı, ya da Enterprise) **ayrıca karara bağlanmalı** — sessizce
+> kaybedilmemeli.
 
 > **Bu arada:** [`docs/pilot-verification.md`](docs/pilot-verification.md)'deki
 > doğrulamalar public repo üzerinde yapıldı. Private repo'da davranış farklı olabilir.

@@ -569,8 +569,19 @@ verilmedi**.
 | `paitblack` | 3 repo'da developer | O 3 repo görünür, `pilot-access-test` **404** | ✅ Beklendiği gibi |
 | `medine2906` | 1 repo'da developer | Yalnızca o repo; diğer 3'ü **404** | ✅ Beklendiği gibi |
 
-`medine2906`'nın **iki pilot repo'yu kaybetmesi** bu testin asıl kanıtı: o erişim bir takım
-üyeliğinden değil, **org varsayılanından** geliyordu. Varsayılan kalkınca erişim de kalktı.
+> 🔴 **DÜZELTME (2026-08-19).** Bu bölüm ilk yazıldığında `medine2906`'nın iki pilot repo'yu
+> da kaybettiği yazıyordu. **Yanlıştı.** `pilot-intern-api` ve `pilot-intern-web`
+> **public** — public bir repo'yu internetteki herkes okur, org üyeliğinden bağımsız
+> olarak. `default_repository_permission` orada hiçbir şey değiştirmez.
+>
+> Gerçekte doğrulanan tek şey `pilot-access-test`: private, kimseye yetki verilmemiş, ve
+> iki hesap da **404** aldı. Test geçerli ama **kapsamı bir repo.**
+>
+> Bu, bugünkü kurulumun asıl sınırını gösteriyor: **`none` ayarı yalnızca private
+> repo'larda anlam taşıyor**, ve free plan'de private repo'da branch protection çalışmıyor.
+> Yani izolasyon ile dal koruması bugün aynı anda elde edilemiyor — ikisini birleştiren
+> şey **Faz 7 (Team planı)**. Faz 6'nın bu maddesi Faz 7 gelene kadar üç repo'da
+> **etkisiz** kalıyor.
 
 **Bağımsız teyit — organizasyon People ekranı.** Takım sayıları config ile birebir uyuşuyor;
 yani yetkinin tek kaynağının takım üyeliği olduğu sayısal olarak da görünüyor:

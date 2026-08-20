@@ -588,9 +588,10 @@ iniyor. Geri alma da pin'i düşürmeye iniyor.
       Uygulama: [`terraform/org-settings.tf`](terraform/org-settings.tf) — `import` bloğuyla
       mevcut ayarlar state'e alındı, `plan` ile ~25 alanın hepsi karşılaştırıldı, sonra
       apply edildi. `plan` şimdi temiz.
-      ⚠️ **Görülen sonuç:** `medine2906` iki pilot repo'ya erişimini kaybetti (yalnızca
-      bu repo'nun `developers` listesinde). Beklenen davranış ama **dashboard testini
-      etkiler** — takip [`TODO.md`](TODO.md)'de.
+      ⚠️ **Etkisi bugün tek repo ile sınırlı:** diğer üçü `public` ve public repo'yu
+      internetteki herkes okur — ayar orada hiçbir şey değiştirmiyor. Gerçek izolasyon
+      ancak repo'lar private olduğunda oluşur, o da **Faz 7'ye (Team planı) bağlı**.
+      Takip: [`TODO.md`](TODO.md).
 - [x] 🔑 ~~`billing_email` değerini arayüzden oku ve yaz~~ ✅ _(2026-08-18)_
       `github_organization_settings` tek alanı değil **org'un tüm ayar nesnesini** yönetir
       ve `billing_email` şemada **zorunlu**. Import sonrası plan onu boş okudu (App token'ı
@@ -788,10 +789,10 @@ boşluğu gizlemek olurdu.
       gözlenmeli — **ikinci bir developer hesabı gerekiyor, tek bloklayan bu.**
 - [x] ✅ **Erişim izolasyonu testi** _(2026-08-19)_ — `default_repository_permission = none`
       iki hesapla canlı doğrulandı. `pilot-access-test` (private, kimseye yetki verilmemiş)
-      ikisine de **404**; `medine2906` iki pilot repo'yu **kaybetti**, `paitblack` görmeye
-      devam ediyor.
-      Asıl kanıt Medine'nin kaybı: o erişim takım üyeliğinden değil **org varsayılanından**
-      geliyordu. People ekranındaki takım sayıları da config'le birebir uyuşuyor (1 / 3 / 5).
+      ikisine de **404**.
+      ⚠️ **Kapsam bir repo:** diğer üçü public, orada ayarın etkisi yok. People ekranındaki
+      takım sayıları config'le birebir uyuşuyor (1 / 3 / 5) — yetkinin takımdan geldiğini
+      gösteriyor, ama public repo'larda okuma erişimi zaten takımdan gelmiyor.
       ⚠️ Kurulumdaki kritik ayrıntı: repo **`private` olmak zorundaydı** — public olsaydı
       ikisi de görürdü ve test hiçbir şey kanıtlamazdı.
 - [x] ✅ **Yol bazlı CODEOWNERS** _(2026-08-19)_ — kendiliğinden doğrulandı. Kural eklenince

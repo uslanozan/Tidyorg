@@ -13,16 +13,20 @@ Son güncelleme: 2026-08-19
 
 ## 🔴 Bloklayan iş
 
-- [ ] 👀 **Medine `pilot-intern-api` ve `pilot-intern-web`'i artık göremiyor.**
-      `default_repository_permission = none` (2026-08-18) uygulandıktan sonraki **doğrudan
-      ve beklenen** sonuç: erişimin tek kaynağı artık takım üyeliği.
-      `medine2906` yalnızca `Tidyorg` repo'sunun `developers`
-      listesinde — diğer iki repoya `read` erişimi org varsayılanından geliyordu, o gitti.
-      ⚠️ Dashboard org'daki repo'ları **kullanıcının kendi kimliğiyle** listeliyor
-      (ACCESS-MODEL Karar 15) — yani Medine'nin ekranında iki repo kaybolur. Test ederken
-      "dashboard bozuldu" sanılabilir; bozulmadı, doğru davranıyor.
-      **Karar gerekiyor:** ya iki repo'nun `developers` listesine eklenecek, ya da
-      dashboard testinde bu durum bilinerek kabul edilecek. **Medine'ye haber verilmeli.**
+- [ ] 🔴 **`none` ayarı bugün üç repo'da ETKİSİZ — çünkü onlar public.**
+      2026-08-19'da fark edildi. `Tidyorg`, `pilot-intern-api` ve
+      `pilot-intern-web` **public**; public bir repo'yu internetteki herkes okur, org
+      üyeliğinden bağımsız olarak. `default_repository_permission` orada hiçbir şey
+      değiştirmiyor.
+      Ayar yalnızca `pilot-access-test`'te (private) gerçek etki üretiyor — izolasyon
+      testinin orada yapılmış olması da bu yüzden doğruydu.
+      ⚠️ Bu bir hata değil, **bekleyen bir bağımlılık**: repo'lar `public` çünkü free
+      plan'de private repo'da branch protection çalışmıyor. Yani bugün **izolasyon ile dal
+      koruması aynı anda elde edilemiyor**; ikisini birleştiren şey Faz 7 (Team planı).
+      **Sunumda dikkat:** "erişim izolasyonu kuruldu" demek bugün yalnızca bir repo için
+      doğru. Faz 6 çalışıyor ama kapsamı Faz 7'ye bağlı.
+      _Önceki hâli Medine'nin iki pilot repo'yu kaybettiğini söylüyordu — yanlıştı,
+      düzeltildi._
 
 - [x] ~~🔑 **App'e `Organization → Administration: Read and write` izni ver.**~~
       ✅ **2026-08-18** — izin verildi, apply geçti, `plan` temiz

@@ -16,7 +16,15 @@ hiç beklemediğim yerden geldi.
 ### 1. Erişim izolasyonu — `none` gerçekten çalışıyor
 
 Emre ve Medine linkleri denedi, beklediğimiz cevaplar geldi. `pilot-access-test` ikisine de
-404. Medine iki pilot repo'yu göremiyor, Emre görebiliyor.
+404 aldı.
+
+**Ama sonucu fazla genişletmişim.** Ertesi gün Faz 7'yi konuşurken fark ettim: diğer üç
+repo **public**. Public bir repo'yu internetteki herkes okur — `default_repository_permission`
+orada hiçbir şey değiştirmiyor. Yani Medine iki pilot repo'yu **görmeye devam ediyor**;
+ben "kaybetti" diye yazmıştım ve bunu dört dokümana yaymıştım.
+
+Doğrulanan tek şey `pilot-access-test`: private, kimseye yetki verilmemiş, iki hesap da 404.
+Test geçerli, **kapsamı bir repo**.
 
 People ekranı bunu sayıyla da doğruladı:
 
@@ -287,7 +295,7 @@ Ozan izni verdi, ikinci apply geçti. `plan` artık temiz:
 *"No changes. Your infrastructure matches the configuration."*
 Base permission canlıda **`none`**.
 
-### 5. `none`'ın ilk faturası — Medine iki repo'yu kaybetti
+### 5. `none`'ın ilk faturası — sandığımdan dar çıktı
 
 Apply'dan sonra "kim ne kaybetti" diye baktım, iyi ki bakmışım. `medine2906` yalnızca
 `Tidyorg`'ın `developers` listesinde; `pilot-intern-api` ve
