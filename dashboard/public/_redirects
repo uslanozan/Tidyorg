@@ -1,0 +1,7 @@
+# Netlify — Vercel karşılığı vercel.json içinde.
+# GitHub'ın OAuth uçları CORS başlığı göndermez; bu rewrite tarayıcı için
+# aynı-origin bir yol açar. Sunucu kodu çalışmaz, yalnızca yönlendirme yapılır.
+/gh-oauth/*  https://github.com/:splat  200
+
+# SPA fallback — derin bağlantılar (örn. /projeler/pilot-intern-web) index.html'e düşer.
+/*           /index.html                200
