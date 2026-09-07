@@ -17,6 +17,11 @@ language: typescript
 # yetki verir — sessizce. Gerçek yapısal sınır Faz 8'de gelir (motor / durum ayrımı).
 mentors:
   - uslanozan
+  # 2026-09-07 — şirket kapsamı (comp-scope) işinin eş-sahibi olarak eklendi.
+  # ⚠️ Yukarıdaki uyarı geçerli: bu kişi artık kontrol düzleminde admin, Terraform
+  # kodunu/config'i değiştirebilir ve Karar E gereği CODEOWNERS/branch protection'ı
+  # bypass eder. Bilinçli karar (Ozan).
+  - Dogancan-Acar
 
 developers:
   - paitblack

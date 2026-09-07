@@ -7,14 +7,12 @@ terraform {
       version = "~> 6.0"
     }
   }
-
-  cloud {
-    organization = "tidyorg-infra"
-    workspaces {
-      name = "github-management"
-    }
-  }
 }
+
+# NOT: Backend/state ayrı dosyada (backend.tf) — bilinçli.
+# Canlı sistem HCP cloud backend'i kullanır; Docker image'ı entrypoint'te bu dosyayı
+# lokal backend'le DEĞİŞTİRİR (state mount volume'de). Böylece aynı motor hem HCP'ye
+# hem izole bir konteynere kurulabilir. Bkz. backend.tf ve docker/entrypoint.
 
 provider "github" {
   owner = var.github_org_name

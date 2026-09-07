@@ -1,0 +1,34 @@
+# =============================================================================
+# privileged.yml — ÖRNEK ŞEMA · İNSAN-SAHİPLİ · CODEOWNERS KORUMALI
+# =============================================================================
+# Bu dosyayı config/privileged.yml olarak kopyala. terraform/people.tf tarafından
+# okunur. Org owner'ları ve org kapsamlı rolleri tanımlar.
+#
+# 🔒 DASHBOARD BU DOSYAYA ASLA YAZMAZ. Yetki yükseltmenin (birini owner ya da
+#    head-of-engineering yapmak) tek meşru yolu budur: CODEOWNERS korumalı bir
+#    değişiklik + mevcut bir yöneticinin onayı. people.yml sık değişir ve makine
+#    yazar; bu dosya nadir değişir ve insan yazar.
+#
+# ⚠️ Buradaki her isim ayrıca config/people.yml → members içinde de olmalı
+#    (ayrıcalık üyelikten önce gelemez — plan aşamasında doğrulanır).
+#
+# -----------------------------------------------------------------------------
+# ALANLAR
+# -----------------------------------------------------------------------------
+# org_owners  Org owner olacak kişiler (GitHub API karşılığı `admin`). Org owner
+#             HER ŞEYE yetkilidir: her repoda admin, her korumalı dalda muaf,
+#             üye ekle/çıkar, org ayarları, repo silme.
+#
+# roles       Org kapsamlı rol adı → o rolü taşıyan kişiler. Tek org kapsamlı rol
+#             head-of-engineering (organization.yml → roles.*.scope). Repo kapsamlı
+#             roller (mentor/developer) BURAYA yazılmaz; config/repositories/*.yml.
+# =============================================================================
+
+version: 1
+
+org_owners:
+  - mentor-a
+
+roles:
+  head-of-engineering:
+    - mentor-a

@@ -1,27 +1,37 @@
 # =============================================================================
 # Kişiler — organizasyon üyeliği ve org kapsamlı roller
 # =============================================================================
-# Bu dosya `config/organization.yml` → `people` bölümünü tüketir. Öncesinde
-# üyelikler `org-membership.tf` içinde KİŞİ BAŞINA elle yazılıyordu; her yeni üye
-# için `.tf` düzenlemek gerekiyordu ki bu, projenin "veri katmanı config'de"
-# iddiasının tam tersiydi.
+# İki dosya, iki sahiplik. Bu ayrım YETKİ YÜKSELTME KAPISIDIR:
 #
-# İki katman burada birleşiyor ama karışmıyor:
+#   config/people.yml       → org üyeliği (kimler org'da). Makine-sahipli;
+#                             dashboard yazar. Yetki İFADE EDEMEZ.
+#   config/privileged.yml   → org owner'lar + org kapsamlı roller
+#                             (head-of-engineering). İnsan-sahipli, CODEOWNERS
+#                             korumalı; dashboard ASLA yazmaz.
 #
-#   Org üyeliği   → kişi org'da mı, owner mı?        → BURASI (`people`)
-#   Repo erişimi  → hangi repoda ne yapabilir?       → config/repositories/*.yml
+# Neden bölündü (secure by construction): 2026-08-15 olayının kökü, org rolü
+# owner kaldıkça kişinin her repoda admin olmaya devam etmesiydi. Yükseltme tek
+# satır YAML ile ve stajyer eklemekle AYNI onay yolundan yapılabiliyordu. Artık
+# yükseltmeyi ifade eden alan, dashboard'ın yazamadığı ayrı bir dosyada — kontrol
+# etmeye değil, ifade edilemez kılmaya dayanıyor.
+#
+#   Org üyeliği   → kişi org'da mı, owner mı?  → people.yml + privileged.yml
+#   Repo erişimi  → hangi repoda ne yapabilir? → config/repositories/*.yml
 #
 # Repo dosyası "bu kişi org owner mı" sorusunu CEVAPLAYAMAZ — ve owner ise oradaki
 # her satır hükümsüzdür, çünkü org owner branch protection dahil her şeyi ezer.
-# 2026-08-15 olayının kökü tam olarak buydu: takım üyeliği kaldırıldı ama org rolü
-# owner kaldığı sürece kişi her repoda admin olmaya devam ediyordu.
 # =============================================================================
 
 locals {
-  # Kişi listesi 2026-08-18'de organization.yml'dan ayrıldı. Sebep: organization.yml
-  # ROLLERİN NE ANLAMA GELDİĞİNİ tanımlıyor (nadiren değişir, yüksek risk); kişi
-  # listesi sık değişir ve ileride dashboard tarafından yazılacak (Karar 16).
-  people = try(yamldecode(file("${path.module}/config/people.yml")).people, {})
+  # --- Org üyeliği (makine-sahipli) -------------------------------------------
+  # Basit bir liste: dashboard bir satır ekler/çıkarır. Yetki taşımaz — bir kişinin
+  # burada olması yalnızca "org üyesi" demektir. Owner'lık privileged.yml'dan gelir.
+  members = try(yamldecode(file("${local.config_dir}/people.yml")).members, [])
+
+  # --- Ayrıcalıklar (insan-sahipli, CODEOWNERS korumalı) ----------------------
+  privileged        = try(yamldecode(file("${local.config_dir}/privileged.yml")), {})
+  privileged_owners = try(local.privileged.org_owners, [])
+  privileged_roles  = try(local.privileged.roles, {}) # rol adı => [login]
 
   # ---------------------------------------------------------------------------
   # BREAK-GLASS — bilinçli olarak yönetim dışında bırakılanlar
@@ -36,83 +46,63 @@ locals {
   # sessiz kalır. Bypass raporu (outputs.tf) bunu açıkça söylüyor.
   unmanaged_people = ["uslanozan"]
 
-  managed_people = {
-    for user, cfg in local.people : user => cfg
-    if !contains(local.unmanaged_people, user)
-  }
+  managed_members = [
+    for u in local.members : u
+    if !contains(local.unmanaged_people, u)
+  ]
 
   # ---------------------------------------------------------------------------
-  # Org kapsamlı roller — hardcode DEĞİL, config'den türetiliyor
+  # Türetilmiş org rolleri
   # ---------------------------------------------------------------------------
-  # `roles:` bloğundaki her rolün bir `scope`'u var. "Hangi rol `people`'a
-  # yazılabilir" sorusunun cevabı orada zaten duruyor; buraya ikinci kez yazmak
-  # iki kaynağın zamanla ayrışması demekti.
+  # Org owner = privileged.yml'da listelenen VE gerçekten org üyesi olan kişi.
+  org_owners = sort([
+    for u in local.members : u
+    if contains(local.privileged_owners, u)
+  ])
+
+  # head-of-engineering taşıyıcıları privileged.roles'tan gelir.
+  head_of_engineering = sort(try(local.privileged_roles["head-of-engineering"], []))
+
+  # organization.yml'da org kapsamlı olarak tanımlı rol adları. privileged.roles'a
+  # yalnızca bunlar yazılabilir; kural hardcode değil, `roles.*.scope`'tan türer.
   org_scoped_roles = sort([
     for role, cfg in local.org_config.roles : role
     if try(cfg.scope, "repository") == "organization"
   ])
 
-  org_owners = sort([
-    for user, cfg in local.people : user
-    if try(cfg.org_role, "member") == "admin"
-  ])
-
-  head_of_engineering = sort([
-    for user, cfg in local.people : user
-    if contains(try(cfg.roles, []), "head-of-engineering")
-  ])
-
   # ---------------------------------------------------------------------------
   # DOĞRULAMA — sessiz çelişkileri plan aşamasında yakala
   # ---------------------------------------------------------------------------
-  # 1) `people.roles` içine repo kapsamlı bir rol (`mentor`/`developer`) yazmak.
-  #    Bu, config'in sessizce yalan söylediği durumdur: kimse okumaz, hiçbir şey
-  #    olmaz, ama dosyaya bakan "bu kişi mentör" sanır. Gerçek yetki repo
-  #    dosyalarındadır.
-  people_with_repo_scoped_roles = flatten([
-    for user, cfg in local.people : [
-      for role in try(cfg.roles, []) :
-      "${user} → ${role}"
-      if !contains(local.org_scoped_roles, role)
-    ]
+
+  # 1) privileged.roles yalnızca ORG KAPSAMLI rol adı taşıyabilir. Repo kapsamlı
+  #    bir rol (mentor/developer) buraya yazmak anlamsızdır — gerçek repo yetkisi
+  #    config/repositories/*.yml'dadır.
+  privileged_invalid_roles = sort([
+    for role in keys(local.privileged_roles) : role
+    if !contains(local.org_scoped_roles, role)
   ])
 
-  # 2) `org_role` yazılmamış kişi. Varsayılana düşürmek yerine hata veriyoruz:
-  #    org rolü, kişinin branch protection'ı atlayıp atlayamayacağını belirleyen
-  #    alandır — unutulmuş olması ile `member` olması aynı şey değildir.
-  people_without_org_role = sort([
-    for user, cfg in local.people : user
-    if !can(cfg.org_role)
+  # 2) privileged.yml'da adı geçen HERKES (owner ya da rol taşıyıcısı) ayrıca
+  #    people.yml'da org üyesi olmalı. Ayrıcalık üyelikten önce gelemez: kişi önce
+  #    organizasyona dahil olur, sonra yükseltilir. Aksi halde privileged.yml
+  #    org'da olmayan birine owner der ve bu sessizce hükümsüz kalırdı.
+  privileged_people = sort(distinct(concat(
+    local.privileged_owners,
+    flatten([for role, users in local.privileged_roles : users]),
+  )))
+
+  privileged_not_members = sort([
+    for u in local.privileged_people : u
+    if !contains(local.members, u)
   ])
 
-  # 3) Geçersiz `org_role` değeri.
-  #    ⚠️ Buradaki asıl tuzak: GitHub ARAYÜZÜ bu rolü "Owner" diye gösterir ama API
-  #    `admin` ister. `org_role: owner` yazmak son derece doğal bir hatadır ve
-  #    doğrulama olmadan PLAN'I GEÇİP APPLY'DA patlardı — yani hata en pahalı yerde,
-  #    değişiklik canlıya uygulanırken çıkardı.
-  valid_org_roles = ["admin", "member"]
-
-  people_with_invalid_org_role = sort([
-    for user, cfg in local.people :
-    "${user} → ${try(cfg.org_role, "")}"
-    if can(cfg.org_role) && !contains(local.valid_org_roles, tostring(try(cfg.org_role, "")))
-  ])
-
-  # 4) Repo dosyalarında geçtiği halde `people`'da olmayan kişiler.
+  # 3) Repo dosyalarında geçtiği halde people.yml'da olmayan kişiler.
   #
   #    Bunlar sessizce org'a giriyordu: modül `github_team_membership` üretiyor,
   #    GitHub da kişiyi otomatik davet ediyor. Kişi org'a `member` olarak katılıyor
-  #    ama merkezi listede HİÇ görünmüyor.
-  #
-  #    İki somut zararı var:
-  #      - Offboarding: kişiyi çıkarmak için adının geçtiği HER repo dosyasını
-  #        bulmak gerekir. Gözden kaçan tek bir kayıt, kişinin organizasyonda
-  #        sessizce kalmasına yol açar. 2026-08-15'te yaşananın küçük hâli.
-  #      - Görünürlük: "org'da kim var" sorusunu cevaplamak için tüm repo
-  #        dosyalarını taramak gerekir; bypass raporu da onları göremez.
-  #
-  #    Otomatik org üyeliği üretmek yerine HATA veriyoruz (fail-fast): sisteme
-  #    önce organizasyondan dahil olunur, sonra repo'ya atanır.
+  #    ama merkezi listede HİÇ görünmüyor. Offboarding'de adının geçtiği HER repo
+  #    dosyasını bulmak gerekir; gözden kaçan tek kayıt kişiyi org'da tutar.
+  #    Otomatik üyelik üretmek yerine HATA veriyoruz (fail-fast).
   people_referenced_in_repos = toset(flatten([
     for repo_name, repo in local.repos : concat(
       try(repo.mentors, []),
@@ -122,33 +112,26 @@ locals {
 
   repo_people_missing_from_people = sort([
     for user in local.people_referenced_in_repos : user
-    if !contains(keys(local.people), user)
+    if !contains(local.members, user)
   ])
 }
 
 # --- Organizasyon üyeliği ----------------------------------------------------
 #
 # `github_membership` var olan bir üyede rolü GÜNCELLER, yeni bir kişide DAVET
-# gönderir. Yani `people`'a bir satır eklemek gerçek bir org daveti üretir.
+# gönderir. Yani `people.yml`'a bir satır eklemek gerçek bir org daveti üretir.
 #
 # ⚠️ `config/organization.example.yml` bu yüzden asla `for_each`'e sokulmamalı:
-# içindeki `mentor-a`, `dev-1` gibi örnek kullanıcılara gerçek davet gider.
-# Okunan dosya `var.config_file` ile belirleniyor ve örnek dosyayı göstermiyor.
+# içindeki örnek kullanıcılara gerçek davet gider. Okunan config dizini
+# `var.config_path` (local.config_dir) ile belirlenir; örnek dosyalar burada değil.
 resource "github_membership" "people" {
-  for_each = local.managed_people
+  for_each = toset(local.managed_members)
 
   username = each.key
 
-  # `try` burada varsayılan üretmek için DEĞİL, hata sırasını düzeltmek için var.
-  # Doğrudan `each.value.org_role` yazıldığında alan eksikse Terraform bu satırda
-  # çöküyor ve kullanıcı şunu görüyordu:
-  #   "This object does not have an attribute named org_role."
-  # Yani teams.tf'teki açıklayıcı precondition hiç çalışmadan plan patlıyordu.
-  #
-  # `try` sayesinde ifade değerlenebiliyor, plan precondition'a ulaşıyor ve hata
-  # "hangi kişide eksik, neden zorunlu" bilgisiyle geliyor. Aşağıdaki "member"
-  # değeri asla uygulanmaz: precondition o durumda plan'ı zaten durdurur.
-  role = try(each.value.org_role, "member")
+  # Org rolü ARTIK privileged.yml'dan türüyor: owner listesindeyse `admin`, değilse
+  # `member`. Üyelik dosyasının kendisi rolü ifade edemez (secure by construction).
+  role = contains(local.privileged_owners, each.key) ? "admin" : "member"
 
   # Kaynak koddan kaldırılırsa kişi organizasyondan ATILMAZ, yalnızca `member`a
   # düşürülür. Birini gerçekten çıkarmak bilinçli bir adım olmalı — yanlışlıkla
@@ -162,21 +145,10 @@ resource "github_membership" "people" {
 # modül bu takıma her repo'da admin veriyor ve `push_allowed_roles` içindeki
 # `head-of-engineering` buna çözümleniyor.
 #
-# Üyelik artık elle değil `people.roles`'tan üretiliyor. Kazanç offboarding'de
-# görünüyor: 2026-08-15'te bir kişiyi indirmek İKİ ayrı `.tf` dosyası düzenlemeyi
-# gerektirdi (takım üyeliği + org rolü) ve ikisinden birini atlamak sessizce
-# yetkiyi bırakırdı. Artık tek satır YAML.
-#
-# --- 2026-08-15 kaydı (eski team-memberships.tf'ten taşındı) -----------------
-# `paitblack` (Emre) bu takımdan çıkarıldı. Neden kritikti: takım
-# head-of-engineering rolünün taşıyıcısı olduğu için üyelik durduğu sürece kişi
-# HER repo'da admin oluyordu; `enforce_admins = false` olduğundan da korumalı
-# dallara doğrudan push atıp PR onay kuralını atlayabiliyordu. Yani "direct push
-# yasağı" ona hiç uygulanmıyordu — sorun kuralda değil, rol atamasındaydı.
-#
-# Ve takımdan çıkarmak TEK BAŞINA yetmedi: org rolü owner kalsaydı yetki aynen
-# devam ederdi. İki katmanın da kapatılması gerekti. Bu dosyanın ikisini birden
-# tek kaynaktan üretmesinin sebebi tam olarak budur.
+# Üyelik privileged.roles["head-of-engineering"]'ten üretiliyor. Bu rolün
+# privileged.yml'da (CODEOWNERS korumalı) yaşamasının sebebi: taşıyıcısına her
+# repoda admin + branch protection bypass veriyor — yani people.yml'dan tek satırla
+# verilebilecek bir yükseltme olmamalı.
 resource "github_team_membership" "platform_admins" {
   for_each = toset(local.head_of_engineering)
 
@@ -184,25 +156,3 @@ resource "github_team_membership" "platform_admins" {
   username = each.value
   role     = "maintainer"
 }
-
-# --- State taşımasının kaydı -------------------------------------------------
-# 2026-08-18'de bu kaynaklar tek tek yazılı hallerinden `for_each` anahtarlarına
-# taşındı:
-#
-#   github_membership.emre            → github_membership.people["paitblack"]
-#   github_membership.medine          → github_membership.people["medine2906"]
-#   github_team_membership.ozan_admin → github_team_membership.platform_admins["uslanozan"]
-#
-# Taşıma `moved` blokları ile yapıldı; sonuç `0 to add, 0 to change, 0 to destroy`
-# oldu — tek bir API çağrısı bile yapılmadı, yalnızca state'teki adresler değişti.
-# `moved` olmasaydı Terraform bunu "eskiyi yok et, yenisini yarat" diye okur ve
-# üyelikler bir an için düşerdi.
-#
-# Bloklar sonradan KALDIRILDI. Sebep: `moved` bildirimseldir ve taşıma bir kez
-# uygulandıktan sonra sessiz bir no-op'a döner. Burası KÖK MODÜL ve tek bir state'i
-# var (HCP workspace), taşıma orada uygulandı — yani blokların işi bitti.
-#
-# ⚠️ Bu karar paylaşılan modüllerde AYNI DEĞİL: `modules/repository/` içine bir gün
-# `moved` yazılırsa orada tutulmalıdır, çünkü modülü kimin hangi state ile
-# kullandığını bilemezsin. Faz 8'de modül başka bir repodan `ref` ile tüketilecek;
-# o gün bu ayrım pratik hale gelecek.

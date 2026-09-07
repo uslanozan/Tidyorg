@@ -94,11 +94,13 @@ import {
 }
 
 resource "github_organization_settings" "this" {
-  # 2026-08-18'e kadar bu adres AYRILAN EKİP ÜYESİNE aitti — offboarding'de
-  # gözden kaçmıştı. Erişim yetkileri 2026-08-15'te alınmasına rağmen fatura
-  # bildirimleri üç gün daha ona gitti. Artık Terraform'da olduğu için bir
-  # sonraki ayrılışta config'den görünecek.
-  billing_email = "uslanozan@gmail.com"
+  # Fatura e-postası artık koddan değil, dışarıdan (HCP değişkeni
+  # TF_VAR_billing_email) geliyor — kişisel bir adres repoya yazılmaz.
+  # ⚠️ Provider'da bu alan ZORUNLU (null olamaz). Değer HCP'de set edilmezse boş
+  # string apply edilir; apply öncesi TF_VAR_billing_email HCP'de ayarlanmalı.
+  # Geçmiş kayıt: 2026-08-18'e kadar bu adres ayrılan ekip üyesineydi; offboarding'de
+  # üç gün gözden kaçtı. O yüzden yönetime alındı — ama değeri artık HCP'de yaşıyor.
+  billing_email = var.billing_email
 
   # Bugüne kadar `read` — yani org'a eklenen herkes, hiçbir takımda olmasa bile
   # bütün repo'ları okuyabiliyordu. `none` ile erişimin tek kaynağı takım

@@ -12,8 +12,8 @@ Kişisel token (PAT) yerine organizasyona ait bir GitHub App kullanmanın avanta
 
 | Alan | Değer |
 | :--- | :--- |
-| **App ID** | `4600282` |
-| **Installation ID** | `153844579` |
+| **App ID** | `<YOUR_APP_ID>` |
+| **Installation ID** | `<YOUR_INSTALLATION_ID>` |
 | **Organizasyon** | `your-org` |
 | **Kuruldu** | 2026-08-15 |
 | **Kuran** | uslanozan |
@@ -103,7 +103,7 @@ Formu doldur:
 App oluşturulduktan sonra açılan sayfada üstte:
 
 ```
-App ID: 4600282
+App ID: <YOUR_APP_ID>
 ```
 
 Bu sayıyı bir yere not al.
@@ -171,7 +171,7 @@ https://github.com/organizations/your-org/settings/installations
 → `tidyorg-infra-bot` → "Configure" tıkla → URL'ye bak:
 
 ```
-https://github.com/settings/installations/153844579
+https://github.com/settings/installations/<YOUR_INSTALLATION_ID>
                                           ^^^^^^^^^^
                                           Installation ID
 ```
@@ -188,8 +188,8 @@ https://app.terraform.io → tidyorg-infra org → github-management workspace �
 
 | Key | Category | Value | Sensitive |
 | :--- | :--- | :--- | :--- |
-| `github_app_id` | terraform | `4600282` | Hayır |
-| `github_app_installation_id` | terraform | `153844579` | Hayır |
+| `github_app_id` | terraform | `<YOUR_APP_ID>` | Hayır |
+| `github_app_installation_id` | terraform | `<YOUR_INSTALLATION_ID>` | Hayır |
 | `github_app_pem_file` | terraform | *(4. adımda kopyalanan tek satır)* | **Evet** |
 
 > **Önemli:** Category "terraform" olmalı — "environment variable" değil.
