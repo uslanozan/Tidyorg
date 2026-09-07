@@ -1383,8 +1383,8 @@ sistem durmuştu. Token'ı geçici olarak yenilemek yerine direkt GitHub App'e g
 
 | Alan | Değer |
 | :--- | :--- |
-| App ID | `4600282` |
-| Installation ID | `153844579` |
+| App ID | `<YOUR_APP_ID>` |
+| Installation ID | `<YOUR_INSTALLATION_ID>` |
 | İzinler | Administration + Contents (write), Metadata (read), Members (write) |
 
 Private key üretildi, indirilen `.pem` dosyası PowerShell scriptiyle tek satıra çevrildi
