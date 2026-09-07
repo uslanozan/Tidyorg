@@ -1,0 +1,38 @@
+# The image contains ONLY the generic engine. Everything install-specific,
+# mounted at runtime, or unrelated stays out.
+
+# Config + state are mounted at runtime, never baked in.
+terraform/config
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/.terraform
+
+# Backend + imports are install-specific:
+#   backend.tf   → HCP org (tidyorg-infra); the entrypoint writes a local backend
+#   imports.tf   → imports a specific repo by name; breaks for any other org
+terraform/backend.tf
+terraform/imports.tf
+
+# Not part of the engine image (dashboard image is separate/later).
+dashboard
+docs
+integrations
+presentation
+node_modules
+**/node_modules
+
+# Secrets must never enter the build context.
+*.pem
+*.key
+*.tfvars
+!*.tfvars.example
+.env
+.env.*
+
+# VCS / tooling
+.git
+.github
+.gitignore
+Dockerfile
+.dockerignore
+docker-compose.yml
