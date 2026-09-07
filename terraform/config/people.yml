@@ -1,68 +1,29 @@
 # =============================================================================
-# Kişiler — CANLI DOSYA
+# Kişiler — CANLI DOSYA · org ÜYELİĞİ (yetki DEĞİL)
 # =============================================================================
-# terraform/people.tf tarafından okunur. Buradaki her satır GitHub'a yansır.
+# terraform/people.tf tarafından okunur. Buradaki her isim org üyesidir.
 #
 # ⚠️ Kişi EKLEMEK gerçek bir org daveti üretir.
 #    Kişi ÇIKARMAK onu org'dan atmaz, yalnızca `member`a düşürür
 #    (`downgrade_on_destroy = true`) — gerçekten çıkarmak bilinçli bir adımdır.
 #
 # -----------------------------------------------------------------------------
-# ALANLAR
+# BU DOSYA YALNIZCA ÜYELİK TAŞIR — YETKİ TAŞIMAZ
 # -----------------------------------------------------------------------------
-# org_role  ZORUNLU. Yalnızca `admin` veya `member`.
+# Bir kişinin burada olması yalnızca "org üyesi" demektir (varsayılan `member`).
+# Owner'lık ve org kapsamlı roller (head-of-engineering) config/privileged.yml'da
+# tanımlanır — CODEOWNERS korumalı, dashboard'ın yazamadığı dosya.
 #
-#           ⚠️ GitHub ARAYÜZÜ bu rolü "Owner" diye gösterir ama API "admin" ister.
-#           `org_role: owner` yazmak plan'ı geçip APPLY'da patlardı; bu yüzden
-#           izinli değerler plan aşamasında doğrulanıyor.
+# Bu ayrım bilinçlidir (secure by construction): bu dosya sık değişir ve ileride
+# dashboard yazacak; yükseltmeyi buradan tek satırla yapılamaz kılmak için yetki
+# alanları başka dosyaya taşındı. Gerekçe: terraform/people.tf başlığı.
 #
-#           Yazılmazsa varsayılana düşürülmez, hata verir: org rolü kişinin branch
-#           protection dahil her kuralı atlayıp atlayamayacağını belirler —
-#           unutulmuş olması ile bilinçli `member` olması aynı şey değildir.
-#
-# roles     YALNIZCA org kapsamlı roller (bugün: head-of-engineering).
-#           mentor/developer REPO kapsamlıdır, config/repositories/*.yml içinde
-#           yaşar. Kural `organization.yml` → `roles.*.scope` alanından türetilir
-#           ve plan aşamasında zorlanır.
-#
-# -----------------------------------------------------------------------------
-# YÜKSELTME KAPISI — ⏸️ PLANLANIYOR, HENÜZ YOK (GIT-36)
-# -----------------------------------------------------------------------------
-# ⚠️ BUGÜN KURULU BİR KAPI YOK. Buraya `org_role: admin` yazmak, PR merge edilip
-#    apply çalıştığında kişiyi org owner YAPAR. Tek engel PR incelemesidir.
-#
-# Planlanan kural: `admin` yazmak tek başına yetmeyecek, kişinin ayrıca
-# terraform/people.tf içindeki `allowed_org_owners` listesinde olması gerekecek.
-# Bu liste henüz yazılmadı — dosyada arama yapıp bulamazsan sebebi budur.
-#
-# Sebep: org owner organizasyondaki HER ŞEYE tam yetkilidir — her repoda admin,
-# her korumalı dalda muaf, üye ekleme/çıkarma, org ayarları, repo silme.
-# Bu dosya sık değişiyor ve ileride dashboard tarafından yazılacak; yükseltmenin
-# buradan tek satırla yapılabilmesi, yetki yükseltmeyi sıradan bir işlem yapıyor.
-#
-# Kapı kurulduğunda bile KİLİT olmayacak: `.tf` dosyaları yol bazlı CODEOWNERS
-# ile korunuyor, yani mevcut bir org owner'ın onayını gerektiriyor — ama Karar E
-# gereği repo admini CODEOWNERS'ı atlayabilir. Kilit Faz 8'de repo sınırıyla gelir.
+# Repo yetkisi (mentor/developer) config/repositories/*.yml içindedir.
 # =============================================================================
 
 version: 1
 
-people:
-  # Break-glass: bu kişinin ÜYELİĞİ Terraform tarafından yönetilmiyor
-  # (people.tf → unmanaged_people). En az bir org owner motorun dışında kalmalı,
-  # yoksa hatalı bir apply organizasyonu geri dönüşü olmayan biçimde kilitler.
-  # Bedeli görünürlük: bu satır beyandır, zorlanmaz. Bypass raporu bunu söylüyor.
-  uslanozan:
-    org_role: admin
-    roles: [head-of-engineering]
-
-  # 2026-08-15 — projeden ayrıldı, head-of-engineering'den developer'a indirildi.
-  # Repo erişimi config/repositories/*.yml içindeki `developers` listelerinden gelir.
-  paitblack:
-    org_role: member
-
-  # 2026-08-16 — dashboard geliştiricisi. Repo yetkisi
-  # config/repositories/Tidyorg.yml içinde `developers` olarak
-  # veriliyor; burada yalnızca org rolü beyan ediliyor.
-  medine2906:
-    org_role: member
+members:
+  - uslanozan   # org owner + head-of-engineering — bkz. config/privileged.yml
+  - paitblack   # 2026-08-15 projeden ayrıldı; repo erişimi repositories/*.yml'da
+  - medine2906  # dashboard geliştiricisi; repo yetkisi repositories/*.yml'da

@@ -1,0 +1,38 @@
+# =============================================================================
+# Ayrıcalıklar — CANLI DOSYA · İNSAN-SAHİPLİ · CODEOWNERS KORUMALI
+# =============================================================================
+# terraform/people.tf tarafından okunur. Org owner'ları ve org kapsamlı rolleri
+# (head-of-engineering) tanımlar.
+#
+# 🔒 DASHBOARD BU DOSYAYA ASLA YAZMAZ. Yetki yükseltmenin tek meşru yolu budur:
+#    bu dosyada bir isim eklemek/çıkarmak, `.tf` gibi CODEOWNERS korumalı bir
+#    değişikliktir ve mevcut bir platform-admin onayı gerektirir. people.yml sık
+#    değişir ve makine yazar; bu dosya nadir değişir ve insan yazar.
+#
+# ⚠️ Buradaki her isim ayrıca config/people.yml → `members` içinde de olmalı.
+#    Ayrıcalık üyelikten önce gelemez (plan aşamasında doğrulanır).
+#
+# -----------------------------------------------------------------------------
+# ALANLAR
+# -----------------------------------------------------------------------------
+# org_owners  Org owner olacak kişiler. GitHub API karşılığı `admin`.
+#             Org owner HER ŞEYE yetkilidir: her repoda admin, her korumalı dalda
+#             muaf, üye ekle/çıkar, org ayarları, repo silme.
+#
+# roles       Org kapsamlı rol adı → o rolü taşıyan kişiler. Bugün tek org kapsamlı
+#             rol: head-of-engineering (organization.yml → roles.*.scope). Repo
+#             kapsamlı roller (mentor/developer) BURAYA yazılmaz; onlar
+#             config/repositories/*.yml içinde yaşar.
+# =============================================================================
+
+version: 1
+
+# Break-glass: uslanozan'ın ÜYELİĞİ people.tf → unmanaged_people ile yönetim
+# dışında; org rolü burada beyan edilir ama Terraform tarafından ZORLANMAZ.
+# Bypass raporu (outputs.tf) bunu ismen söyler.
+org_owners:
+  - uslanozan
+
+roles:
+  head-of-engineering:
+    - uslanozan

@@ -10,7 +10,12 @@
 # =============================================================================
 
 locals {
-  org_config = yamldecode(file("${path.module}/config/organization.yml"))
+  # Config dizininin yeri. Boş `var.config_path` = repo içi yerleşim
+  # (${path.module}/config). Container kullanıcının config'ini başka yere mount
+  # eder (örn. /config) ve TF_VAR_config_path ile buraya yönlendirir.
+  config_dir = var.config_path != "" ? var.config_path : "${path.module}/config"
+
+  org_config = yamldecode(file("${local.config_dir}/organization.yml"))
 
   # Her .yml dosyasını oku; dosya adının .yml uzantısını at → repo adı olur.
   # config/repositories/pilot-intern-web.yml → "pilot-intern-web"
@@ -24,9 +29,9 @@ locals {
   # GitHub'da gerçekten var. Örnek dosyaların "zararsız" olduğu varsayımı orada
   # kırıldı; aynı varsayımın repo tarafındaki karşılığı burada kapatılıyor.
   repos = {
-    for f in fileset("${path.module}/config/repositories", "*.yml") :
+    for f in fileset("${local.config_dir}/repositories", "*.yml") :
     trimsuffix(f, ".yml") => yamldecode(
-      file("${path.module}/config/repositories/${f}")
+      file("${local.config_dir}/repositories/${f}")
     )
     if !endswith(f, ".example.yml")
   }

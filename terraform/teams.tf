@@ -35,50 +35,38 @@ resource "github_team" "platform_admins" {
   # kapsamlı rollerin doğru yere yazıldığını denetlemek tam olarak onun işi.
   lifecycle {
     precondition { #! plan aşamasında çalışıp hatalı config'i durduruyor.
-      condition = length(local.people_with_repo_scoped_roles) == 0
+      condition = length(local.privileged_invalid_roles) == 0
       error_message = join(" ", [
-        "config/people.yml -> `roles` may only carry ORGANIZATION-SCOPED roles",
+        "config/privileged.yml -> `roles` may only carry ORGANIZATION-SCOPED roles",
         "(today: ${join(", ", local.org_scoped_roles)}).",
-        "Repository-scoped roles live in the `mentors` / `developers` lists inside",
-        "config/repositories/*.yml; such a role written into `people` does nothing,",
-        "but it misleads whoever reads the file - the config lies silently.",
-        "Invalid assignments: ${join(" · ", local.people_with_repo_scoped_roles)}",
+        "Repository-scoped roles (mentor / developer) live in the `mentors` /",
+        "`developers` lists inside config/repositories/*.yml; such a role written into",
+        "privileged.yml does nothing but misleads whoever reads the file.",
+        "Invalid roles: ${join(" · ", local.privileged_invalid_roles)}",
       ])
     }
 
     precondition {
-      condition = length(local.people_without_org_role) == 0
+      condition = length(local.privileged_not_members) == 0
       error_message = join(" ", [
-        "config/people.yml -> `org_role` must be WRITTEN OUT for every person (`admin` or `member`).",
-        "An error is raised instead of falling back to a default: the org role decides",
-        "whether a person can bypass every rule, branch protection included - having",
-        "been forgotten is not the same thing as being deliberately `member`.",
-        "Missing for: ${join(", ", local.people_without_org_role)}",
-      ])
-    }
-
-    precondition {
-      condition = length(local.people_with_invalid_org_role) == 0
-      error_message = join(" ", [
-        "config/people.yml -> `org_role` accepts only these values:",
-        "${join(", ", local.valid_org_roles)}.",
-        "⚠️ The GitHub UI shows this role as \"Owner\" but the API expects `admin` -",
-        "writing `org_role: owner` is a natural mistake, and without this validation it",
-        "would pass plan and blow up during APPLY.",
-        "Invalid values: ${join(" · ", local.people_with_invalid_org_role)}",
+        "Everyone named in config/privileged.yml (as an org owner or a role carrier)",
+        "MUST ALSO be listed in config/people.yml. Privilege cannot precede membership:",
+        "a person joins the organization first, then gets elevated. A privileged entry",
+        "for someone who is not a member is silently void.",
+        "Not members: ${join(", ", local.privileged_not_members)}",
       ])
     }
 
     precondition {
       condition = length(local.repo_people_missing_from_people) == 0
       error_message = join(" ", [
-        "Everyone named in config/repositories/*.yml MUST ALSO BE DEFINED in",
-        "config/people.yml. Otherwise a person enters the org silently: the module",
-        "creates a team membership, GitHub sends an automatic invitation, yet they",
-        "never appear on the central list. The price is paid at offboarding - removing",
-        "them means finding EVERY repository file that names them, and a single missed",
-        "entry leaves them in the organization. Add to the organization first, then",
-        "assign to a repository.",
+        "Everyone named in config/repositories/*.yml MUST ALSO be listed in",
+        "config/people.yml (`members`). Otherwise a person enters the org silently: the",
+        "module creates a team membership, GitHub sends an automatic invitation, yet",
+        "they never appear on the central list. The price is paid at offboarding -",
+        "removing them means finding EVERY repository file that names them, and a single",
+        "missed entry leaves them in the organization. Add to the organization first,",
+        "then assign to a repository.",
         "Missing from people.yml: ${join(", ", local.repo_people_missing_from_people)}",
       ])
     }
