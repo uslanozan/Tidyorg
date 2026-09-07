@@ -43,25 +43,18 @@ roles:
   #   bypass_branch_protection: false
 
 # -----------------------------------------------------------------------------
-# KİŞİLER — Yalnızca kimlik ve organizasyon geneli rol ataması.
-# Repo bazlı atamalar aşağıda, repositories bölümünde yapılır.
+# KİŞİLER — bu dosyada DEĞİL, ayrı dosyalarda
 # -----------------------------------------------------------------------------
-# ⚠️ ŞEMA NOTU: Kişiler artık organization.yml'da DEĞİL — config/people.yml
-# (üyelik) ve config/privileged.yml (owner + org rolleri) dosyalarına bölündü.
-# Bu blok tarihsel örnek olarak duruyor; config.example tazelemesinde güncellenecek.
-# Buradaki isimler UYDURMA olmalı: gerçek bir GitHub kullanıcı adı yazmak apply'da
-# GERÇEK org daveti üretir (2026-08-15'te tam bu yaşandı).
-people:
-  # Head of engineering örneği — org owner + org kapsamlı rol
-  mentor-a:
-    org_role: admin # GitHub org seviyesi: admin | member
-    roles: [head-of-engineering]
-
-  # Örnek mentör ve developer'lar
-  mentor-b: { org_role: member }
-  dev-1: { org_role: member }
-  dev-2: { org_role: member }
-  dev-3: { org_role: member }
+# Kişiler organization.yml'dan çıkarıldı ve sahipliğe göre ikiye bölündü:
+#
+#   config/people.yml       → org üyeliği (makine-sahipli; dashboard yazar)
+#                             örnek: config/people.example.yml
+#   config/privileged.yml   → org owner + org rolleri (insan-sahipli, CODEOWNERS
+#                             korumalı; dashboard ASLA yazmaz)
+#                             örnek: config/privileged.example.yml
+#
+# Bu ayrım yetki yükseltme kapısıdır: dashboard'ın yazabildiği dosya yetki ifade
+# EDEMEZ. Gerekçe: terraform/people.tf başlığı ve ACCESS-MODEL.md Karar 16.
 
 # -----------------------------------------------------------------------------
 # VARSAYILANLAR — Her repo bunları miras alır. Repo bazında ezilebilir.
