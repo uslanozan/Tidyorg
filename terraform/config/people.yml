@@ -24,6 +24,7 @@
 version: 1
 
 members:
-  - uslanozan   # org owner + head-of-engineering — bkz. config/privileged.yml
-  - paitblack   # 2026-08-15 projeden ayrıldı; repo erişimi repositories/*.yml'da
-  - medine2906  # dashboard geliştiricisi; repo yetkisi repositories/*.yml'da
+  - uslanozan     # org owner + head-of-engineering — bkz. config/privileged.yml
+  - paitblack     # 2026-08-15 projeden ayrıldı; repo erişimi repositories/*.yml'da
+  - medine2906    # dashboard geliştiricisi; repo yetkisi repositories/*.yml'da
+  - Dogancan-Acar # 2026-09-07 şirket kapsamı işi; kontrol düzlemi mentörü (repo config)
