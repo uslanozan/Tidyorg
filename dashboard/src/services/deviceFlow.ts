@@ -2,16 +2,17 @@ import { CLIENT_ID, OAUTH_PROXY } from './env'
 import type { AccessTokenResponse, DeviceCodeResponse } from '../types/github'
 
 /**
- * GitHub Device Flow.
+ * GitHub App Device Flow.
  *
  * Statik SPA `client_secret` saklayamaz; Device Flow yalnızca `client_id`
  * ister. Tek pürüz CORS: github.com/login/* uçları tarayıcıya izin vermez,
  * bu yüzden istekler `OAUTH_PROXY` yolu üzerinden geçer (dev'de Vite proxy'si,
  * prod'da hosting rewrite'ı — çalışan bir sunucu kodu yok).
+ *
+ * `scope` GÖNDERİLMEZ: GitHub App'te yetki, App'in yüklü olduğu izinlerden gelir
+ * (Contents RW, Pull requests RW, Metadata R) — OAuth scope'u yok. Kullanıcının
+ * neye erişebileceğini App kurulumu belirler; kurulu olmayan repo'da GitHub 403 döner.
  */
-
-/** Config'i okumak + PR açmak için gereken en dar kapsam. */
-const SCOPE = 'repo read:org'
 
 export class DeviceFlowError extends Error {
   readonly userMessage: string
@@ -61,19 +62,19 @@ export async function requestDeviceCode(): Promise<DeviceCodeResponse> {
   if (!isDeviceFlowConfigured()) {
     throw new DeviceFlowError(
       'VITE_GITHUB_CLIENT_ID tanımsız',
-      'OAuth App henüz bağlanmadı (VITE_GITHUB_CLIENT_ID boş). Aşağıdaki token ile girişi kullanabilirsiniz.',
+      'GitHub App henüz bağlanmadı (VITE_GITHUB_CLIENT_ID boş). Aşağıdaki token ile girişi kullanabilirsiniz.',
     )
   }
 
   const data = await postForm<DeviceCodeResponse & { error?: string }>(
     '/login/device/code',
-    { client_id: CLIENT_ID, scope: SCOPE },
+    { client_id: CLIENT_ID },
   )
 
   if (data.error) {
     throw new DeviceFlowError(
       data.error,
-      'GitHub cihaz kodu vermedi. OAuth App\'te "Enable Device Flow" işaretli mi?',
+      'GitHub cihaz kodu vermedi. GitHub App\'te "Enable Device Flow" işaretli mi?',
     )
   }
 

@@ -1,5 +1,10 @@
 import yaml from 'js-yaml'
-import type { OrgConfig, PeopleConfig, RepoConfig } from '../types/config'
+import type {
+  OrgConfig,
+  PeopleConfig,
+  PrivilegedConfig,
+  RepoConfig,
+} from '../types/config'
 
 export function parseYaml<T>(text: string): T {
   return yaml.load(text) as T
@@ -7,7 +12,30 @@ export function parseYaml<T>(text: string): T {
 
 export const parseRepoConfig = (text: string) => parseYaml<RepoConfig>(text)
 export const parseOrgConfig = (text: string) => parseYaml<OrgConfig>(text)
-export const parsePeopleConfig = (text: string) => parseYaml<PeopleConfig>(text)
+
+export function parsePeopleConfig(text: string): PeopleConfig {
+  const raw = (yaml.load(text) ?? {}) as Partial<PeopleConfig>
+  return { version: raw.version ?? 1, members: raw.members ?? [] }
+}
+
+export function parsePrivilegedConfig(text: string): PrivilegedConfig {
+  const raw = (yaml.load(text) ?? {}) as Partial<PrivilegedConfig>
+  return {
+    version: raw.version ?? 1,
+    org_owners: raw.org_owners ?? [],
+    roles: raw.roles ?? {},
+  }
+}
+
+/**
+ * people.yml'ı SIFIRDAN yazar (makine-sahipli, yorumsuz — Karar 16). Yalnızca
+ * `members` listesi; yetki alanı yok, olamaz.
+ */
+export function serializePeopleConfig(members: string[]): string {
+  const lines = ['version: 1', '', 'members:']
+  for (const login of members) lines.push(`  - ${renderScalar(login)}`)
+  return lines.join('\n') + '\n'
+}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    YERİNDE DÜZENLEME
@@ -19,11 +47,23 @@ export const parsePeopleConfig = (text: string) => parseYaml<PeopleConfig>(text)
    Bu yüzden güncellemede yalnızca ilgili anahtarın satır bloğu değiştirilir;
    dosyanın geri kalanı bayt bayt korunur.                                    */
 
-export type YamlValue = string | number | boolean | string[]
+export type YamlScalar = string | number | boolean | null
+export type YamlValue =
+  | YamlScalar
+  | string[]
+  | YamlValue[]
+  | { [key: string]: YamlValue }
+
+/** Düz skaler / string listesi mi, yoksa iç içe yapı mı? */
+function isFlat(value: YamlValue): value is YamlScalar | string[] {
+  if (Array.isArray(value)) return value.every((item) => typeof item === 'string')
+  return value === null || typeof value !== 'object'
+}
 
 const NEEDS_QUOTES = /[:#{}[\],&*?|<>=!%@`"']|^\s|\s$|^$|^[-\d]/
 
-function renderScalar(value: string | number | boolean): string {
+function renderScalar(value: string | number | boolean | null): string {
+  if (value === null) return 'null'
   if (typeof value !== 'string') return String(value)
   return NEEDS_QUOTES.test(value)
     ? `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
@@ -61,18 +101,37 @@ function renderList(key: string, items: string[], flow: boolean): string[] {
 }
 
 function renderEntry(key: string, value: YamlValue, flow: boolean): string[] {
-  return Array.isArray(value) ? renderList(key, value, flow) : [`${key}: ${renderScalar(value)}`]
+  if (isFlat(value)) {
+    if (Array.isArray(value)) return renderList(key, value, flow)
+    return [`${key}: ${renderScalar(value)}`]
+  }
+  // İç içe yapı (protected_branches, code_owners, labels…): blok olarak yaz.
+  // Anahtarın kendisi ve üstündeki yorumlar yerinde kalır; yalnızca gövde yenilenir.
+  const empty = Array.isArray(value) ? value.length === 0 : Object.keys(value).length === 0
+  if (empty) return [`${key}: ${Array.isArray(value) ? '[]' : '{}'}`]
+  return [`${key}:`, dumpBlock(value)]
 }
 
 /**
  * Verilen anahtarları dosyada günceller; anahtar yoksa dosyanın sonuna ekler.
+ * Değer `undefined` ise anahtar dosyadan SİLİNİR (org varsayılanına bırakılır).
  * Yorumlar, anahtar sırası ve dokunulmayan alanlar aynen kalır.
  */
-export function applyEdits(text: string, edits: Record<string, YamlValue>): string {
+export function applyEdits(
+  text: string,
+  edits: Record<string, YamlValue | undefined>,
+): string {
   const lines = text.split('\n')
 
   for (const [key, value] of Object.entries(edits)) {
     const block = findBlock(lines, key)
+
+    if (value === undefined) {
+      // Anahtarı kaldır — üstündeki yorum bloğu kişiye ait olabileceğinden dokunma;
+      // yalnızca anahtarın kendi satır aralığını sil.
+      if (block) lines.splice(block.start, block.end - block.start)
+      continue
+    }
 
     if (block) {
       const flow = usesFlowStyle(lines.slice(block.start, block.end))
@@ -100,6 +159,8 @@ const SCALAR_KEYS = [
   'has_wiki',
   'auto_init',
   'default_branch',
+  'vulnerability_alerts',
+  'secret_scanning',
 ] as const
 
 /** Elle yazdığımız anahtarlar; bunların dışındakiler js-yaml ile aynen geçirilir. */
@@ -113,6 +174,7 @@ const KNOWN_KEYS = new Set<string>([
   'code_owners',
   'files',
   'workflows',
+  'labels',
 ])
 
 function dumpBlock(value: unknown, indent = 2): string {
@@ -150,6 +212,8 @@ export function serializeRepoConfig(config: RepoConfig): string {
   }
 
   if (config.workflows) lines.push(...renderList('workflows', config.workflows, true))
+
+  if (config.labels?.length) lines.push('labels:', dumpBlock(config.labels))
 
   const extras = Object.entries(config as unknown as Record<string, unknown>).filter(
     ([key, value]) => !KNOWN_KEYS.has(key) && value !== undefined,

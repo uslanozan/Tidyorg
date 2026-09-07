@@ -15,7 +15,7 @@ import { LANGUAGES, type Language, type RepoConfig } from '../types/config'
 const STEPS = ['Repo bilgileri', 'Dil', 'Mentör'] as const
 
 export function NewProject() {
-  const { projects, people } = useConfig()
+  const { projects, privileged } = useConfig()
   const { user } = useAuth()
   const client = useClient()
   const { busy, submit } = useProposal()
@@ -40,7 +40,7 @@ export function NewProject() {
 
   const preview = useMemo(() => serializeRepoConfig(draft), [description, language, mentor])
 
-  if (!isHeadOfEngineering(user?.login ?? '', people)) {
+  if (!isHeadOfEngineering(user?.login ?? '', privileged)) {
     return (
       <EmptyState
         icon="🔒"

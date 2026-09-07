@@ -1,4 +1,4 @@
-# 🖥️ Tidyorg Yönetim Paneli
+# 🖥️ tidyorg Yönetim Paneli
 
 Head of engineering'lerin ve mentörlerin projeleri, mentörleri ve developer'ları
 YAML dosyası yazmadan yönetebildiği arayüz.
@@ -41,21 +41,35 @@ npm run dev             # http://localhost:5173
 
 | Değişken | Ne işe yarar |
 | :--- | :--- |
-| `VITE_GITHUB_CLIENT_ID` | OAuth App'in client_id'si. **Ozan sağlar (Faz 4).** `client_secret` gerekmez. |
+| `VITE_GITHUB_CLIENT_ID` | tidyorg **GitHub App**'inin client_id'si (`Iv1.…`/`Iv23.…`). **Ozan sağlar.** `client_secret` gerekmez ve istenmez. |
 | `VITE_CONFIG_OWNER` | Config repo'sunun sahibi (org adı) |
 | `VITE_CONFIG_REPO` | Config repo'sunun adı |
 | `VITE_CONFIG_BRANCH` | PR'ların hedef dalı (varsayılan `main`) |
 | `VITE_OAUTH_PROXY` | OAuth proxy yolu. Boş bırakılırsa `/gh-oauth` kullanılır. |
 
 `client_id` gizli bilgi değildir; Device Flow'un tüm güvenliği kullanıcının
-GitHub'da yaptığı onaya dayanır.
+GitHub'da yaptığı onaya + App'in kurulu olduğu repo'ya dayanır.
 
-## Giriş: Device Flow — ve CORS notu
+**İki kaynak, bu sırayla:** `window.__ENV__` (çalışma zamanı — Docker image'ında
+entrypoint `env.js`'i konteyner ortam değişkenlerinden üretir) → `import.meta.env`
+(build'e gömülü `.env`). Runtime her zaman kazanır; yerelde `.env` yeterli.
+
+## Giriş: GitHub App Device Flow — ve CORS notu
 
 Statik bir SPA `client_secret` saklayamayacağı için Device Flow kullanılır:
 kullanıcıya bir kod gösterilir, kullanıcı kodu github.com'da onaylar, panel
 token'ı alır. Token **`sessionStorage`**'da tutulur (`localStorage` değil):
-sekme kapanınca oturum biter.
+sekme kapanınca oturum biter. Token'ın süresi App ayarından **kapalıdır**
+(refresh token akışı yok).
+
+**Yetkiyi GitHub verir.** `scope` gönderilmez; kullanıcının neye erişebileceğini
+App'in yüklü olduğu repo'ların izinleri (Contents RW, Pull requests RW, Metadata R)
+belirler. App bu kullanıcı için config repo'suna kurulu değilse giriş yine başarılı
+olur ama panel "Bu hesabın erişimi yok" ekranını gösterir — ilk `contents` isteği
+403 döndüğünde.
+
+Giriş ekranındaki **"token ile giriş"** yolu artık yalnızca geliştirme
+derlemesinde görünür (bir PAT, App kurulum kısıtını atlardı).
 
 ⚠️ **Tek pürüz:** `github.com/login/device/code` ve `.../oauth/access_token`
 uçları CORS başlığı göndermez, yani tarayıcıdan doğrudan çağrılamaz. Bu yüzden
@@ -116,10 +130,41 @@ dashboard/
 └── public/
 ```
 
+## Konfigürasyon şeması — dört dosya
+
+| Dosya | Sahiplik | Dashboard | İçerik |
+| :--- | :--- | :--- | :--- |
+| `people.yml` | makine | ✅ yazar (`members` ekle/çıkar) | org üyeliği — **yetki taşımaz** |
+| `repositories/*.yml` | makine | ✅ yazar | repo tanımı + erişim + dal koruması |
+| `privileged.yml` | insan | ❌ **asla yazmaz** (okur, gösterir) | org owner + head-of-engineering |
+| `organization.yml` | insan | ❌ yazmaz | roller, defaults |
+
+🔒 `isHeadOfEngineering` / owner kontrolü `privileged.yml`'dan okunur. Panelde
+"owner yap" gibi bir buton **yoktur** — yetki yükseltme yalnızca elle PR +
+CODEOWNERS onayıyla.
+
 ## Ozan'a bağlı olan işler
 
 | İhtiyaç | Şu anki durum |
 | :--- | :--- |
-| OAuth App `client_id` (Faz 4) | Token ile giriş devrede; `client_id` gelince `.env`'e yazmak yeterli |
+| GitHub App `client_id` | Kod hazır; `client_id` gelince `.env` / `window.__ENV__`'e yazmak yeterli. Dev'de token ile giriş devrede |
+| GitHub App'in oluşturulması + config repo'ya kurulması | Ozan (org admin işi) |
 | GitOps plan yorumu (Faz 3) | Ekran hazır; yorum düşmeyen PR'da "Plan bekleniyor…" gösterilir, 30 sn'de bir yenilenir |
 | JSON Schema (Hafta 6) | `src/services/validation.ts` içinde elle kontroller var; şema gelince oraya bağlanır |
+
+## Repo yazma modu — kapsam
+
+"Repo ayarları" diyaloğu (`src/components/RepoSettingsDialog.tsx`) şu alanları
+düzenler: açıklama, dil, `visibility`, `default_branch`, `archived`, `has_*`,
+`vulnerability_alerts`, `secret_scanning`, `files` (mod), `workflows`,
+`protected_branches` (dal bazında kural / `null` / varsayılana bırak) ve
+`code_owners`. Mentör/developer listeleri kendi akışında (ekle/çıkar).
+
+Yazma **yorum-koruyan**: `applyEdits` yalnızca değişen anahtarın satır bloğunu
+yeniden yazar — iç içe alanlar (`protected_branches`, `code_owners`) dahil.
+`serializeRepoConfig` (tam yeniden üretim, yorumsuz) yalnızca **yeni** dosyalarda
+kullanılır. `npm run verify:yaml` bunu her canlı config dosyasında doğrular.
+
+**Kalan koordinasyon:** Faz 5 başlamadan `repositories/*.yml` + `people.yml` alan
+seti dondurulmalı (yazma modu hareket eden hedefe göç etmesin — plan sync #2).
+`organization.yml` / `privileged.yml` insan-sahipli; panel onlara dokunmaz.

@@ -3,10 +3,13 @@ import { useCallback, useEffect, useState } from 'react'
 export type ThemeChoice = 'system' | 'light' | 'dark'
 
 const STORAGE_KEY = 'tidyorg.dashboard.theme'
+const LEGACY_STORAGE_KEY = 'tidyorg.dashboard.theme'
 
 function readChoice(): ThemeChoice {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY)
+    const stored =
+      localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY)
+    localStorage.removeItem(LEGACY_STORAGE_KEY)
     if (stored === 'light' || stored === 'dark' || stored === 'system') return stored
   } catch {
     /* depolama kapalı olabilir */

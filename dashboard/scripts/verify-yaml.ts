@@ -13,14 +13,21 @@
  * Çalıştır: npm run verify:yaml
  */
 
-import { readdirSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { applyEdits, parseRepoConfig, serializeRepoConfig } from '../src/services/yaml'
+import {
+  applyEdits,
+  parsePeopleConfig,
+  parseRepoConfig,
+  serializePeopleConfig,
+  serializeRepoConfig,
+} from '../src/services/yaml'
 import { validateRepoConfig } from '../src/services/validation'
 import type { RepoConfig } from '../src/types/config'
 
 // npm script'i dashboard/ dizininden çalışır; config bir üst dizindedir.
-const CONFIG_DIR = join(process.cwd(), '..', 'terraform', 'config', 'repositories')
+const CONFIG_BASE = join(process.cwd(), '..', 'terraform', 'config')
+const CONFIG_DIR = join(CONFIG_BASE, 'repositories')
 
 const TEST_USER = 'verify-yaml-test-user'
 
@@ -88,6 +95,37 @@ for (const file of readdirSync(CONFIG_DIR).filter((name) => /\.ya?ml$/.test(name
     continue
   }
 
+  // 2b — iç içe blok düzenleme (protected_branches): ekle → geri al turu
+  const withRule = applyEdits(original, {
+    protected_branches: {
+      ...(parsed.protected_branches ?? {}),
+      'verify-yaml-branch': { required_reviews: 2 },
+    },
+  })
+  const afterRule = parseRepoConfig(withRule)
+  if (afterRule.protected_branches?.['verify-yaml-branch']?.required_reviews !== 2) {
+    fail(file, 'applyEdits iç içe dal kuralı eklemedi')
+    continue
+  }
+  if (!sameExcept(parsed, afterRule, 'protected_branches')) {
+    fail(file, 'applyEdits (nested) başka alanları da değiştirdi')
+    continue
+  }
+  const lostAfterRule = commentLines(original).filter(
+    (comment) => !commentLines(withRule).includes(comment),
+  )
+  if (lostAfterRule.length) {
+    fail(file, `nested düzenleme ${lostAfterRule.length} yorum sildi`, lostAfterRule[0].slice(0, 70))
+    continue
+  }
+  const revertRule = parseRepoConfig(
+    applyEdits(withRule, { protected_branches: parsed.protected_branches ?? undefined }),
+  )
+  if (JSON.stringify(revertRule) !== JSON.stringify(parsed)) {
+    fail(file, 'nested ekle → çıkar turu dosyayı başa döndürmedi')
+    continue
+  }
+
   // 3 — sıfırdan yazım hiçbir alanı düşürmemeli
   const rewritten = parseRepoConfig(serializeRepoConfig(parsed))
   const before = JSON.stringify(parsed, Object.keys(parsed).sort())
@@ -98,6 +136,36 @@ for (const file of readdirSync(CONFIG_DIR).filter((name) => /\.ya?ml$/.test(name
   }
 
   console.log(`✓ ${file}`)
+}
+
+/* ─── people.yml — üyelik yazma yolu (serializePeopleConfig) ────────────────
+   Dashboard people.yml'ı SIFIRDAN yazar (makine-sahipli, yorumsuz). Doğrula:
+   ekle → çıkar turu üye listesini başa döndürüyor mu, başka alan sızmıyor mu?  */
+const peoplePath = join(CONFIG_BASE, 'people.yml')
+if (existsSync(peoplePath)) {
+  const failuresBefore = failures
+  const original = readFileSync(peoplePath, 'utf8')
+  const parsed = parsePeopleConfig(original)
+  const TEST_MEMBER = 'verify-yaml-test-member'
+
+  const roundTrip = parsePeopleConfig(serializePeopleConfig(parsed.members))
+  if (JSON.stringify(roundTrip.members) !== JSON.stringify(parsed.members)) {
+    fail('people.yml', 'serializePeopleConfig üye listesini değiştirdi')
+  } else {
+    const added = parsePeopleConfig(
+      serializePeopleConfig([...parsed.members, TEST_MEMBER]),
+    )
+    if (!added.members.includes(TEST_MEMBER)) {
+      fail('people.yml', 'üye eklenemedi')
+    }
+    const reverted = parsePeopleConfig(
+      serializePeopleConfig(added.members.filter((m) => m !== TEST_MEMBER)),
+    )
+    if (JSON.stringify(reverted.members) !== JSON.stringify(parsed.members)) {
+      fail('people.yml', 'ekle → çıkar turu listeyi başa döndürmedi')
+    }
+  }
+  if (failures === failuresBefore) console.log('✓ people.yml')
 }
 
 if (failures) {

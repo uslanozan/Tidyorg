@@ -25,7 +25,10 @@ export function Login() {
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [manualToken, setManualToken] = useState('')
-  const [showManual, setShowManual] = useState(!isDeviceFlowConfigured())
+  // Token ile giriş yalnızca geliştirmede: bir PAT, GitHub App kurulum
+  // kısıtını atlar, yani yayında güvenlik sınırını delerdi.
+  const manualAllowed = import.meta.env.DEV
+  const [showManual, setShowManual] = useState(manualAllowed && !isDeviceFlowConfigured())
   const abort = useRef<AbortController | null>(null)
 
   // Sayfadan çıkılırsa yoklamayı durdur.
@@ -89,10 +92,10 @@ export function Login() {
       <div className="card login-card stack" style={{ gap: 'var(--sp-5)' }}>
         <div className="stack" style={{ alignItems: 'center', gap: 'var(--sp-3)' }}>
           <span className="brand-mark" style={{ width: 48, height: 48, fontSize: 'var(--text-lg)' }}>
-            IB
+            TO
           </span>
           <div>
-            <h1 style={{ fontSize: 'var(--text-xl)' }}>Tidyorg Yönetim Paneli</h1>
+            <h1 style={{ fontSize: 'var(--text-xl)' }}>tidyorg Yönetim Paneli</h1>
             <p className="subtle">Projeleri ve ekipleri GitHub üzerinden yönetin</p>
           </div>
         </div>
@@ -158,45 +161,46 @@ export function Login() {
           </p>
         )}
 
-        <hr className="divider" />
+        {manualAllowed && <hr className="divider" />}
 
-        {showManual ? (
-          <form className="stack" onSubmit={submitManualToken} style={{ textAlign: 'left' }}>
-            <div className="field">
-              <label className="label" htmlFor="pat">
-                Kişisel erişim token'ı ile giriş
-              </label>
-              <input
-                id="pat"
-                className="input"
-                type="password"
-                autoComplete="off"
-                placeholder="ghp_… veya github_pat_…"
-                value={manualToken}
-                onChange={(event) => setManualToken(event.target.value)}
-              />
-              <span className="hint">
-                OAuth App bağlanana kadar geliştirme/test için. `repo` ve `read:org`
-                kapsamları gerekir. Token yalnızca bu sekmede tutulur.
-              </span>
-            </div>
+        {manualAllowed &&
+          (showManual ? (
+            <form className="stack" onSubmit={submitManualToken} style={{ textAlign: 'left' }}>
+              <div className="field">
+                <label className="label" htmlFor="pat">
+                  Kişisel erişim token'ı ile giriş
+                </label>
+                <input
+                  id="pat"
+                  className="input"
+                  type="password"
+                  autoComplete="off"
+                  placeholder="ghp_… veya github_pat_…"
+                  value={manualToken}
+                  onChange={(event) => setManualToken(event.target.value)}
+                />
+                <span className="hint">
+                  Yalnızca geliştirme/test için (yayın derlemesinde görünmez).
+                  `repo` kapsamı yeterli. Token yalnızca bu sekmede tutulur.
+                </span>
+              </div>
+              <button
+                type="submit"
+                className="btn btn-block"
+                disabled={!manualToken.trim() || phase === 'authorizing'}
+              >
+                Token ile devam et
+              </button>
+            </form>
+          ) : (
             <button
-              type="submit"
-              className="btn btn-block"
-              disabled={!manualToken.trim() || phase === 'authorizing'}
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => setShowManual(true)}
             >
-              Token ile devam et
+              Gelişmiş: token ile giriş
             </button>
-          </form>
-        ) : (
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            onClick={() => setShowManual(true)}
-          >
-            Gelişmiş: token ile giriş
-          </button>
-        )}
+          ))}
       </div>
     </div>
   )

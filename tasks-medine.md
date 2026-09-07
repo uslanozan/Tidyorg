@@ -10,6 +10,20 @@
 > Terraform, GitOps, GitHub App altyapısı Ozan tarafından yürütülecek.
 > Bkz. [`ROADMAP.md`](ROADMAP.md) Faz 5 ve [`ACCESS-MODEL.md`](ACCESS-MODEL.md) Karar 15.
 
+> **Durum (2026-09-08):** tidyorg yayın planı ([`docs/notes/open-source-release-plan-2026-09-07.md`](docs/notes/open-source-release-plan-2026-09-07.md))
+> uygulanmaya başlandı. Dashboard tarafında yapılanlar:
+> - **Faz 2.3** — `tidyorg → tidyorg` yeniden adlandırma (paket, UI, localStorage anahtarları)
+> - **Faz 3.3** — Docker runtime-config: `window.__ENV__` → `import.meta.env` sırası ([`public/env.js`](dashboard/public/env.js))
+> - **Faz 4** — GitHub App device flow: `scope` kaldırıldı, post-login yetki kontrolü + "erişimin yok" ekranı, PAT girişi yalnızca dev
+> - **Faz 5** — 4-dosya şeması (`people.yml` = üyelik, `privileged.yml` = yetki, dashboard okur-yazmaz),
+>   `proposePeopleUpdate`, ve **repo ayarları yazma modu** (`RepoSettingsDialog`: visibility,
+>   default_branch, has_*, güvenlik bayrakları, files, workflows, `protected_branches` editörü,
+>   `code_owners`). `applyEdits` iç içe blokları da yorum-koruyarak düzenliyor.
+>
+> `npm run build` + `npm run verify:yaml` (5/5) yeşil.
+>
+> **Kalan:** GitHub App `client_id` (Ozan oluşturur), şema donması sync'i, uçtan uca pilot test.
+>
 > **Durum (2026-08-26):** Hafta 1–4 uygulandı — [`dashboard/`](dashboard/).
 > Okuma modu gerçek config dosyalarıyla çalışıyor (mock'a gerek kalmadı, Ozan
 > Faz 1'i bitirmişti). Yazma modu, çakışma koruması, plan önizleme ekranı ve UX

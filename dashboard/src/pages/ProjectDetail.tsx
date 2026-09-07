@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { LanguageBadge } from '../components/LanguageBadge'
 import { ConfirmDialog, Modal } from '../components/Modal'
 import { Person } from '../components/Person'
+import { RepoSettingsDialog } from '../components/RepoSettingsDialog'
 import { EmptyState, ErrorState, Skeleton } from '../components/States'
 import { UsernameField } from '../components/UsernameField'
 import { useClient } from '../hooks/useAuth'
@@ -10,13 +11,8 @@ import { useConfig, useProject } from '../hooks/useProjects'
 import { useProposal } from '../hooks/useProposal'
 import { effectiveBranchRules, proposeRepoConfigUpdate } from '../services/configRepo'
 import { configFileUrl, repoUrl } from '../services/env'
-import {
-  assertCanAddMember,
-  assertCanRemoveMentor,
-  validateDescription,
-} from '../services/validation'
-import type { YamlValue } from '../services/yaml'
-import { LANGUAGES, type Language, type ProjectRole, type RepoConfig } from '../types/config'
+import { assertCanAddMember, assertCanRemoveMentor } from '../services/validation'
+import type { ProjectRole } from '../types/config'
 
 const ROLE_LABEL: Record<ProjectRole, string> = {
   mentor: 'Mentör',
@@ -381,8 +377,10 @@ export function ProjectDetail() {
       )}
 
       {editing && (
-        <EditRepoDialog
+        <RepoSettingsDialog
+          repoName={project.name}
           config={config}
+          defaultBranches={Object.keys(org?.defaults.protected_branches ?? {})}
           busy={busy}
           onCancel={() => setEditing(false)}
           onSave={async (changes, details) => {
@@ -392,110 +390,15 @@ export function ProjectDetail() {
                   client,
                   project,
                   edits: () => changes,
-                  summary: 'repo bilgileri güncellendi',
+                  summary: 'repo ayarları güncellendi',
                   details,
                 }),
-              `${project.name} bilgileri güncellendi`,
+              `${project.name} ayarları güncellendi`,
             )
             if (result) setEditing(false)
           }}
         />
       )}
     </div>
-  )
-}
-
-interface EditProps {
-  config: RepoConfig
-  busy: boolean
-  onCancel: () => void
-  onSave: (changes: Record<string, YamlValue>, details: string[]) => void
-}
-
-function EditRepoDialog({ config, busy, onCancel, onSave }: EditProps) {
-  const [description, setDescription] = useState(config.description ?? '')
-  const [language, setLanguage] = useState<Language>(config.language)
-  const [error, setError] = useState<string | null>(null)
-
-  function save() {
-    const invalid = validateDescription(description)
-    if (invalid) return setError(invalid)
-
-    const changes: Record<string, YamlValue> = {}
-    const details: string[] = []
-
-    if (description !== config.description) {
-      changes.description = description
-      details.push(`Açıklama: "${config.description}" → "${description}"`)
-    }
-    if (language !== config.language) {
-      changes.language = language
-      details.push(`Dil: \`${config.language}\` → \`${language}\``)
-    }
-
-    if (!details.length) return setError('Hiçbir alan değişmedi.')
-    onSave(changes, details)
-  }
-
-  return (
-    <Modal
-      title="Repo bilgilerini düzenle"
-      onClose={onCancel}
-      footer={
-        <>
-          <button type="button" className="btn" onClick={onCancel} disabled={busy}>
-            Vazgeç
-          </button>
-          <button type="button" className="btn btn-primary" onClick={save} disabled={busy}>
-            {busy && <span className="spinner" aria-hidden="true" />}
-            PR oluştur
-          </button>
-        </>
-      }
-    >
-      <div className="stack">
-        <div className="field">
-          <label className="label" htmlFor="description">
-            Açıklama
-          </label>
-          <textarea
-            id="description"
-            className="textarea"
-            value={description}
-            onChange={(event) => {
-              setDescription(event.target.value)
-              setError(null)
-            }}
-          />
-        </div>
-
-        <div className="field">
-          <label className="label" htmlFor="language">
-            Programlama dili
-          </label>
-          <select
-            id="language"
-            className="select"
-            value={language}
-            onChange={(event) => setLanguage(event.target.value as Language)}
-          >
-            {LANGUAGES.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
-          <span className="hint">
-            Dil değişikliği repo'nun etiketini günceller, kodu taşımaz.
-          </span>
-        </div>
-
-        {error && (
-          <p className="field-error" role="alert">
-            {error}
-          </p>
-        )}
-      </div>
-    </Modal>
   )
 }

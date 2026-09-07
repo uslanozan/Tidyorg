@@ -44,6 +44,39 @@ export function EmptyState({ icon = '📭', title, description, action }: StateP
   )
 }
 
+/**
+ * Giriş başarılı ama GitHub App bu kullanıcı için config repo'suna kurulu değil
+ * (Contents/PR isteği 403 döndü). Yetkiyi GitHub verir; panelde yapılacak bir şey yok.
+ */
+export function AccessDenied({
+  login,
+  onRetry,
+}: {
+  login?: string
+  onRetry?: () => void
+}) {
+  return (
+    <div className="login-wrap">
+      <div className="card login-card stack" style={{ gap: 'var(--sp-4)', textAlign: 'center' }}>
+        <div className="state-icon" aria-hidden="true">
+          🔒
+        </div>
+        <div className="state-title">Bu hesabın erişimi yok</div>
+        <p className="subtle">
+          {login ? <strong>{login}</strong> : 'Bu hesap'} ile giriş yapıldı, ancak tidyorg
+          GitHub App'i bu kullanıcı için konfigürasyon deposuna kurulu değil. Bir organizasyon
+          yöneticisinin App'i sizin için yetkilendirmesi gerekir.
+        </p>
+        {onRetry && (
+          <button type="button" className="btn" onClick={onRetry}>
+            Tekrar dene
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 /** Hata — GitHubError ise kullanıcıya dönük Türkçe mesajı gösterir. */
 export function ErrorState({
   error,

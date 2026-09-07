@@ -7,15 +7,26 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { loadOrgConfig, loadPeople, loadProjects } from '../services/configRepo'
+import {
+  loadOrgConfig,
+  loadPeople,
+  loadPrivileged,
+  loadProjects,
+} from '../services/configRepo'
 import { GitHubError } from '../services/githubApi'
 import { useAuth } from './useAuth'
-import type { OrgConfig, PeopleConfig, Project } from '../types/config'
+import type {
+  OrgConfig,
+  PeopleConfig,
+  PrivilegedConfig,
+  Project,
+} from '../types/config'
 
 interface ConfigValue {
   projects: Project[]
   org: OrgConfig | null
   people: PeopleConfig | null
+  privileged: PrivilegedConfig | null
   loading: boolean
   error: GitHubError | Error | null
   reload: () => Promise<void>
@@ -32,6 +43,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   const [projects, setProjects] = useState<Project[]>([])
   const [org, setOrg] = useState<OrgConfig | null>(null)
   const [people, setPeople] = useState<PeopleConfig | null>(null)
+  const [privileged, setPrivileged] = useState<PrivilegedConfig | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<GitHubError | Error | null>(null)
 
@@ -41,16 +53,18 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     setError(null)
 
     try {
-      const [nextProjects, nextOrg, nextPeople] = await Promise.all([
+      const [nextProjects, nextOrg, nextPeople, nextPrivileged] = await Promise.all([
         loadProjects(client),
-        // organization.yml / people.yml okunamazsa liste yine de gösterilir:
-        // ikisi de yalnızca zenginleştirme (varsayılan kurallar, roller).
+        // organization.yml / people.yml / privileged.yml okunamazsa liste yine
+        // de gösterilir: hepsi yalnızca zenginleştirme (varsayılan kurallar, roller).
         loadOrgConfig(client).catch(() => null),
         loadPeople(client).catch(() => null),
+        loadPrivileged(client).catch(() => null),
       ])
       setProjects(nextProjects)
       setOrg(nextOrg)
       setPeople(nextPeople)
+      setPrivileged(nextPrivileged)
     } catch (caught) {
       if (caught instanceof GitHubError && caught.kind === 'unauthorized') signOut()
       setError(caught as Error)
@@ -64,8 +78,8 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   }, [status, reload])
 
   const value = useMemo<ConfigValue>(
-    () => ({ projects, org, people, loading, error, reload }),
-    [projects, org, people, loading, error, reload],
+    () => ({ projects, org, people, privileged, loading, error, reload }),
+    [projects, org, people, privileged, loading, error, reload],
   )
 
   return <ConfigContext.Provider value={value}>{children}</ConfigContext.Provider>

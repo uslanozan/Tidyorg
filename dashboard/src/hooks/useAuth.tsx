@@ -15,6 +15,8 @@ import type { GitHubUser } from '../types/github'
  * değil. Sekme kapanınca oturum biter; XSS penceresi kalıcı olmaz.
  */
 const STORAGE_KEY = 'tidyorg.dashboard.token'
+/** Eski marka anahtarı — bir kez taşınır, sonra silinir. */
+const LEGACY_STORAGE_KEY = 'tidyorg.dashboard.token'
 
 type Status = 'loading' | 'anonymous' | 'authenticated'
 
@@ -30,7 +32,15 @@ const AuthContext = createContext<AuthValue | null>(null)
 
 function readStoredToken(): string | null {
   try {
-    return sessionStorage.getItem(STORAGE_KEY)
+    const current = sessionStorage.getItem(STORAGE_KEY)
+    if (current) return current
+    // tidyorg öncesi oturumları taşı
+    const legacy = sessionStorage.getItem(LEGACY_STORAGE_KEY)
+    if (legacy) {
+      sessionStorage.setItem(STORAGE_KEY, legacy)
+      sessionStorage.removeItem(LEGACY_STORAGE_KEY)
+    }
+    return legacy
   } catch {
     return null // özel pencere / depolama kapalı
   }

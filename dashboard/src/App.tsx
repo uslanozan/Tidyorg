@@ -1,9 +1,10 @@
 import { BrowserRouter, Link, Route, Routes } from 'react-router-dom'
 import { AppShell } from './components/AppShell'
-import { EmptyState } from './components/States'
+import { AccessDenied, EmptyState } from './components/States'
 import { Toaster } from './components/Toaster'
+import { GitHubError } from './services/githubApi'
 import { AuthProvider, useAuth } from './hooks/useAuth'
-import { ConfigProvider } from './hooks/useProjects'
+import { ConfigProvider, useConfig } from './hooks/useProjects'
 import { useTheme } from './hooks/useTheme'
 import { ToastProvider } from './hooks/useToast'
 import { Login } from './pages/Login'
@@ -25,7 +26,21 @@ function Booting() {
   )
 }
 
+/**
+ * Config repo'sunun ilk okuması 403/404 döndüyse App bu kullanıcı için kurulu
+ * değildir — her sayfada genel hata göstermek yerine tek bir açıklama ekranı.
+ */
 function AuthenticatedRoutes() {
+  const { user } = useAuth()
+  const { error, reload } = useConfig()
+
+  if (
+    error instanceof GitHubError &&
+    (error.kind === 'forbidden' || error.kind === 'not-found')
+  ) {
+    return <AccessDenied login={user?.login} onRetry={() => void reload()} />
+  }
+
   return (
     <Routes>
       <Route element={<AppShell />}>

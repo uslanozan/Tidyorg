@@ -4,7 +4,9 @@ import {
   applyEdits,
   parseOrgConfig,
   parsePeopleConfig,
+  parsePrivilegedConfig,
   parseRepoConfig,
+  serializePeopleConfig,
   serializeRepoConfig,
   type YamlValue,
 } from './yaml'
@@ -13,6 +15,7 @@ import type {
   Membership,
   OrgConfig,
   PeopleConfig,
+  PrivilegedConfig,
   Project,
   ProtectedBranchRule,
   RepoConfig,
@@ -93,6 +96,16 @@ export async function loadPeople(client: GitHubClient): Promise<PeopleConfig> {
   return parsePeopleConfig(text)
 }
 
+export async function loadPrivileged(client: GitHubClient): Promise<PrivilegedConfig> {
+  const { text } = await client.readTextFile(
+    CONFIG_OWNER,
+    CONFIG_REPO,
+    PATHS.privileged,
+    CONFIG_BRANCH,
+  )
+  return parsePrivilegedConfig(text)
+}
+
 /** Bir kişinin hangi projede hangi rolde olduğu. */
 export function membershipsFor(login: string, projects: Project[]): Membership[] {
   const key = login.toLowerCase()
@@ -139,9 +152,34 @@ export function effectiveBranchRules(
   return merged
 }
 
-export function isHeadOfEngineering(login: string, people: PeopleConfig | null): boolean {
-  const entry = people?.people?.[login]
-  return Boolean(entry?.roles?.includes('head-of-engineering'))
+const sameLogin = (a: string, b: string) => a.toLowerCase() === b.toLowerCase()
+
+/** Org kapsamlı rol/owner bilgisi privileged.yml'dan gelir (people.yml artık yetki taşımaz). */
+export function isHeadOfEngineering(
+  login: string,
+  privileged: PrivilegedConfig | null,
+): boolean {
+  if (!login) return false
+  return (privileged?.roles?.['head-of-engineering'] ?? []).some((l) => sameLogin(l, login))
+}
+
+export function isOrgOwner(login: string, privileged: PrivilegedConfig | null): boolean {
+  if (!login) return false
+  return (privileged?.org_owners ?? []).some((l) => sameLogin(l, login))
+}
+
+/** Bir kişinin org'daki durumu — MemberDetail rozeti için. */
+export function orgStanding(
+  login: string,
+  people: PeopleConfig | null,
+  privileged: PrivilegedConfig | null,
+): { member: boolean; owner: boolean; roles: string[] } {
+  const member = (people?.members ?? []).some((l) => sameLogin(l, login))
+  const owner = isOrgOwner(login, privileged)
+  const roles = Object.entries(privileged?.roles ?? {})
+    .filter(([, logins]) => logins.some((l) => sameLogin(l, login)))
+    .map(([role]) => role)
+  return { member, owner, roles }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -271,7 +309,7 @@ export interface RepoChangeArgs {
    * Çakışmada yeniden okunan içerikle tekrar çağrılır — böylece araya giren
    * başka bir değişiklik ezilmez, üstüne uygulanır.
    */
-  edits: (config: RepoConfig) => Record<string, YamlValue>
+  edits: (config: RepoConfig) => Record<string, YamlValue | undefined>
   /** "developer eklendi" gibi tek satırlık özet — commit ve PR başlığında kullanılır. */
   summary: string
   /** PR gövdesine giren madde listesi. */
@@ -337,6 +375,66 @@ export function proposeNewProject(
         'Merge sonrası Terraform bu repo\'yu oluşturur.',
       ].join('\n') + PR_FOOTER,
     build: () => serializeRepoConfig(config),
+  })
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   ÜYELİK — config/people.yml (yalnızca `members`; yetki DEĞİL)
+   ───────────────────────────────────────────────────────────────────────── */
+
+export interface PeopleUpdateArgs {
+  client: GitHubClient
+  /** Org'a eklenecek login (gerçek GitHub daveti üretir). */
+  add?: string
+  /** `members` listesinden çıkarılacak login (org'dan atmaz, `member`a düşürür). */
+  remove?: string
+}
+
+/**
+ * people.yml `members` listesine ekleme/çıkarma önerir.
+ *
+ * 🔒 Bu servis SADECE people.yml'a dokunur. Owner'lık / head-of-engineering
+ * privileged.yml'da yaşar ve dashboard oraya asla yazmaz — yetki yükseltme
+ * yalnızca elle PR + CODEOWNERS onayıyla olur.
+ */
+export function proposePeopleUpdate({
+  client,
+  add,
+  remove,
+}: PeopleUpdateArgs): Promise<ProposalResult> {
+  const target = (add ?? remove ?? '').trim()
+  if (!target) return Promise.reject(new Error('Eklenecek veya çıkarılacak kişi belirtilmedi.'))
+  const verb = add ? 'eklendi' : 'çıkarıldı'
+  const slug = target.toLowerCase().replace(/[^a-z0-9-]/g, '') || 'member'
+
+  return proposeChange({
+    client,
+    path: PATHS.people,
+    slug: `people-${slug}`,
+    action: 'update',
+    commitMessage: `config(people): ${target} ${verb}`,
+    prTitle: `config(people): ${target} org üyeliğine ${verb}`,
+    prBody:
+      [
+        add
+          ? `\`${target}\` organizasyon üyeliğine **eklendi**. Merge sonrası GitHub daveti gönderilir.`
+          : `\`${target}\` \`members\` listesinden **çıkarıldı**. Bu, kişiyi org'dan atmaz; rolü \`member\`a düşer.`,
+        '',
+        '> Bu değişiklik yalnızca üyeliği etkiler. Owner / head-of-engineering yetkisi',
+        '> `privileged.yml` içindedir ve buradan değiştirilemez.',
+      ].join('\n') + PR_FOOTER,
+    build: (current) => {
+      if (!current) throw new Error('people.yml okunamadı')
+      const { members } = parsePeopleConfig(current.text)
+      const exists = members.some((l) => sameLogin(l, target))
+
+      if (add) {
+        if (exists) throw new Error(`${target} zaten org üyesi.`)
+        return serializePeopleConfig([...members, target])
+      }
+      if (!exists) throw new Error(`${target} zaten üye listesinde değil.`)
+      return serializePeopleConfig(members.filter((l) => !sameLogin(l, target)))
+    },
   })
 }
 

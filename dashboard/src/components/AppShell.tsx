@@ -16,9 +16,9 @@ export function AppShell() {
         <div className="container header-inner">
           <NavLink to="/" className="brand">
             <span className="brand-mark" aria-hidden="true">
-              IB
+              TO
             </span>
-            <span>Tidyorg</span>
+            <span>tidyorg</span>
           </NavLink>
 
           <nav className="nav" aria-label="Ana gezinme">

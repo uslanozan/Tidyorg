@@ -1,19 +1,25 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Modal } from '../components/Modal'
 import { ProjectCard } from '../components/ProjectCard'
 import { EmptyState, ErrorState, SkeletonCards } from '../components/States'
-import { useAuth } from '../hooks/useAuth'
+import { UsernameField } from '../components/UsernameField'
+import { useAuth, useClient } from '../hooks/useAuth'
 import { useConfig } from '../hooks/useProjects'
-import { isHeadOfEngineering } from '../services/configRepo'
+import { useProposal } from '../hooks/useProposal'
+import { isHeadOfEngineering, isOrgOwner, proposePeopleUpdate } from '../services/configRepo'
 import { LANGUAGES } from '../types/config'
 
 export function Projects() {
-  const { projects, people, loading, error, reload } = useConfig()
+  const { projects, people, privileged, loading, error, reload } = useConfig()
   const { user } = useAuth()
   const [query, setQuery] = useState('')
   const [language, setLanguage] = useState('')
+  const [addingMember, setAddingMember] = useState(false)
 
-  const canCreate = isHeadOfEngineering(user?.login ?? '', people)
+  const login = user?.login ?? ''
+  const canCreate = isHeadOfEngineering(login, privileged)
+  const canManageOrg = canCreate || isOrgOwner(login, privileged)
 
   const visible = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase('tr')
@@ -39,11 +45,22 @@ export function Projects() {
           </p>
         </div>
 
-        {canCreate && (
-          <Link className="btn btn-primary" to="/projeler/yeni">
-            + Yeni Proje
-          </Link>
-        )}
+        <div className="row">
+          {canManageOrg && (
+            <button
+              type="button"
+              className="btn"
+              onClick={() => setAddingMember(true)}
+            >
+              + Üye Ekle
+            </button>
+          )}
+          {canCreate && (
+            <Link className="btn btn-primary" to="/projeler/yeni">
+              + Yeni Proje
+            </Link>
+          )}
+        </div>
       </div>
 
       <div className="toolbar">
@@ -90,6 +107,84 @@ export function Projects() {
           ))}
         </div>
       )}
+
+      {addingMember && (
+        <AddMemberDialog
+          existing={people?.members ?? []}
+          onClose={() => setAddingMember(false)}
+        />
+      )}
     </div>
+  )
+}
+
+function AddMemberDialog({
+  existing,
+  onClose,
+}: {
+  existing: string[]
+  onClose: () => void
+}) {
+  const client = useClient()
+  const { busy, submit } = useProposal()
+  const [login, setLogin] = useState('')
+  const [verified, setVerified] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function confirm() {
+    const target = login.trim()
+    if (existing.some((l) => l.toLowerCase() === target.toLowerCase())) {
+      return setError(`${target} zaten org üyesi.`)
+    }
+    if (!verified) {
+      const user = await client.userExists(target)
+      if (!user) return setError('Bu kullanıcı adı GitHub\'da bulunamadı.')
+    }
+    const result = await submit(
+      () => proposePeopleUpdate({ client, add: target }),
+      `${target} org üyeliğine eklendi`,
+    )
+    if (result) onClose()
+  }
+
+  return (
+    <Modal
+      title="Organizasyona üye ekle"
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" className="btn" onClick={onClose} disabled={busy}>
+            Vazgeç
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => void confirm()}
+            disabled={busy || !login.trim()}
+          >
+            {busy && <span className="spinner" aria-hidden="true" />}
+            PR oluştur
+          </button>
+        </>
+      }
+    >
+      <div className="stack">
+        <UsernameField
+          label="GitHub kullanıcı adı"
+          value={login}
+          onChange={(value) => {
+            setLogin(value)
+            setError(null)
+          }}
+          onVerified={setVerified}
+          hint="people.yml üye listesine eklenir. Merge sonrası GitHub org daveti gönderilir. Bu adım yalnızca üyelik verir — repo erişimi ve yetki ayrıdır."
+        />
+        {error && (
+          <p className="field-error" role="alert">
+            {error}
+          </p>
+        )}
+      </div>
+    </Modal>
   )
 }

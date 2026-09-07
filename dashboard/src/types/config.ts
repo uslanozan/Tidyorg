@@ -7,7 +7,13 @@ export const LANGUAGES = ['go', 'python', 'typescript', 'php'] as const
 export type Language = (typeof LANGUAGES)[number]
 
 export type Visibility = 'public' | 'private'
-export type OrgRole = 'admin' | 'member'
+
+/** organization.yml → defaults.labels ve repo bazlı labels girdisi. */
+export interface RepoLabel {
+  name: string
+  color: string
+  description?: string
+}
 
 export interface ProtectedBranchRule {
   required_reviews?: number
@@ -45,6 +51,12 @@ export interface RepoConfig {
   /** Şablon dosyası → mod. Org varsayılanının üstüne sığ merge edilir. */
   files?: Record<string, TemplateMode>
   workflows?: string[]
+  /** Dependabot güvenlik uyarıları. Org varsayılanı: açık. */
+  vulnerability_alerts?: boolean
+  /** Secret scanning + push protection (yalnızca public repo'da ücretsiz). */
+  secret_scanning?: boolean
+  /** Repo'ya özel etiket seti — verilirse org varsayılanının yerine geçer. */
+  labels?: RepoLabel[]
 }
 
 /** Bir repo config dosyası + GitHub'daki kimliği (yazma için `sha` şart). */
@@ -73,8 +85,11 @@ export interface OrgDefaults {
   has_wiki?: boolean
   auto_init?: boolean
   default_branch?: string
+  vulnerability_alerts?: boolean
+  secret_scanning?: boolean
   protected_branches?: Record<string, ProtectedBranchRule>
   workflows?: string[]
+  labels?: RepoLabel[]
 }
 
 export interface OrgConfig {
@@ -85,14 +100,24 @@ export interface OrgConfig {
   defaults: OrgDefaults
 }
 
-export interface PersonEntry {
-  org_role: OrgRole
-  roles?: string[]
-}
-
+/**
+ * config/people.yml — SADECE org üyeliği (yetki taşımaz). Makine-sahipli;
+ * dashboard `members` listesine ekler/çıkarır.
+ */
 export interface PeopleConfig {
   version: number
-  people: Record<string, PersonEntry>
+  members: string[]
+}
+
+/**
+ * config/privileged.yml — org owner'lar + org kapsamlı roller.
+ * İnsan-sahipli, CODEOWNERS korumalı. 🔒 Dashboard OKUR, asla yazmaz.
+ */
+export interface PrivilegedConfig {
+  version: number
+  org_owners: string[]
+  /** rol adı → o rolü taşıyan login'ler (bugün tek rol: head-of-engineering). */
+  roles: Record<string, string[]>
 }
 
 export type ProjectRole = 'mentor' | 'developer'
