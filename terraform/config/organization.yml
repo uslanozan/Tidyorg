@@ -164,6 +164,3 @@ defaults:
     - { name: "status: ready", color: "0e8a16", description: "Başlanabilir" }
     - { name: "good first issue", color: "7057ff", description: "Yeni katılanlar için" }
     - { name: "help wanted", color: "008672", description: "Yardım aranıyor" }
-    # GEÇİCİ — deney etiketi (2026-09-03). Yönetilen repo'ya iner, elle açılan
-    # repo'ya İNMEZ. Deney bitince bu iki satır silinip apply edilecek.
-    - { name: "ozan-special-label", color: "ff00ff", description: "Deney: config -> GitHub tek yönlü akış" }
