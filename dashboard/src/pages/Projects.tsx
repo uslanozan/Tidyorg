@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Modal } from '../components/Modal'
 import { languageLabel } from '../components/LanguageBadge'
+import { Person } from '../components/Person'
 import { ProjectCard } from '../components/ProjectCard'
 import { EmptyState, ErrorState, SkeletonCards } from '../components/States'
 import { UsernameField } from '../components/UsernameField'
@@ -9,13 +10,14 @@ import { useAuth, useClient } from '../hooks/useAuth'
 import { useConfig } from '../hooks/useProjects'
 import { useProposal } from '../hooks/useProposal'
 import { isHeadOfEngineering, isOrgOwner, proposePeopleUpdate } from '../services/configRepo'
-import { LANGUAGES } from '../types/config'
+import { LANGUAGES, type Project } from '../types/config'
 
 export function Projects() {
   const { projects, people, privileged, loading, error, reload } = useConfig()
   const { user } = useAuth()
   const [query, setQuery] = useState('')
   const [language, setLanguage] = useState('')
+  const [groupBy, setGroupBy] = useState<'' | 'mentor'>('')
   const [addingMember, setAddingMember] = useState(false)
 
   const login = user?.login ?? ''
@@ -33,6 +35,22 @@ export function Projects() {
       return matchesQuery && matchesLanguage
     })
   }, [projects, query, language])
+
+  // Mentöre göre grupla: bir proje birden çok mentöre sahipse her birinde görünür.
+  const grouped = useMemo(() => {
+    if (groupBy !== 'mentor') return null
+    const map = new Map<string, Project[]>()
+    for (const project of visible) {
+      const mentors = project.config.mentors ?? []
+      const keys = mentors.length ? mentors : ['—']
+      for (const key of keys) {
+        const arr = map.get(key) ?? []
+        arr.push(project)
+        map.set(key, arr)
+      }
+    }
+    return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0], 'tr'))
+  }, [visible, groupBy])
 
   return (
     <div className="stack" style={{ gap: 'var(--sp-2)' }}>
@@ -86,6 +104,15 @@ export function Projects() {
             </option>
           ))}
         </select>
+        <select
+          className="select"
+          value={groupBy}
+          onChange={(event) => setGroupBy(event.target.value as '' | 'mentor')}
+          aria-label="Gruplama"
+        >
+          <option value="">Gruplama yok</option>
+          <option value="mentor">Mentöre göre</option>
+        </select>
       </div>
 
       {error ? (
@@ -101,6 +128,26 @@ export function Projects() {
               : 'Arama veya dil filtresini değiştirmeyi deneyin.'
           }
         />
+      ) : grouped ? (
+        <div className="stack" style={{ gap: 'var(--sp-6)' }}>
+          {grouped.map(([mentor, items]) => (
+            <section key={mentor} className="stack" style={{ gap: 'var(--sp-3)' }}>
+              <div className="row" style={{ gap: 'var(--sp-2)', alignItems: 'center' }}>
+                {mentor === '—' ? (
+                  <h2 style={{ fontSize: 'var(--text-lg)' }}>Mentör atanmamış</h2>
+                ) : (
+                  <Person login={mentor} size={26} />
+                )}
+                <span className="subtle">({items.length})</span>
+              </div>
+              <div className="grid-cards">
+                {items.map((project) => (
+                  <ProjectCard key={project.name} project={project} />
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
       ) : (
         <div className="grid-cards">
           {visible.map((project) => (
