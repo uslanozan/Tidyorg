@@ -27,6 +27,15 @@ override.tf.json
 *.tfplan
 tfplan
 
+# ─── Dashboard (Node / Vite) ─────────────────────────────
+# dashboard/.gitignore de aynısını kapsıyor; burada durması, kökten çalışan
+# araçların (grep, arşivleme, CI cache) da bu dizinleri atlaması içindir.
+node_modules/
+dashboard/dist/
+dashboard/.env
+dashboard/.env.*
+!dashboard/.env.example
+
 # ─── IDE ─────────────────────────────────────────────────
 .vscode/
 .idea/
