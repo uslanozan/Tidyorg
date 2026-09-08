@@ -9,6 +9,7 @@ import { useTheme } from './hooks/useTheme'
 import { ToastProvider } from './hooks/useToast'
 import { Login } from './pages/Login'
 import { MemberDetail } from './pages/MemberDetail'
+import { Members } from './pages/Members'
 import { NewProject } from './pages/NewProject'
 import { ProjectDetail } from './pages/ProjectDetail'
 import { Projects } from './pages/Projects'
@@ -47,6 +48,7 @@ function AuthenticatedRoutes() {
         <Route index element={<Projects />} />
         <Route path="projeler/yeni" element={<NewProject />} />
         <Route path="projeler/:name" element={<ProjectDetail />} />
+        <Route path="uyeler" element={<Members />} />
         <Route path="uyeler/:login" element={<MemberDetail />} />
         <Route path="pr" element={<PullRequests />} />
         <Route

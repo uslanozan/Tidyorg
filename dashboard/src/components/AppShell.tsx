@@ -25,6 +25,9 @@ export function AppShell() {
             <NavLink to="/" end className="nav-link">
               Projeler
             </NavLink>
+            <NavLink to="/uyeler" className="nav-link">
+              Üyeler
+            </NavLink>
             <NavLink to="/pr" className="nav-link">
               Bekleyen PR'lar
             </NavLink>
