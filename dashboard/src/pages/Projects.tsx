@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Modal } from '../components/Modal'
+import { languageLabel } from '../components/LanguageBadge'
 import { ProjectCard } from '../components/ProjectCard'
 import { EmptyState, ErrorState, SkeletonCards } from '../components/States'
 import { UsernameField } from '../components/UsernameField'
@@ -81,7 +82,7 @@ export function Projects() {
           <option value="">Tüm diller</option>
           {LANGUAGES.map((item) => (
             <option key={item} value={item}>
-              {item}
+              {languageLabel(item)}
             </option>
           ))}
         </select>

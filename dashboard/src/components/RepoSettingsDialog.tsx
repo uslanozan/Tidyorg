@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
+import { languageLabel } from './LanguageBadge'
 import { Modal } from './Modal'
 import { validateDescription } from '../services/validation'
 import type { YamlValue } from '../services/yaml'
@@ -266,7 +267,7 @@ export function RepoSettingsDialog({
             >
               {LANGUAGES.map((l) => (
                 <option key={l} value={l}>
-                  {l}
+                  {languageLabel(l)}
                 </option>
               ))}
             </select>

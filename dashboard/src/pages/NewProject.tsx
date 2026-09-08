@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { LanguageBadge } from '../components/LanguageBadge'
+import { LanguageBadge, languageLabel } from '../components/LanguageBadge'
 import { EmptyState } from '../components/States'
 import { UsernameField } from '../components/UsernameField'
 import { useAuth, useClient } from '../hooks/useAuth'
@@ -172,12 +172,12 @@ export function NewProject() {
                   onClick={() => setLanguage(item)}
                   aria-pressed={language === item}
                 >
-                  {item}
+                  {languageLabel(item)}
                 </button>
               ))}
             </div>
             <span className="hint">
-              Dil, CI şablonunun ve repo etiketinin seçilmesinde kullanılır.
+              Görsel etiket için; CI dili repo dosyalarından otomatik algılar.
             </span>
           </div>
         )}

@@ -55,6 +55,12 @@ function textOn(hex: string): string {
   return luminance > 0.6 ? '#111827' : '#ffffff'
 }
 
+/** Bir dil token'ının görünen adı (ör. "cpp" → "C++"). Dropdown'larda kullanılır. */
+export function languageLabel(lang: string): string {
+  const key = String(lang).toLowerCase()
+  return (LANG_META[key] ?? LANG_META[ALIASES[key] ?? ''])?.label ?? String(lang)
+}
+
 export function LanguageBadge({ language }: { language: Language | string }) {
   const raw = String(language)
   const key = raw.toLowerCase()
