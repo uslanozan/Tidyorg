@@ -6,10 +6,14 @@ import { Person } from '../components/Person'
 import { RepoSettingsDialog } from '../components/RepoSettingsDialog'
 import { EmptyState, ErrorState, Skeleton } from '../components/States'
 import { UsernameField } from '../components/UsernameField'
-import { useClient } from '../hooks/useAuth'
+import { useAuth, useClient } from '../hooks/useAuth'
 import { useConfig, useProject } from '../hooks/useProjects'
 import { useProposal } from '../hooks/useProposal'
-import { effectiveBranchRules, proposeRepoConfigUpdate } from '../services/configRepo'
+import {
+  canManageProject,
+  effectiveBranchRules,
+  proposeRepoConfigUpdate,
+} from '../services/configRepo'
 import { configFileUrl, repoUrl } from '../services/env'
 import { assertCanAddMember, assertCanRemoveMentor } from '../services/validation'
 import type { ProjectRole } from '../types/config'
@@ -27,7 +31,8 @@ const listKey = (role: ProjectRole): MemberList =>
 export function ProjectDetail() {
   const { name } = useParams<{ name: string }>()
   const { project, loading, error } = useProject(name)
-  const { org, reload } = useConfig()
+  const { org, privileged, reload } = useConfig()
+  const { user } = useAuth()
   const client = useClient()
   const { busy, submit } = useProposal()
 
@@ -72,6 +77,8 @@ export function ProjectDetail() {
 
   const { config } = project
   const rules = effectiveBranchRules(config, org)
+  // Yazma butonları yalnızca yetkiliye görünür (UI ipucu; asıl kapı GitHub).
+  const canManage = canManageProject(user?.login ?? '', project, privileged)
 
   function closeAdd() {
     setAddRole(null)
@@ -150,15 +157,17 @@ export function ProjectDetail() {
             {ROLE_LABEL[role]}ler{' '}
             <span className="subtle">({people.length})</span>
           </h2>
-          <button
-            type="button"
-            className="btn btn-sm"
-            onClick={() => setAddRole(role)}
-            disabled={config.archived}
-            title={config.archived ? 'Arşivlenmiş repo düzenlenemez' : undefined}
-          >
-            + {ROLE_LABEL[role]} Ekle
-          </button>
+          {canManage && (
+            <button
+              type="button"
+              className="btn btn-sm"
+              onClick={() => setAddRole(role)}
+              disabled={config.archived}
+              title={config.archived ? 'Arşivlenmiş repo düzenlenemez' : undefined}
+            >
+              + {ROLE_LABEL[role]} Ekle
+            </button>
+          )}
         </div>
 
         {people.length === 0 ? (
@@ -168,16 +177,18 @@ export function ProjectDetail() {
             {people.map((login) => (
               <span key={login} className="row" style={{ gap: 'var(--sp-1)' }}>
                 <Person login={login} />
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  aria-label={`${login} kişisini çıkar`}
-                  title={removalBlocked(login) ?? `${login} kişisini çıkar`}
-                  disabled={Boolean(removalBlocked(login)) || config.archived}
-                  onClick={() => setRemoveTarget({ login, role })}
-                >
-                  ✕
-                </button>
+                {canManage && (
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    aria-label={`${login} kişisini çıkar`}
+                    title={removalBlocked(login) ?? `${login} kişisini çıkar`}
+                    disabled={Boolean(removalBlocked(login)) || config.archived}
+                    onClick={() => setRemoveTarget({ login, role })}
+                  >
+                    ✕
+                  </button>
+                )}
               </span>
             ))}
           </div>
@@ -200,14 +211,21 @@ export function ProjectDetail() {
             <h1>{project.name}</h1>
             <LanguageBadge language={config.language} />
             {config.archived && <span className="badge badge-warning">Arşivli</span>}
+            {!canManage && (
+              <span className="badge" title="Bu projeyi düzenlemek için mentör veya owner olmalısın">
+                Salt okunur
+              </span>
+            )}
           </div>
           <p className="muted">{config.description || 'Açıklama yok'}</p>
         </div>
 
         <div className="row">
-          <button type="button" className="btn btn-sm" onClick={() => setEditing(true)}>
-            Bilgileri düzenle
-          </button>
+          {canManage && (
+            <button type="button" className="btn btn-sm" onClick={() => setEditing(true)}>
+              Bilgileri düzenle
+            </button>
+          )}
           <a
             className="btn btn-sm"
             href={repoUrl(project.name)}

@@ -168,6 +168,22 @@ export function isOrgOwner(login: string, privileged: PrivilegedConfig | null): 
   return (privileged?.org_owners ?? []).some((l) => sameLogin(l, login))
 }
 
+/**
+ * Bir kullanıcı bu projenin config'ini YÖNETEBİLİR mi (yazma butonları ona açılır mı)?
+ * Repo'nun mentörü, head-of-engineering, ya da org owner. Developer'lar ve diğerleri
+ * salt-okunur görür. Bu yalnızca UI ipucudur — asıl kapı GitHub (CODEOWNERS + branch
+ * protection); yetkisiz bir istek sunucuda zaten reddedilir.
+ */
+export function canManageProject(
+  login: string,
+  project: Project,
+  privileged: PrivilegedConfig | null,
+): boolean {
+  if (!login) return false
+  if (isHeadOfEngineering(login, privileged) || isOrgOwner(login, privileged)) return true
+  return (project.config.mentors ?? []).some((m) => sameLogin(m, login))
+}
+
 /** Bir kişinin org'daki durumu — MemberDetail rozeti için. */
 export function orgStanding(
   login: string,
