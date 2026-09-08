@@ -14,6 +14,7 @@ import { NewProject } from './pages/NewProject'
 import { ProjectDetail } from './pages/ProjectDetail'
 import { Projects } from './pages/Projects'
 import { PullRequests } from './pages/PullRequests'
+import { Teams } from './pages/Teams'
 
 /** Saklı token doğrulanırken gösterilir — giriş ekranının bir an parlamasını önler. */
 function Booting() {
@@ -50,6 +51,7 @@ function AuthenticatedRoutes() {
         <Route path="projeler/:name" element={<ProjectDetail />} />
         <Route path="uyeler" element={<Members />} />
         <Route path="uyeler/:login" element={<MemberDetail />} />
+        <Route path="takimlar" element={<Teams />} />
         <Route path="pr" element={<PullRequests />} />
         <Route
           path="*"
