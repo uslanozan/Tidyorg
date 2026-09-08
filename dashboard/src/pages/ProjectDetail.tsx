@@ -28,6 +28,37 @@ type MemberList = 'mentors' | 'developers'
 const listKey = (role: ProjectRole): MemberList =>
   role === 'mentor' ? 'mentors' : 'developers'
 
+function VisibilityBadge({ value, isDefault }: { value?: string; isDefault: boolean }) {
+  const isPrivate = value === 'private'
+  return (
+    <span className="badge" title={isPrivate ? 'Yalnızca org üyeleri görebilir' : 'Herkese açık'}>
+      <span
+        className="badge-dot"
+        style={{ background: isPrivate ? 'var(--warning)' : 'var(--success)' }}
+        aria-hidden="true"
+      />
+      {isPrivate ? '🔒 ' : '🌐 '}
+      {value ?? '—'}
+      {isDefault && ' (varsayılan)'}
+    </span>
+  )
+}
+
+function BranchIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="currentColor"
+      aria-hidden="true"
+      style={{ verticalAlign: '-2px', opacity: 0.75 }}
+    >
+      <path d="M11.75 2.5a.75.75 0 100 1.5.75.75 0 000-1.5zm-2.25.75a2.25 2.25 0 113 2.122V6A2.5 2.5 0 0110 8.5H6a1 1 0 00-1 1v1.128a2.251 2.251 0 11-1.5 0V5.372a2.25 2.25 0 111.5 0v1.836A2.492 2.492 0 016 7h4a1 1 0 001-1v-.628A2.25 2.25 0 019.5 3.25zM4.25 12a.75.75 0 100 1.5.75.75 0 000-1.5zM3.5 5.25a.75.75 0 111.5 0 .75.75 0 01-1.5 0z" />
+    </svg>
+  )
+}
+
 export function ProjectDetail() {
   const { name } = useParams<{ name: string }>()
   const { project, loading, error } = useProject(name)
@@ -243,18 +274,27 @@ export function ProjectDetail() {
         <div className="meta-grid">
           <div className="meta-item">
             <span className="meta-label">Dil</span>
-            <span className="meta-value">{config.language}</span>
+            <span className="meta-value">
+              <LanguageBadge language={config.language} />
+            </span>
           </div>
           <div className="meta-item">
             <span className="meta-label">Görünürlük</span>
             <span className="meta-value">
-              {config.visibility ?? `${org?.defaults.visibility ?? '—'} (varsayılan)`}
+              <VisibilityBadge
+                value={config.visibility ?? org?.defaults.visibility}
+                isDefault={!config.visibility}
+              />
             </span>
           </div>
           <div className="meta-item">
             <span className="meta-label">Varsayılan dal</span>
             <span className="meta-value">
-              {config.default_branch ?? `${org?.defaults.default_branch ?? '—'} (varsayılan)`}
+              <span className="badge">
+                <BranchIcon />
+                {config.default_branch ?? org?.defaults.default_branch ?? '—'}
+                {!config.default_branch && ' (varsayılan)'}
+              </span>
             </span>
           </div>
           <div className="meta-item">
