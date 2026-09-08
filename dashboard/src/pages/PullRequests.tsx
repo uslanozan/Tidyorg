@@ -4,10 +4,21 @@ import { useAuth, useClient } from '../hooks/useAuth'
 import { isDashboardBranch } from '../services/configRepo'
 import { CONFIG_OWNER, CONFIG_REPO } from '../services/env'
 import { GitHubError } from '../services/githubApi'
-import { summarizePlan, type PlanSummary } from '../services/terraformPlan'
+import {
+  summarizePlan,
+  type PlanAction,
+  type PlanSummary,
+} from '../services/terraformPlan'
 import type { PullRequest } from '../types/github'
 
 const REFRESH_MS = 30_000
+
+const ACTION_META: Record<PlanAction, { label: string; color: string }> = {
+  create: { label: '+ oluştur', color: 'var(--success)' },
+  update: { label: '~ değiştir', color: 'var(--warning)' },
+  destroy: { label: '- sil', color: 'var(--danger)' },
+  replace: { label: '± yenile', color: 'var(--danger)' },
+}
 
 interface Row {
   pr: PullRequest
@@ -179,6 +190,46 @@ export function PullRequests() {
                   {plan.hasDestroy && '⚠️ '}
                   {plan.text}
                 </div>
+                {plan.resources.length > 0 && (
+                  <ul
+                    style={{
+                      listStyle: 'none',
+                      margin: 'var(--sp-2) 0 0',
+                      padding: 0,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 'var(--sp-1)',
+                      maxHeight: 200,
+                      overflowY: 'auto',
+                    }}
+                  >
+                    {plan.resources.map((r) => (
+                      <li
+                        key={r.address}
+                        style={{
+                          display: 'flex',
+                          gap: 'var(--sp-2)',
+                          alignItems: 'baseline',
+                        }}
+                      >
+                        <span
+                          style={{
+                            color: ACTION_META[r.action].color,
+                            fontWeight: 700,
+                            fontSize: 'var(--text-xs)',
+                            minWidth: 64,
+                            flexShrink: 0,
+                          }}
+                        >
+                          {ACTION_META[r.action].label}
+                        </span>
+                        <code style={{ overflowWrap: 'anywhere', fontSize: 'var(--text-xs)' }}>
+                          {r.address}
+                        </code>
+                      </li>
+                    ))}
+                  </ul>
+                )}
                 {plan.errorLine && (
                   <p className="subtle" style={{ overflowWrap: 'anywhere' }}>
                     {plan.errorLine}

@@ -9,6 +9,13 @@ import type { IssueComment } from '../types/github'
  */
 
 export type PlanStatus = 'pending' | 'no-changes' | 'changes' | 'error'
+export type PlanAction = 'create' | 'update' | 'destroy' | 'replace'
+
+export interface PlanResource {
+  action: PlanAction
+  /** Terraform kaynak adresi (ör. module.repositories["x"].github_repository.this). */
+  address: string
+}
 
 export interface PlanSummary {
   status: PlanStatus
@@ -19,6 +26,8 @@ export interface PlanSummary {
   hasDestroy: boolean
   /** Türkçe tek satırlık özet. */
   text: string
+  /** Plan log'undan çıkarılan, etkilenen kaynakların listesi. */
+  resources: PlanResource[]
   commentUrl?: string
   createdAt?: string
   /** Hata durumunda ilk `Error:` satırı. */
@@ -28,6 +37,24 @@ export interface PlanSummary {
 const PLAN_LINE = /Plan:\s*(\d+)\s+to add,\s*(\d+)\s+to change,\s*(\d+)\s+to destroy/i
 const NO_CHANGES = /No changes\.|Your infrastructure matches the configuration/i
 const ERROR_LINE = /^\s*(?:Error|╷?\s*│?\s*Error):\s*(.+)$/im
+const RESOURCE_LINE = /^\s*#\s+(.+?)\s+will be (created|updated|destroyed|replaced)/gim
+
+const ACTION_MAP: Record<string, PlanAction> = {
+  created: 'create',
+  updated: 'update',
+  destroyed: 'destroy',
+  replaced: 'replace',
+}
+
+/** Plan log'undaki `# <adres> will be <action>` satırlarını ayıklar. */
+function parseResources(body: string): PlanResource[] {
+  const out: PlanResource[] = []
+  for (const m of body.matchAll(RESOURCE_LINE)) {
+    const action = ACTION_MAP[m[2].toLowerCase()]
+    if (action) out.push({ address: m[1].trim(), action })
+  }
+  return out
+}
 
 const PENDING: PlanSummary = {
   status: 'pending',
@@ -36,6 +63,7 @@ const PENDING: PlanSummary = {
   destroy: 0,
   hasDestroy: false,
   text: 'Plan bekleniyor…',
+  resources: [],
 }
 
 function looksLikePlanComment(body: string): boolean {
@@ -75,6 +103,7 @@ export function summarizePlan(comments: IssueComment[]): PlanSummary {
       destroy,
       hasDestroy: destroy > 0,
       text: parts.join(', '),
+      resources: parseResources(latest.body),
     }
   }
 
@@ -88,6 +117,7 @@ export function summarizePlan(comments: IssueComment[]): PlanSummary {
       destroy: 0,
       hasDestroy: false,
       text: 'Plan hata verdi',
+      resources: [],
       errorLine: error[1].trim(),
     }
   }
@@ -101,6 +131,7 @@ export function summarizePlan(comments: IssueComment[]): PlanSummary {
       destroy: 0,
       hasDestroy: false,
       text: 'Değişiklik yok — altyapı config ile uyumlu',
+      resources: [],
     }
   }
 
