@@ -24,21 +24,13 @@ variable "description" {
 }
 
 variable "language" {
-  type        = string
-  # Display metadata only. The CI template auto-detects languages from the repo's
-  # files (the `detect` job); this value does not drive CI or labels. The allowed
-  # set is validated only to catch typos and to stay in sync with the dashboard's
-  # LANGUAGES list (dashboard/src/types/config.ts).
+  type = string
+  # Display metadata only — the CI template auto-detects languages from the repo's
+  # files (the `detect` job); this value drives nothing. Intentionally NOT validated
+  # against a fixed list, so adding a language to the dashboard picker never requires
+  # an engine change/apply. The dashboard shows known languages with a logo and
+  # falls back to a monogram for anything else.
   description = "Primary programming language (display metadata; CI auto-detects)"
-
-  validation {
-    condition = contains([
-      "go", "python", "typescript", "javascript", "php", "java",
-      "cpp", "csharp", "c", "rust", "ruby", "kotlin", "swift",
-      "scala", "dart", "elixir", "shell",
-    ], var.language)
-    error_message = "Unknown language. Keep it in sync with the dashboard LANGUAGES list."
-  }
 }
 
 # --- Repo ayarları --------------------------------------------------------
