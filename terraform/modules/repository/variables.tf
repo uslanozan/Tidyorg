@@ -25,11 +25,19 @@ variable "description" {
 
 variable "language" {
   type        = string
-  description = "Primary programming language - drives CI template and label selection"
+  # Display metadata only. The CI template auto-detects languages from the repo's
+  # files (the `detect` job); this value does not drive CI or labels. The allowed
+  # set is validated only to catch typos and to stay in sync with the dashboard's
+  # LANGUAGES list (dashboard/src/types/config.ts).
+  description = "Primary programming language (display metadata; CI auto-detects)"
 
   validation {
-    condition     = contains(["go", "python", "typescript", "php"], var.language)
-    error_message = "language must be one of: go, python, typescript, php."
+    condition = contains([
+      "go", "python", "typescript", "javascript", "php", "java",
+      "cpp", "csharp", "c", "rust", "ruby", "kotlin", "swift",
+      "scala", "dart", "elixir", "shell",
+    ], var.language)
+    error_message = "Unknown language. Keep it in sync with the dashboard LANGUAGES list."
   }
 }
 

@@ -3,7 +3,25 @@
  * Şema kaynağı: terraform/config/repository.example.yml ve organization.yml.
  */
 
-export const LANGUAGES = ['go', 'python', 'typescript', 'php'] as const
+export const LANGUAGES = [
+  'go',
+  'python',
+  'typescript',
+  'javascript',
+  'php',
+  'java',
+  'cpp',
+  'csharp',
+  'c',
+  'rust',
+  'ruby',
+  'kotlin',
+  'swift',
+  'scala',
+  'dart',
+  'elixir',
+  'shell',
+] as const
 export type Language = (typeof LANGUAGES)[number]
 
 export type Visibility = 'public' | 'private'
