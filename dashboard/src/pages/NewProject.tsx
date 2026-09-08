@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { LanguageBadge, languageLabel } from '../components/LanguageBadge'
+import { MemberPicker } from '../components/MemberPicker'
 import { EmptyState } from '../components/States'
-import { UsernameField } from '../components/UsernameField'
 import { useAuth, useClient } from '../hooks/useAuth'
 import { useConfig } from '../hooks/useProjects'
 import { useProposal } from '../hooks/useProposal'
@@ -12,7 +12,7 @@ import { validateDescription, validateRepoName } from '../services/validation'
 import { serializeRepoConfig } from '../services/yaml'
 import { LANGUAGES, type Language, type RepoConfig } from '../types/config'
 
-const STEPS = ['Repo bilgileri', 'Dil', 'Mentör'] as const
+const STEPS = ['Repo bilgileri', 'Dil', 'Ekip'] as const
 
 export function NewProject() {
   const { projects, privileged, people } = useConfig()
@@ -25,8 +25,8 @@ export function NewProject() {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [language, setLanguage] = useState<Language>('typescript')
-  const [mentor, setMentor] = useState('')
-  const [mentorVerified, setMentorVerified] = useState(false)
+  const [mentors, setMentors] = useState<string[]>([])
+  const [developers, setDevelopers] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
 
   const existingNames = useMemo(() => projects.map((project) => project.name), [projects])
@@ -34,11 +34,14 @@ export function NewProject() {
   const draft: RepoConfig = {
     description: description.trim(),
     language,
-    mentors: mentor.trim() ? [mentor.trim()] : [],
-    developers: [],
+    mentors,
+    developers,
   }
 
-  const preview = useMemo(() => serializeRepoConfig(draft), [description, language, mentor])
+  const preview = useMemo(
+    () => serializeRepoConfig(draft),
+    [description, language, mentors, developers],
+  )
 
   if (!isHeadOfEngineering(user?.login ?? '', privileged)) {
     return (
@@ -65,7 +68,7 @@ export function NewProject() {
       if (descriptionError) return setError(descriptionError)
     }
 
-    if (step === 2 && !mentor.trim()) {
+    if (step === 2 && mentors.length === 0) {
       return setError('Her repo\'nun en az bir mentörü olmalı.')
     }
 
@@ -74,12 +77,7 @@ export function NewProject() {
 
   async function create() {
     setError(null)
-
-    if (!mentorVerified) {
-      const exists = await client.userExists(mentor.trim())
-      if (!exists) return setError('Mentör kullanıcı adı GitHub\'da bulunamadı.')
-    }
-
+    // Üyeler zaten org üyesi (picker'dan) — ayrıca GitHub doğrulaması gerekmez.
     const result = await submit(
       () => proposeNewProject(client, name.trim(), draft),
       `${name.trim()} projesi oluşturuluyor`,
@@ -183,14 +181,24 @@ export function NewProject() {
         )}
 
         {step === 2 && (
-          <UsernameField
-            label="İlk mentör (org üyesi)"
-            value={mentor}
-            onChange={setMentor}
-            onVerified={setMentorVerified}
-            members={people?.members ?? []}
-            hint="Yalnızca mevcut org üyeleri. Mentör repo'da admin yetkisi alır."
-          />
+          <div className="stack" style={{ gap: 'var(--sp-5)' }}>
+            <MemberPicker
+              label="Mentörler"
+              all={people?.members ?? []}
+              selected={mentors}
+              onChange={setMentors}
+              exclude={developers}
+              hint="Repo'da admin yetkisi alır. En az bir mentör gerekli."
+            />
+            <MemberPicker
+              label="Developer'lar"
+              all={people?.members ?? []}
+              selected={developers}
+              onChange={setDevelopers}
+              exclude={mentors}
+              hint="Repo'da push yetkisi alır; branch protection'a tabi. (Opsiyonel)"
+            />
+          </div>
         )}
 
         {step === 3 && (
@@ -203,9 +211,10 @@ export function NewProject() {
               </code>
             </p>
 
-            <div className="row" style={{ flexWrap: 'wrap' }}>
+            <div className="row" style={{ flexWrap: 'wrap', gap: 'var(--sp-2)' }}>
               <LanguageBadge language={language} />
-              <span className="badge">mentör: {mentor.trim()}</span>
+              <span className="badge">{mentors.length} mentör</span>
+              <span className="badge">{developers.length} developer</span>
             </div>
 
             <pre className="code-block">{preview}</pre>
