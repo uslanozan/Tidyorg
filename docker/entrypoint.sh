@@ -1,26 +1,48 @@
 #!/bin/sh
 # =============================================================================
-# tidyorg engine entrypoint
+# tidyorg entrypoint — one image, two modes
 # =============================================================================
-# The image ships the Terraform engine (modules, templates, root .tf) but NOT any
-# config or state. At runtime:
-#   - config is mounted at /config       (-v ./config:/config)
-#   - state lives on a mounted volume    (-v ./state:/state)
-#   - the backend is forced to LOCAL here (the committed backend.tf HCP block is
-#     never copied into the image; see .dockerignore)
+#   tidyorg serve                → serve the dashboard (nginx, static SPA)
+#   tidyorg plan|apply|validate  → run the Terraform engine
 #
-# Usage:  docker run ... tidyorg <plan|apply|validate|output|version|...>
+# The image ships the engine (modules, templates, root .tf) AND the built
+# dashboard. Config and state are mounted at runtime; the backend is forced local
+# (the committed HCP backend.tf is never copied in — see .dockerignore).
+#
+#   docker run -p 8080:8080 -e GITHUB_CLIENT_ID=... -e CONFIG_OWNER=... \
+#     -e CONFIG_REPO=... tidyorg serve
+#
+#   docker run -v ./config:/config -v ./state:/state -v ./app.pem:/secrets/app.pem \
+#     -e TF_VAR_github_org_name=... -e TF_VAR_github_app_id=... \
+#     -e TF_VAR_github_app_installation_id=... tidyorg plan
 # =============================================================================
 set -eu
 
+CMD="${1:-plan}"
+
+# --- Dashboard mode ---------------------------------------------------------
+# Static SPA. No Terraform, no credentials. Runtime config is injected into
+# env.js (window.__ENV__), which the dashboard reads before build-time values.
+if [ "$CMD" = "serve" ]; then
+  cat > /usr/share/nginx/html/env.js <<EOF
+window.__ENV__ = {
+  VITE_GITHUB_CLIENT_ID: "${GITHUB_CLIENT_ID:-}",
+  VITE_CONFIG_OWNER: "${CONFIG_OWNER:-}",
+  VITE_CONFIG_REPO: "${CONFIG_REPO:-}",
+  VITE_CONFIG_BRANCH: "${CONFIG_BRANCH:-main}"
+};
+EOF
+  exec nginx -g 'daemon off;'
+fi
+
+# --- Engine mode ------------------------------------------------------------
 ENGINE_DIR=/engine
 CONFIG_DIR="${CONFIG_PATH:-/config}"
 STATE_DIR="${STATE_PATH:-/state}"
 
 cd "$ENGINE_DIR"
 
-# --- 1. Backend: always local inside the container --------------------------
-# State on the mounted volume, so nothing depends on HCP / Terraform Cloud.
+# Backend: always local inside the container (state on the mounted volume).
 mkdir -p "$STATE_DIR"
 cat > backend.tf <<EOF
 terraform {
@@ -30,21 +52,18 @@ terraform {
 }
 EOF
 
-# --- 2. Point the engine at the mounted config ------------------------------
+# Point the engine at the mounted config.
 export TF_VAR_config_path="$CONFIG_DIR"
 
-# --- 3. GitHub App private key ----------------------------------------------
-# Prefer a mounted PEM file (-v ./app.pem:/secrets/app.pem); fall back to the
-# TF_VAR_github_app_pem_file env var if the caller set it directly.
+# GitHub App private key: prefer a mounted file, else the env var.
 if [ -f /secrets/app.pem ]; then
   TF_VAR_github_app_pem_file="$(cat /secrets/app.pem)"
   export TF_VAR_github_app_pem_file
 fi
 
-# --- 4. Friendly checks for the required inputs ------------------------------
-CMD="${1:-plan}"
+# Credentials only matter for commands that hit the API.
 case "$CMD" in
-  version | validate | fmt) : ;; # these don't need credentials
+  version | validate | fmt) : ;;
   *)
     : "${TF_VAR_github_org_name:?set TF_VAR_github_org_name (your GitHub org)}"
     : "${TF_VAR_github_app_id:?set TF_VAR_github_app_id}"
@@ -56,7 +75,6 @@ case "$CMD" in
     ;;
 esac
 
-# --- 5. Init (local backend) then dispatch ----------------------------------
 terraform init -input=false >/dev/null
 
 case "$CMD" in

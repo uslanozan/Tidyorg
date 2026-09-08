@@ -13,8 +13,13 @@ terraform/.terraform
 terraform/backend.tf
 terraform/imports.tf
 
-# Not part of the engine image (dashboard image is separate/later).
-dashboard
+# Dashboard source IS needed (built in stage 1), but not its local artifacts.
+dashboard/node_modules
+dashboard/dist
+dashboard/.env
+dashboard/.env.*
+
+# Not part of the image.
 docs
 integrations
 presentation
