@@ -7,6 +7,16 @@ export interface GitHubUser {
   html_url: string
 }
 
+export interface GitHubOrg {
+  login: string
+  name: string | null
+  description: string | null
+  /** Org web sitesi (bare domain olabilir). */
+  blog: string | null
+  avatar_url: string
+  html_url: string
+}
+
 export interface ContentFile {
   type: 'file'
   name: string

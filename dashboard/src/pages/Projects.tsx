@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Modal } from '../components/Modal'
 import { languageLabel } from '../components/LanguageBadge'
@@ -9,16 +9,40 @@ import { UsernameField } from '../components/UsernameField'
 import { useAuth, useClient } from '../hooks/useAuth'
 import { useConfig } from '../hooks/useProjects'
 import { useProposal } from '../hooks/useProposal'
+import { CONFIG_OWNER } from '../services/env'
 import { isHeadOfEngineering, isOrgOwner, proposePeopleUpdate } from '../services/configRepo'
 import { LANGUAGES, type Project } from '../types/config'
+import type { GitHubOrg } from '../types/github'
+
+/** Bare domain'i tıklanabilir URL'e çevir. */
+function normalizeUrl(url: string): string {
+  return /^https?:\/\//i.test(url) ? url : `https://${url}`
+}
 
 export function Projects() {
   const { projects, people, privileged, loading, error, reload } = useConfig()
   const { user } = useAuth()
+  const client = useClient()
+  const [orgInfo, setOrgInfo] = useState<GitHubOrg | null>(null)
   const [query, setQuery] = useState('')
   const [language, setLanguage] = useState('')
   const [groupBy, setGroupBy] = useState<'' | 'mentor'>('')
   const [addingMember, setAddingMember] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    void client
+      .request<GitHubOrg>(`/orgs/${encodeURIComponent(CONFIG_OWNER)}`)
+      .then((o) => {
+        if (!cancelled) setOrgInfo(o)
+      })
+      .catch(() => {
+        /* org bilgisi alınamazsa banner gizli kalır */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [client])
 
   const login = user?.login ?? ''
   const canCreate = isHeadOfEngineering(login, privileged)
@@ -54,6 +78,45 @@ export function Projects() {
 
   return (
     <div className="stack" style={{ gap: 'var(--sp-2)' }}>
+      {orgInfo && (
+        <div
+          className="card card-pad row"
+          style={{ gap: 'var(--sp-4)', alignItems: 'center' }}
+        >
+          <img
+            src={orgInfo.avatar_url}
+            alt=""
+            width={52}
+            height={52}
+            style={{ borderRadius: 10, flexShrink: 0 }}
+          />
+          <div className="stack" style={{ gap: 2 }}>
+            <div
+              className="row"
+              style={{ gap: 'var(--sp-2)', alignItems: 'baseline', flexWrap: 'wrap' }}
+            >
+              <strong style={{ fontSize: 'var(--text-lg)' }}>
+                {orgInfo.name ?? orgInfo.login}
+              </strong>
+              <a className="subtle" href={orgInfo.html_url} target="_blank" rel="noreferrer">
+                @{orgInfo.login}
+              </a>
+            </div>
+            {orgInfo.description && <span className="subtle">{orgInfo.description}</span>}
+            {orgInfo.blog && (
+              <a
+                href={normalizeUrl(orgInfo.blog)}
+                target="_blank"
+                rel="noreferrer"
+                style={{ fontSize: 'var(--text-sm)' }}
+              >
+                {orgInfo.blog} ↗
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="row-between page-header">
         <div>
           <h1>Projeler</h1>
