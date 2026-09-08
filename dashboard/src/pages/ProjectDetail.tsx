@@ -256,7 +256,7 @@ export function ProjectDetail() {
         <div className="row">
           {canManage && (
             <button type="button" className="btn btn-sm" onClick={() => setEditing(true)}>
-              Bilgileri düzenle
+              ⚙ Ayarlar
             </button>
           )}
           <a

@@ -222,6 +222,11 @@ export function NewProject() {
             <p className="subtle">
               PR açılacak — merge edilene kadar GitHub'da hiçbir şey değişmez.
             </p>
+            <p className="hint">
+              Görünürlük, dal koruması, şablonlar ve workflow'lar org varsayılanlarını
+              alır. Detaylı ayarları repo oluştuktan sonra projenin <strong>⚙ Ayarlar</strong>
+              ekranından yapabilirsin.
+            </p>
           </div>
         )}
 
