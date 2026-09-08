@@ -31,14 +31,13 @@ const listKey = (role: ProjectRole): MemberList =>
 export function ProjectDetail() {
   const { name } = useParams<{ name: string }>()
   const { project, loading, error } = useProject(name)
-  const { org, privileged, reload } = useConfig()
+  const { org, privileged, people: peopleConfig, reload } = useConfig()
   const { user } = useAuth()
   const client = useClient()
   const { busy, submit } = useProposal()
 
   const [addRole, setAddRole] = useState<ProjectRole | null>(null)
   const [newLogin, setNewLogin] = useState('')
-  const [loginVerified, setLoginVerified] = useState(false)
   const [addError, setAddError] = useState<string | null>(null)
   const [removeTarget, setRemoveTarget] = useState<{ login: string; role: ProjectRole } | null>(
     null,
@@ -83,7 +82,6 @@ export function ProjectDetail() {
   function closeAdd() {
     setAddRole(null)
     setNewLogin('')
-    setLoginVerified(false)
     setAddError(null)
   }
 
@@ -101,9 +99,13 @@ export function ProjectDetail() {
       return setAddError(`${login} zaten ${ROLE_LABEL[addRole].toLowerCase()} listesinde.`)
     }
 
-    if (!loginVerified) {
-      const user = await client.userExists(login)
-      if (!user) return setAddError('Bu kullanıcı adı GitHub\'da bulunamadı.')
+    // Repo'ya eklenen kişi mutlaka org üyesi olmalı — engine bunu zaten zorunlu
+    // kılıyor (repo_people_missing_from_people), UI'da baştan engelliyoruz.
+    const isMember = (peopleConfig?.members ?? []).some(
+      (m) => m.toLowerCase() === login.toLowerCase(),
+    )
+    if (!isMember) {
+      return setAddError('Org üyesi değil. Önce "Üye Ekle" ile organizasyona ekleyin.')
     }
 
     const result = await submit(
@@ -361,11 +363,11 @@ export function ProjectDetail() {
         >
           <div className="stack">
             <UsernameField
-              label="GitHub kullanıcı adı"
+              label="Org üyesi"
               value={newLogin}
               onChange={setNewLogin}
-              onVerified={setLoginVerified}
-              hint="Kişi config dosyasına eklenir; PR merge edilince GitHub'da yetkilenir."
+              members={peopleConfig?.members ?? []}
+              hint="Yalnızca mevcut org üyeleri. PR merge edilince repo'da yetkilenir."
             />
             {addError && (
               <p className="field-error" role="alert">

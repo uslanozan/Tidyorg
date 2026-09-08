@@ -7,28 +7,51 @@ interface Props {
   label: string
   value: string
   onChange: (value: string) => void
-  /** Doğrulama sonucu: GitHub'da var mı? */
-  onVerified?: (exists: boolean) => void
+  /** Doğrulama sonucu. `members` verildiyse: org üyesi mi? Aksi halde: GitHub'da var mı? */
+  onVerified?: (ok: boolean) => void
   hint?: string
+  /**
+   * Verilirse alan bir ÜYE SEÇİCİ olur: autocomplete bu listeden gelir ve yalnızca
+   * listedeki (org üyesi) biri kabul edilir. GitHub'a istek atılmaz — üyeler zaten
+   * doğrulanmış. Repo'ya mentör/developer eklerken kullanılır; engine org üyesi
+   * olmayan birini zaten reddettiği için burada da engellemek doğru ve daha hızlı.
+   */
+  members?: string[]
 }
 
 type Check = 'idle' | 'checking' | 'ok' | 'missing' | 'error'
 
 /**
- * GitHub kullanıcı adı girişi — alandan çıkınca `GET /users/{login}` ile
- * kullanıcının gerçekten var olduğunu doğrular. Var olmayan bir kullanıcıyı
- * config'e yazmak Terraform apply'ını patlatır; hatayı burada yakalamak ucuz.
+ * GitHub kullanıcı adı girişi. İki mod:
+ *  - Varsayılan: alandan çıkınca `GET /users/{login}` ile kullanıcının var olduğunu doğrular.
+ *  - `members` verildiğinde: org üyesi seçici (datalist autocomplete + yerel doğrulama).
  */
-export function UsernameField({ label, value, onChange, onVerified, hint }: Props) {
+export function UsernameField({ label, value, onChange, onVerified, hint, members }: Props) {
   const client = useClient()
   const [check, setCheck] = useState<Check>('idle')
   const [message, setMessage] = useState<string | null>(null)
+  const listId = `members-${label}`
 
   async function verify() {
     const login = value.trim()
     if (!login) {
       setCheck('idle')
       setMessage(null)
+      return
+    }
+
+    // Üye seçici modu — yerel kontrol, GitHub'a gitmez.
+    if (members) {
+      const found = members.some((m) => m.toLowerCase() === login.toLowerCase())
+      if (found) {
+        setCheck('ok')
+        setMessage(`${login} — org üyesi`)
+        onVerified?.(true)
+      } else {
+        setCheck('missing')
+        setMessage('Org üyesi değil. Önce "Üye Ekle" ile organizasyona ekleyin.')
+        onVerified?.(false)
+      }
       return
     }
 
@@ -73,7 +96,8 @@ export function UsernameField({ label, value, onChange, onVerified, hint }: Prop
         className="input"
         value={value}
         autoComplete="off"
-        placeholder="github-kullanici-adi"
+        list={members ? listId : undefined}
+        placeholder={members ? 'org üyesi seç…' : 'github-kullanici-adi'}
         aria-invalid={invalid}
         onChange={(event) => {
           onChange(event.target.value)
@@ -83,6 +107,13 @@ export function UsernameField({ label, value, onChange, onVerified, hint }: Prop
         }}
         onBlur={verify}
       />
+      {members && (
+        <datalist id={listId}>
+          {members.map((m) => (
+            <option key={m} value={m} />
+          ))}
+        </datalist>
+      )}
       {hint && !message && <span className="hint">{hint}</span>}
       {check === 'checking' && <span className="hint">Kontrol ediliyor…</span>}
       {message && (

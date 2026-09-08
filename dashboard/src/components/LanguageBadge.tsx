@@ -1,31 +1,28 @@
 import type { Language } from '../types/config'
 
-// Renkler GitHub Linguist'ten (github/linguist) — marka renkleri, temadan bağımsız.
-// mono: küçük renkli kare içinde gösterilen kısa monogram ("ikon"). Logolara
-// (asset yükü) gerek kalmadan her dile ayırt edici bir işaret verir.
-type LangMeta = { label: string; color: string; mono: string }
-
-const LANG_META: Record<string, LangMeta> = {
-  go: { label: 'Go', color: '#00ADD8', mono: 'Go' },
-  python: { label: 'Python', color: '#3572A5', mono: 'Py' },
-  typescript: { label: 'TypeScript', color: '#3178C6', mono: 'TS' },
-  javascript: { label: 'JavaScript', color: '#F1E05A', mono: 'JS' },
-  php: { label: 'PHP', color: '#4F5D95', mono: 'PHP' },
-  java: { label: 'Java', color: '#B07219', mono: 'Jv' },
-  cpp: { label: 'C++', color: '#F34B7D', mono: 'C++' },
-  csharp: { label: 'C#', color: '#178600', mono: 'C#' },
-  c: { label: 'C', color: '#555555', mono: 'C' },
-  rust: { label: 'Rust', color: '#DEA584', mono: 'Rs' },
-  ruby: { label: 'Ruby', color: '#701516', mono: 'Rb' },
-  kotlin: { label: 'Kotlin', color: '#A97BFF', mono: 'Kt' },
-  swift: { label: 'Swift', color: '#F05138', mono: 'Sw' },
-  scala: { label: 'Scala', color: '#C22D40', mono: 'Sc' },
-  dart: { label: 'Dart', color: '#00B4AB', mono: 'Dt' },
-  elixir: { label: 'Elixir', color: '#6E4A7E', mono: 'Ex' },
-  shell: { label: 'Shell', color: '#89E051', mono: 'Sh' },
+// Bilinen diller: gerçek logo public/lang/<token>.svg (devicon, bundle edilmiş —
+// runtime CDN bağımlılığı yok). Bilinmeyen dil: renkli monogram fallback.
+const LANG_LABELS: Record<string, string> = {
+  go: 'Go',
+  python: 'Python',
+  typescript: 'TypeScript',
+  javascript: 'JavaScript',
+  php: 'PHP',
+  java: 'Java',
+  cpp: 'C++',
+  csharp: 'C#',
+  c: 'C',
+  rust: 'Rust',
+  ruby: 'Ruby',
+  kotlin: 'Kotlin',
+  swift: 'Swift',
+  scala: 'Scala',
+  dart: 'Dart',
+  elixir: 'Elixir',
+  shell: 'Shell',
 }
 
-// Config token'ı olmayan ama gelebilecek yaygın yazımlar.
+// Config token'ı olmayan ama gelebilecek yaygın yazımlar → kanonik token.
 const ALIASES: Record<string, string> = {
   'c++': 'cpp',
   'c#': 'csharp',
@@ -44,33 +41,41 @@ const ALIASES: Record<string, string> = {
 
 const UNKNOWN_COLOR = '#94A3B8'
 
-/** Arka plan rengine göre okunaklı yazı rengi (siyah/beyaz). */
-function textOn(hex: string): string {
-  const h = hex.replace('#', '')
-  const r = parseInt(h.slice(0, 2), 16)
-  const g = parseInt(h.slice(2, 4), 16)
-  const b = parseInt(h.slice(4, 6), 16)
-  // algılanan parlaklık (ITU-R BT.601)
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
-  return luminance > 0.6 ? '#111827' : '#ffffff'
+/** Kanonik dil token'ı (bilinen bir dilse), yoksa undefined. */
+function resolve(lang: string): string | undefined {
+  const lower = lang.toLowerCase()
+  if (LANG_LABELS[lower]) return lower
+  return ALIASES[lower]
 }
 
 /** Bir dil token'ının görünen adı (ör. "cpp" → "C++"). Dropdown'larda kullanılır. */
 export function languageLabel(lang: string): string {
-  const key = String(lang).toLowerCase()
-  return (LANG_META[key] ?? LANG_META[ALIASES[key] ?? ''])?.label ?? String(lang)
+  const key = resolve(lang)
+  return key ? LANG_LABELS[key] : String(lang)
 }
 
 export function LanguageBadge({ language }: { language: Language | string }) {
   const raw = String(language)
-  const key = raw.toLowerCase()
-  const resolved = LANG_META[key] ?? LANG_META[ALIASES[key] ?? '']
-  const meta: LangMeta = resolved ?? {
-    label: raw,
-    color: UNKNOWN_COLOR,
-    mono: raw.slice(0, 2).toUpperCase() || '?',
+  const key = resolve(raw)
+
+  if (key) {
+    return (
+      <span className="badge">
+        <img
+          src={`/lang/${key}.svg`}
+          alt=""
+          aria-hidden="true"
+          width={16}
+          height={16}
+          style={{ display: 'block', objectFit: 'contain' }}
+        />
+        {LANG_LABELS[key]}
+      </span>
+    )
   }
 
+  // Bilinmeyen dil → renkli monogram (logo yok).
+  const mono = raw.slice(0, 2).toUpperCase() || '?'
   return (
     <span className="badge">
       <span
@@ -83,16 +88,16 @@ export function LanguageBadge({ language }: { language: Language | string }) {
           height: 18,
           padding: '0 4px',
           borderRadius: 4,
-          background: meta.color,
-          color: textOn(meta.color),
+          background: UNKNOWN_COLOR,
+          color: '#111827',
           fontSize: 10,
           fontWeight: 700,
           lineHeight: 1,
         }}
       >
-        {meta.mono}
+        {mono}
       </span>
-      {meta.label}
+      {raw}
     </span>
   )
 }

@@ -15,7 +15,7 @@ import { LANGUAGES, type Language, type RepoConfig } from '../types/config'
 const STEPS = ['Repo bilgileri', 'Dil', 'Mentör'] as const
 
 export function NewProject() {
-  const { projects, privileged } = useConfig()
+  const { projects, privileged, people } = useConfig()
   const { user } = useAuth()
   const client = useClient()
   const { busy, submit } = useProposal()
@@ -184,11 +184,12 @@ export function NewProject() {
 
         {step === 2 && (
           <UsernameField
-            label="İlk mentör (GitHub kullanıcı adı)"
+            label="İlk mentör (org üyesi)"
             value={mentor}
             onChange={setMentor}
             onVerified={setMentorVerified}
-            hint="Mentör repo'da admin yetkisi alır. Sonradan değiştirilebilir."
+            members={people?.members ?? []}
+            hint="Yalnızca mevcut org üyeleri. Mentör repo'da admin yetkisi alır."
           />
         )}
 
