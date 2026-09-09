@@ -57,3 +57,10 @@ Desktop.ini
 !.env.example
 *.pem
 *.key
+
+# ─── Docker runtime mounts (docker-compose bind-mount targets) ───
+# Root-anchored so terraform/config/ and config.example/ are NOT ignored.
+# These hold the operator's REAL private config, local tfstate and App key —
+# never source, never committed.
+/config/
+/state/
