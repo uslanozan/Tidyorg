@@ -10,25 +10,29 @@
     1. Only an ORG OWNER may run it (checked against the GitHub API).
     2. Only an ALREADY-ARCHIVED repo may be deleted (archive first, via config).
 
-  Actions, in this exact order (order matters — config leaves before state, so a
+  Actions, in this exact order (order matters - config leaves before state, so a
   stray apply cannot recreate the repo):
     1. Remove terraform/config/repositories/<repo>.yml and push it.
     2. terraform state rm 'module.repositories["<repo>"]'  (bypass prevent_destroy)
     3. DELETE the repository via the GitHub API.
     4. DELETE the leftover <repo>-mentors / <repo>-devs teams.
 
-  Auth: uses YOUR OWN token via $env:GH_TOKEN (an org-owner PAT with scopes
-  repo, delete_repo, admin:org). The engine's GitHub App cannot delete repos, and
-  a non-owner token cannot pass the guardrails.
+  Auth - no manual PAT needed if you use the GitHub CLI:
+    * Preferred: gh CLI. Run `gh auth login` once; the script acts as YOU, so your
+      org-owner status is the gate. First time also run
+      `gh auth refresh -s delete_repo,admin:org` to grant the delete scopes.
+    * Fallback: a PAT in $env:GH_TOKEN (scopes: repo, delete_repo, admin:org).
+  The engine's GitHub App is intentionally NOT used: it cannot delete repos, and
+  granting it that power would let the dashboard delete too.
 
-  Unlike the bash version this needs no curl/jq — Invoke-RestMethod + native JSON.
-  Requires: git, terraform (initialised in .\terraform).
+  Requires: git, terraform. gh (preferred) OR $env:GH_TOKEN. No curl/jq needed.
 
 .EXAMPLE
-  $env:GH_TOKEN='ghp_xxx'; $env:GITHUB_ORG='your-org'; .\scripts\hard-delete-repo.ps1 -DryRun my-repo
+  gh auth login; gh auth refresh -s delete_repo,admin:org
+  $env:GITHUB_ORG='your-org'; .\scripts\hard-delete-repo.ps1 -DryRun my-repo
 
 .EXAMPLE
-  $env:GH_TOKEN='ghp_xxx'; $env:GITHUB_ORG='your-org'; .\scripts\hard-delete-repo.ps1 my-repo
+  $env:GITHUB_ORG='your-org'; .\scripts\hard-delete-repo.ps1 my-repo
 #>
 [CmdletBinding()]
 param(
@@ -38,18 +42,47 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-# GitHub requires TLS 1.2; Windows PowerShell 5.1 does not always default to it.
 try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 } catch {}
 
 function Die($m) { Write-Host "X $m" -ForegroundColor Red; exit 1 }
 function Step($m) { Write-Host "> $m" -ForegroundColor Cyan }
 function Info($m) { Write-Host "  $m" }
 
-# ---- deps + env -------------------------------------------------------------
+# ---- deps -------------------------------------------------------------------
 foreach ($c in 'git', 'terraform') {
   if (-not (Get-Command $c -ErrorAction SilentlyContinue)) { Die "missing dependency: $c" }
 }
-if (-not $env:GH_TOKEN) { Die "GH_TOKEN is not set (org-owner PAT with repo, delete_repo, admin:org)" }
+
+# ---- auth mode: prefer gh CLI, else a PAT in $env:GH_TOKEN ------------------
+$ghReady = $false
+if (Get-Command gh -ErrorAction SilentlyContinue) {
+  & gh auth status 2>$null | Out-Null
+  if ($LASTEXITCODE -eq 0) { $ghReady = $true }
+}
+if ($ghReady) { $authMode = 'gh' }
+elseif ($env:GH_TOKEN) { $authMode = 'token' }
+else { Die "no GitHub auth - run 'gh auth login' (recommended) or set GH_TOKEN" }
+
+$api = 'https://api.github.com'
+$headers = @{ Authorization = "Bearer $($env:GH_TOKEN)"; Accept = 'application/vnd.github+json' }
+
+# API helpers take a path (e.g. /repos/o/r) and use whichever auth mode is active.
+function GhGet($path) {
+  if ($authMode -eq 'gh') {
+    $out = & gh api $path 2>$null
+    if ($LASTEXITCODE -ne 0) { throw "gh api failed: $path" }
+    return ($out | Out-String | ConvertFrom-Json)
+  }
+  return Invoke-RestMethod -Uri "$api$path" -Headers $headers -Method Get
+}
+function GhDelete($path) {
+  if ($authMode -eq 'gh') {
+    & gh api -X DELETE $path 2>$null | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "gh api DELETE failed: $path" }
+    return
+  }
+  Invoke-RestMethod -Uri "$api$path" -Headers $headers -Method Delete | Out-Null
+}
 
 $root = (& git rev-parse --show-toplevel 2>$null)
 if ($LASTEXITCODE -ne 0 -or -not $root) { Die "not inside a git repository" }
@@ -66,29 +99,32 @@ if (-not $org) {
 }
 if (-not $org) { Die "cannot determine org - set GITHUB_ORG" }
 
-$api = 'https://api.github.com'
-$headers = @{ Authorization = "Bearer $($env:GH_TOKEN)"; Accept = 'application/vnd.github+json' }
-function GhGet($url) { Invoke-RestMethod -Uri $url -Headers $headers -Method Get }
-function GhDelete($url) { Invoke-RestMethod -Uri $url -Headers $headers -Method Delete | Out-Null }
-
 # Preflight: state must be readable now, so we never mutate then find we cannot
 # run `state rm` (which would leave a dangling, prevent_destroy'd entry).
 $stateList = (& terraform -chdir="$root/terraform" state list 2>$null)
 if ($LASTEXITCODE -ne 0) { Die "cannot read terraform state - run 'terraform init' in ./terraform (and set backend creds for remote state)" }
 
+# Preflight: if we will push the config removal, local must not be behind origin,
+# or the push is rejected mid-operation, leaving a half-done local commit.
+if (Test-Path $configFile) {
+  $curBranch = (& git -C $root rev-parse --abbrev-ref HEAD)
+  & git -C $root fetch -q origin 2>$null
+  $behind = (& git -C $root rev-list --count "HEAD..origin/$curBranch" 2>$null)
+  if ($LASTEXITCODE -eq 0 -and [int]$behind -gt 0) { Die "local '$curBranch' is $behind commit(s) behind origin - run 'git pull' first, then re-run." }
+}
+
 # ---- guardrail 1: caller must be an org owner -------------------------------
 Step "Checking caller identity..."
-try { $login = (GhGet "$api/user").login } catch { Die "could not resolve token owner (bad GH_TOKEN?)" }
-if (-not $login) { Die "could not resolve token owner" }
-
+try { $login = (GhGet "/user").login } catch { Die "could not resolve your GitHub identity (is gh logged in / GH_TOKEN valid?)" }
+if (-not $login) { Die "could not resolve your GitHub identity" }
 $role = $null
-try { $role = (GhGet "$api/orgs/$org/memberships/$login").role } catch { }
+try { $role = (GhGet "/orgs/$org/memberships/$login").role } catch { }
 if ($role -ne 'admin') { Die "$login is not an owner of '$org' (role: $role). Only org owners may hard-delete." }
 Info "$login is an owner of $org (ok)"
 
 # ---- guardrail 2: repo must exist and be archived ---------------------------
 Step "Checking repository state..."
-try { $repoJson = GhGet "$api/repos/$org/$Repo" } catch { Die "repo '$org/$Repo' not found (or no access)" }
+try { $repoJson = GhGet "/repos/$org/$Repo" } catch { Die "repo '$org/$Repo' not found (or no access)" }
 if (-not $repoJson.archived) { Die "'$Repo' is NOT archived. Archive it first (dashboard -> Arsivle, or archived: true in config), then re-run." }
 Info "$org/$Repo exists and is archived (ok)"
 
@@ -100,7 +136,7 @@ $stateAddr = "module.repositories[""$Repo""]"
 
 # ---- plan -------------------------------------------------------------------
 Write-Host ""
-Step "Planned actions for $org/${Repo}:"
+Step "Planned actions for $org/${Repo}  (auth: $authMode):"
 if (Test-Path $configFile) { Info "1. git rm  terraform/config/repositories/$Repo.yml  (commit + push)" }
 else { Info "1. (config file already absent - skipped)" }
 Info "2. terraform state rm  $stateAddr"
@@ -141,16 +177,16 @@ else { Info "state: $stateAddr not tracked - skipped" }
 
 # ---- 3. delete the repository ------------------------------------------------
 Step "Deleting repository $org/$Repo..."
-GhDelete "$api/repos/$org/$Repo"
+GhDelete "/repos/$org/$Repo"
 Info "repository deleted (ok)"
 
 # ---- 4. delete leftover teams ------------------------------------------------
 foreach ($slug in @($mentorsSlug, $devsSlug)) {
   $exists = $true
-  try { GhGet "$api/orgs/$org/teams/$slug" | Out-Null } catch { $exists = $false }
+  try { GhGet "/orgs/$org/teams/$slug" | Out-Null } catch { $exists = $false }
   if ($exists) {
     Step "Deleting team $slug..."
-    GhDelete "$api/orgs/$org/teams/$slug"
+    GhDelete "/orgs/$org/teams/$slug"
     Info "team $slug deleted (ok)"
   }
   else { Info "team $slug not found - skipped" }
