@@ -1,0 +1,15 @@
+{
+  "name": "tidyorg-dashboard",
+  "url": "https://github.com/your-org",
+  "description": "User-facing GitHub App for the tidyorg dashboard. Signs users in via device flow and opens pull requests against the config repo on their behalf. Deliberately narrow: it can read/write file contents and pull requests, and nothing else — no repo administration, no org membership. This is the escalation gate: the dashboard can never delete a repo or edit privileged.yml.",
+  "public": false,
+  "hook_attributes": {
+    "active": false
+  },
+  "default_permissions": {
+    "contents": "write",
+    "pull_requests": "write",
+    "metadata": "read"
+  },
+  "default_events": []
+}

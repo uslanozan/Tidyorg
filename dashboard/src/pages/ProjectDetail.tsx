@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { LabelChip } from '../components/LabelChip'
 import { LanguageBadge } from '../components/LanguageBadge'
 import { ConfirmDialog, Modal } from '../components/Modal'
 import { Person } from '../components/Person'
@@ -423,6 +424,38 @@ export function ProjectDetail() {
         </div>
       </section>
 
+      {(() => {
+        const seedLabels = org?.defaults.labels ?? []
+        const isCustom = Boolean(config.labels)
+        const shown = config.labels ?? seedLabels
+        return (
+          <section className="card card-pad section">
+            <div className="row-between">
+              <h2 style={{ fontSize: 'var(--text-lg)' }}>
+                Etiketler <span className="subtle">({shown.length})</span>
+              </h2>
+              <span className={isCustom ? 'badge badge-accent' : 'badge'}>
+                {isCustom ? 'Bu repoya özel' : 'Org varsayılanı (miras)'}
+              </span>
+            </div>
+            <p className="subtle">
+              {isCustom
+                ? 'Bu repo kendi etiket setini tanımlıyor; org varsayılanının yerine geçer. Issue ve PR’larda bu etiketler kullanılabilir.'
+                : 'Org genel etiket seti miras alınıyor. Bu repoya özel bir set için ⚙ Ayarlar → Etiketler.'}
+            </p>
+            {shown.length === 0 ? (
+              <p className="subtle">Etiket yok.</p>
+            ) : (
+              <div className="row" style={{ flexWrap: 'wrap', gap: 'var(--sp-2)' }}>
+                {shown.map((label) => (
+                  <LabelChip key={label.name} label={label} />
+                ))}
+              </div>
+            )}
+          </section>
+        )
+      })()}
+
       {addRole && (
         <Modal
           title={`${ROLE_LABEL[addRole]} Ekle — ${project.name}`}
@@ -551,6 +584,7 @@ export function ProjectDetail() {
           repoName={project.name}
           config={config}
           defaultBranches={Object.keys(org?.defaults.protected_branches ?? {})}
+          defaultLabels={org?.defaults.labels ?? []}
           busy={busy}
           onCancel={() => setEditing(false)}
           onSave={async (changes, details) => {

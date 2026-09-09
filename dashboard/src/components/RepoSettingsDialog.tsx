@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
+import { LabelChip } from './LabelChip'
 import { languageLabel } from './LanguageBadge'
 import { Modal } from './Modal'
 import { validateDescription } from '../services/validation'
@@ -8,6 +9,7 @@ import {
   type Language,
   type ProtectedBranchRule,
   type RepoConfig,
+  type RepoLabel,
   type TemplateMode,
 } from '../types/config'
 
@@ -58,6 +60,8 @@ interface Props {
   config: RepoConfig
   /** Org varsayılanındaki dal adları — "dala geri koruma ekle" için. */
   defaultBranches: string[]
+  /** Org varsayılan etiket seti — miras önizlemesi ve "ez"e başlangıç için. */
+  defaultLabels: RepoLabel[]
   busy: boolean
   onCancel: () => void
   onSave: (changes: Record<string, YamlValue | undefined>, details: string[]) => void
@@ -67,6 +71,7 @@ export function RepoSettingsDialog({
   repoName,
   config,
   defaultBranches,
+  defaultLabels,
   busy,
   onCancel,
   onSave,
@@ -106,6 +111,13 @@ export function RepoSettingsDialog({
     })),
   )
 
+  // Etiketler: override kapalıysa org varsayılanı miras alınır. Açılınca org
+  // setinden bir kopyayla başlanır (boş listeden değil) — düzenlemesi kolay olsun.
+  const [overrideLabels, setOverrideLabels] = useState(Boolean(config.labels))
+  const [labels, setLabels] = useState<RepoLabel[]>(() =>
+    (config.labels ?? []).map((l) => ({ ...l })),
+  )
+
   const [error, setError] = useState<string | null>(null)
 
   const branchNames = useMemo(() => {
@@ -130,6 +142,16 @@ export function RepoSettingsDialog({
 
   function patchBranch(name: string, patch: Partial<ProtectedBranchRule>) {
     setBranches((prev) => ({ ...prev, [name]: { ...(prev[name] ?? {}), ...patch } }))
+  }
+
+  function toggleOverrideLabels(on: boolean) {
+    setOverrideLabels(on)
+    // İlk kez ezerken boş listeyle değil, org setinin kopyasıyla başla.
+    if (on && labels.length === 0) setLabels(defaultLabels.map((l) => ({ ...l })))
+  }
+
+  function patchLabel(index: number, patch: Partial<RepoLabel>) {
+    setLabels((prev) => prev.map((l, i) => (i === index ? { ...l, ...patch } : l)))
   }
 
   function save() {
@@ -220,6 +242,18 @@ export function RepoSettingsDialog({
         ? (nextOwners as unknown as YamlValue)
         : undefined
       details.push('CODEOWNERS kuralları güncellendi')
+    }
+
+    // labels — override kapalıysa anahtar silinir (org varsayılanı miras); açıksa
+    // temizlenmiş liste yazılır (adsız satırlar düşer, renk normalize edilir).
+    const nextLabels = overrideLabels ? cleanLabels(labels) : undefined
+    if (!deepEqual(nextLabels ?? null, config.labels ?? null)) {
+      changes.labels = nextLabels as unknown as YamlValue | undefined
+      details.push(
+        overrideLabels
+          ? `Etiket seti bu repoya özel yapıldı (${nextLabels?.length ?? 0} etiket)`
+          : 'Etiket ezmesi kaldırıldı — org varsayılanı miras alınacak',
+      )
     }
 
     if (!details.length) return setError('Hiçbir alan değişmedi.')
@@ -511,6 +545,82 @@ export function RepoSettingsDialog({
           </button>
         </Section>
 
+        <Section title="Etiketler (issue label seti)">
+          <label className="row" style={{ gap: 'var(--sp-2)', fontSize: 'var(--text-sm)' }}>
+            <input
+              type="checkbox"
+              checked={overrideLabels}
+              onChange={(e) => toggleOverrideLabels(e.target.checked)}
+            />
+            Org varsayılanını ez (bu repoya özel set)
+          </label>
+
+          {!overrideLabels ? (
+            <div className="stack" style={{ gap: 'var(--sp-2)' }}>
+              <p className="hint">
+                Org genel etiket seti miras alınıyor ({defaultLabels.length} etiket). Ez'i
+                işaretlersen org setinin bir kopyasıyla başlar, bu repoya özel düzenlersin.
+              </p>
+              {defaultLabels.length > 0 && (
+                <div className="row" style={{ flexWrap: 'wrap', gap: 'var(--sp-2)' }}>
+                  {defaultLabels.map((label) => (
+                    <LabelChip key={label.name} label={label} />
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="stack" style={{ gap: 'var(--sp-2)' }}>
+              {labels.length === 0 && (
+                <p className="hint">
+                  ⚠️ Liste boş — kaydedersen bu repoda hiç etiket kalmaz (
+                  <code>labels: []</code>).
+                </p>
+              )}
+              {labels.map((row, i) => (
+                <div key={i} className="row" style={{ gap: 'var(--sp-2)', alignItems: 'center' }}>
+                  <input
+                    type="color"
+                    aria-label="Renk"
+                    style={{ width: 40, height: 32, padding: 0, flex: 'none' }}
+                    value={`#${(row.color || 'ededed').replace('#', '')}`}
+                    onChange={(e) => patchLabel(i, { color: e.target.value.replace('#', '') })}
+                  />
+                  <input
+                    className="input"
+                    placeholder="ad (örn. type: bug)"
+                    value={row.name}
+                    onChange={(e) => patchLabel(i, { name: e.target.value })}
+                  />
+                  <input
+                    className="input"
+                    placeholder="açıklama (opsiyonel)"
+                    value={row.description ?? ''}
+                    onChange={(e) => patchLabel(i, { description: e.target.value })}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    aria-label="Etiketi kaldır"
+                    onClick={() => setLabels((prev) => prev.filter((_, j) => j !== i))}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={() =>
+                  setLabels((prev) => [...prev, { name: '', color: 'ededed', description: '' }])
+                }
+              >
+                + Etiket ekle
+              </button>
+            </div>
+          )}
+        </Section>
+
         {error && (
           <p className="field-error" role="alert">
             {error}
@@ -571,6 +681,24 @@ function pruneEmptyRules(
     } else if (rule && Object.keys(rule).length) {
       out[name] = rule
     }
+  }
+  return out
+}
+
+/**
+ * Etiket satırlarını yazıma hazırlar: adsız satırları at, rengi `#`'siz küçük
+ * harf hex'e normalize et, boş açıklamayı düşür. GitHub/engine bu formatı bekler.
+ */
+function cleanLabels(rows: RepoLabel[]): RepoLabel[] {
+  const out: RepoLabel[] = []
+  for (const row of rows) {
+    const name = row.name.trim()
+    if (!name) continue
+    const color = row.color.replace('#', '').trim().toLowerCase() || 'ededed'
+    const label: RepoLabel = { name, color }
+    const description = row.description?.trim()
+    if (description) label.description = description
+    out.push(label)
   }
   return out
 }
