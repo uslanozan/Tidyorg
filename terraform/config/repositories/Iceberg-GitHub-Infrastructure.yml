@@ -1,5 +1,5 @@
 description: "Infrastructure as Code for managing the Tidyorg organization"
-language: typescript
+language: hcl
 
 # ⚠️ BU LİSTE BUGÜNKÜ EN ÖNEMLİ GÜVENLİK SINIRIDIR — kilitlerden daha önemli.
 #
