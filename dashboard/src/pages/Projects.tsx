@@ -77,46 +77,51 @@ export function Projects() {
   }, [visible, groupBy])
 
   return (
-    <div className="stack" style={{ gap: 'var(--sp-2)' }}>
+    <div
+      className={orgInfo ? 'home-layout' : 'stack'}
+      style={orgInfo ? undefined : { gap: 'var(--sp-2)' }}
+    >
       {orgInfo && (
-        <div
-          className="card card-pad row"
-          style={{ gap: 'var(--sp-4)', alignItems: 'center' }}
+        <aside
+          className="card card-pad stack"
+          style={{ gap: 'var(--sp-2)', position: 'sticky', top: 'var(--sp-6)' }}
         >
           <img
             src={orgInfo.avatar_url}
             alt=""
-            width={52}
-            height={52}
-            style={{ borderRadius: 10, flexShrink: 0 }}
+            width={72}
+            height={72}
+            style={{ borderRadius: 12 }}
           />
-          <div className="stack" style={{ gap: 2 }}>
-            <div
-              className="row"
-              style={{ gap: 'var(--sp-2)', alignItems: 'baseline', flexWrap: 'wrap' }}
-            >
-              <strong style={{ fontSize: 'var(--text-lg)' }}>
-                {orgInfo.name ?? orgInfo.login}
-              </strong>
+          <div>
+            <strong style={{ fontSize: 'var(--text-lg)' }}>
+              {orgInfo.name ?? orgInfo.login}
+            </strong>
+            <div>
               <a className="subtle" href={orgInfo.html_url} target="_blank" rel="noreferrer">
                 @{orgInfo.login}
               </a>
             </div>
-            {orgInfo.description && <span className="subtle">{orgInfo.description}</span>}
-            {orgInfo.blog && (
-              <a
-                href={normalizeUrl(orgInfo.blog)}
-                target="_blank"
-                rel="noreferrer"
-                style={{ fontSize: 'var(--text-sm)' }}
-              >
-                {orgInfo.blog} ↗
-              </a>
-            )}
           </div>
-        </div>
+          {orgInfo.description && (
+            <p className="subtle" style={{ margin: 0 }}>
+              {orgInfo.description}
+            </p>
+          )}
+          {orgInfo.blog && (
+            <a
+              href={normalizeUrl(orgInfo.blog)}
+              target="_blank"
+              rel="noreferrer"
+              style={{ fontSize: 'var(--text-sm)' }}
+            >
+              {orgInfo.blog} ↗
+            </a>
+          )}
+        </aside>
       )}
 
+      <div className="stack" style={{ gap: 'var(--sp-2)', minWidth: 0 }}>
       <div className="row-between page-header">
         <div>
           <h1>Projeler</h1>
@@ -218,6 +223,7 @@ export function Projects() {
           ))}
         </div>
       )}
+      </div>
 
       {addingMember && (
         <AddMemberDialog
