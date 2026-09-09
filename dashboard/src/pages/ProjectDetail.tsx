@@ -74,6 +74,7 @@ export function ProjectDetail() {
     null,
   )
   const [editing, setEditing] = useState(false)
+  const [archiving, setArchiving] = useState(false)
 
   if (loading && !project) {
     return (
@@ -178,6 +179,29 @@ export function ProjectDetail() {
     if (result) setRemoveTarget(null)
   }
 
+  async function confirmArchive() {
+    if (!project) return
+    const next = !config.archived
+    const result = await submit(
+      () =>
+        proposeRepoConfigUpdate({
+          client,
+          project,
+          edits: () => ({ archived: next }),
+          summary: next
+            ? `${project.name} arşivlendi`
+            : `${project.name} arşivden çıkarıldı`,
+          details: [
+            next
+              ? '`archived: true` — repo dondurulur (read-only), içerik korunur.'
+              : '`archived: false` — repo tekrar yazılabilir.',
+          ],
+        }),
+      next ? `${project.name} arşivleniyor` : `${project.name} arşivden çıkarılıyor`,
+    )
+    if (result) setArchiving(false)
+  }
+
   const memberSection = (role: ProjectRole) => {
     const people = config[listKey(role)] ?? []
     const removalBlocked = (login: string) =>
@@ -257,6 +281,11 @@ export function ProjectDetail() {
           {canManage && (
             <button type="button" className="btn btn-sm" onClick={() => setEditing(true)}>
               ⚙ Ayarlar
+            </button>
+          )}
+          {canManage && (
+            <button type="button" className="btn btn-sm" onClick={() => setArchiving(true)}>
+              {config.archived ? 'Arşivden çıkar' : '🗄 Arşivle'}
             </button>
           )}
           <a
@@ -433,6 +462,63 @@ export function ProjectDetail() {
           busy={busy}
           onConfirm={() => void confirmRemove()}
           onCancel={() => setRemoveTarget(null)}
+        />
+      )}
+
+      {archiving && (
+        <ConfirmDialog
+          title={
+            config.archived
+              ? `${project.name} arşivden çıkarılsın mı?`
+              : `${project.name} arşivlensin mi?`
+          }
+          message={
+            config.archived ? (
+              <>
+                <strong>{project.name}</strong> tekrar yazılabilir hale gelir (
+                <code>archived: false</code>). Bu işlem bir PR açar.
+              </>
+            ) : (
+              <div className="stack" style={{ gap: 'var(--sp-3)' }}>
+                <p style={{ margin: 0 }}>
+                  <strong>{project.name}</strong> arşivlenir: repo dondurulur (read-only),
+                  tüm içerik ve geçmiş korunur, istediğinde geri alınır (
+                  <code>archived: true</code>). Bir PR açılır; merge edilene kadar GitHub'da
+                  hiçbir şey değişmez.
+                </p>
+                <div
+                  className="card card-pad"
+                  style={{ background: 'var(--surface-sunken)' }}
+                >
+                  <div className="meta-label">Kalıcı silme (hard delete) neden panelde yok</div>
+                  <p className="subtle" style={{ margin: '4px 0 0' }}>
+                    Panel repoyu <strong>silmez</strong>: geri dönüşü yok ve motorda{' '}
+                    <code>prevent_destroy</code> kilidi var. Gerçekten silmek gerekiyorsa
+                    elle, bilinçli adımlarla:
+                  </p>
+                  <ol className="subtle" style={{ margin: '6px 0 0', paddingLeft: '1.2em' }}>
+                    <li>
+                      Repoyu <code>config/repositories/{project.name}.yml</code>'den kaldır (PR).
+                    </li>
+                    <li>
+                      Apply <em>silmez</em> (prevent_destroy) — bir platform-admin{' '}
+                      <code>terraform state rm 'module.repositories["{project.name}"]'</code>{' '}
+                      çalıştırır.
+                    </li>
+                    <li>
+                      Repoyu GitHub'dan elle sil; geride kalan{' '}
+                      <code>{project.name}-mentors</code> / <code>-devs</code> takımlarını da
+                      temizle.
+                    </li>
+                  </ol>
+                </div>
+              </div>
+            )
+          }
+          confirmLabel={config.archived ? 'Arşivden çıkar ve PR aç' : 'Arşivle ve PR aç'}
+          busy={busy}
+          onConfirm={() => void confirmArchive()}
+          onCancel={() => setArchiving(false)}
         />
       )}
 
