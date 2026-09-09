@@ -11,7 +11,7 @@
     "verify:yaml": "esbuild scripts/verify-yaml.ts --bundle --platform=node --format=esm --packages=external --outfile=node_modules/.tmp/verify-yaml.mjs && node node_modules/.tmp/verify-yaml.mjs"
   },
   "dependencies": {
-    "js-yaml": "^4.1.0",
+    "js-yaml": "^4.3.2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.5.3"
