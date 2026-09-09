@@ -132,7 +132,12 @@ Info "$org/$Repo exists and is archived (ok)"
 $base = $Repo.ToLower()
 $mentorsSlug = "$base-mentors"
 $devsSlug = "$base-devs"
+# Real-quote form for matching against `state list` output…
 $stateAddr = "module.repositories[""$Repo""]"
+# …and a backslash-escaped form for passing to terraform, because PowerShell
+# strips embedded double-quotes when handing an argument to a native command
+# (plain quotes reach terraform as module.repositories[name] → "Index value required").
+$stateAddrArg = 'module.repositories[\"' + $Repo + '\"]'
 
 # ---- plan -------------------------------------------------------------------
 Write-Host ""
@@ -170,7 +175,7 @@ $tracked = $false
 foreach ($line in $stateList) { if ($line.Contains($stateAddr)) { $tracked = $true; break } }
 if ($tracked) {
   Step "Removing $stateAddr from terraform state..."
-  & terraform -chdir="$root/terraform" state rm $stateAddr
+  & terraform -chdir="$root/terraform" state rm $stateAddrArg
   if ($LASTEXITCODE -ne 0) { Die "terraform state rm failed" }
 }
 else { Info "state: $stateAddr not tracked - skipped" }
