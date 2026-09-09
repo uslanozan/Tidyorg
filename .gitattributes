@@ -1,6 +1,15 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+# Store every text file with LF in the repo AND in the working tree.
+# eol=lf overrides core.autocrlf on Windows, so Git no longer rewrites LF→CRLF
+# on checkout (that conversion is what produced the "LF will be replaced by
+# CRLF" warnings). This repo targets Linux containers, so LF everywhere.
+* text=auto eol=lf
 
-# Shell scripts must stay LF so they run inside Linux containers.
-*.sh text eol=lf
-
+# Binary assets: never touch line endings.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.pem binary
