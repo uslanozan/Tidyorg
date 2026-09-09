@@ -27,6 +27,7 @@ export function NewProject() {
   const [language, setLanguage] = useState<Language>('typescript')
   const [mentors, setMentors] = useState<string[]>([])
   const [developers, setDevelopers] = useState<string[]>([])
+  const [autoInit, setAutoInit] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const existingNames = useMemo(() => projects.map((project) => project.name), [projects])
@@ -36,11 +37,14 @@ export function NewProject() {
     language,
     mentors,
     developers,
+    // auto_init yalnızca varsayılandan farklıysa (false) yazılır — boş repo,
+    // mevcut kod push'lanacak senaryosu.
+    ...(autoInit ? {} : { auto_init: false }),
   }
 
   const preview = useMemo(
     () => serializeRepoConfig(draft),
-    [description, language, mentors, developers],
+    [description, language, mentors, developers, autoInit],
   )
 
   if (!isHeadOfEngineering(user?.login ?? '', privileged)) {
@@ -154,6 +158,34 @@ export function NewProject() {
                   setError(null)
                 }}
               />
+            </div>
+
+            <div className="field">
+              <span className="label">Başlangıç</span>
+              <div className="row" style={{ flexWrap: 'wrap', gap: 'var(--sp-3)' }}>
+                <button
+                  type="button"
+                  className={autoInit ? 'btn btn-primary' : 'btn'}
+                  onClick={() => setAutoInit(true)}
+                  aria-pressed={autoInit}
+                >
+                  İlk commit ile başlat
+                </button>
+                <button
+                  type="button"
+                  className={!autoInit ? 'btn btn-primary' : 'btn'}
+                  onClick={() => setAutoInit(false)}
+                  aria-pressed={!autoInit}
+                >
+                  Boş repo — kodu ben push edeceğim
+                </button>
+              </div>
+              <span className="hint">
+                Zaten kodu olan bir projeyi <strong>taşıyorsan</strong> "Boş repo" seç: repo
+                boş oluşur, sonra <code>git push --mirror</code> ile geçmişi basarsın.
+                "İlk commit" açıkken mevcut geçmişi push etmek "unrelated histories" çakışması
+                yaratır.
+              </span>
             </div>
           </>
         )}

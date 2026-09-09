@@ -488,9 +488,14 @@ export function ProjectDetail() {
                 </p>
                 <div
                   className="card card-pad"
-                  style={{ background: 'var(--surface-sunken)' }}
+                  style={{
+                    background: 'var(--danger-soft)',
+                    border: '1px solid var(--danger)',
+                  }}
                 >
-                  <div className="meta-label">Kalıcı silme (hard delete) neden panelde yok</div>
+                  <div className="meta-label" style={{ color: 'var(--danger)' }}>
+                    ⚠️ Kalıcı silme (hard delete) neden panelde yok
+                  </div>
                   <p className="subtle" style={{ margin: '4px 0 0' }}>
                     Panel repoyu <strong>silmez</strong>: geri dönüşü yok ve motorda{' '}
                     <code>prevent_destroy</code> kilidi var. Gerçekten silmek gerekiyorsa
