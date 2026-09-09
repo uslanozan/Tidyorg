@@ -1,42 +1,60 @@
 import { NavLink, Outlet } from 'react-router-dom'
+import { useI18n } from '../i18n'
 import { useAuth } from '../hooks/useAuth'
 import { usePendingPRs } from '../hooks/usePendingPRs'
 import { useTheme } from '../hooks/useTheme'
 import { CONFIG_OWNER, CONFIG_REPO } from '../services/env'
 
 const THEME_ICON = { system: '🖥️', light: '☀️', dark: '🌙' } as const
-const THEME_LABEL = { system: 'Sistem teması', light: 'Açık tema', dark: 'Koyu tema' } as const
 
 export function AppShell() {
   const { user, signOut } = useAuth()
   const { choice, cycle } = useTheme()
+  const { t, lang, toggle } = useI18n()
   const pendingPRs = usePendingPRs()
+
+  const themeLabel = t(`theme.${choice}`)
 
   return (
     <>
       <header className="header">
         <div className="container header-inner">
           <NavLink to="/" className="brand">
-            <span className="brand-mark" aria-hidden="true">
-              TO
-            </span>
-            <span>tidyorg</span>
+            <svg
+              className="brand-mark"
+              viewBox="0 0 32 32"
+              width="28"
+              height="28"
+              aria-hidden="true"
+            >
+              <g fill="#2f6fed">
+                <rect x="2" y="12" width="8" height="8" rx="2" />
+                <rect x="2" y="22" width="8" height="8" rx="2" />
+                <rect x="12" y="22" width="8" height="8" rx="2" />
+              </g>
+              <g fill="#5b8ff5">
+                <rect x="2" y="2" width="8" height="8" rx="2" />
+                <rect x="12" y="12" width="8" height="8" rx="2" />
+                <rect x="22" y="22" width="8" height="8" rx="2" />
+              </g>
+            </svg>
+            <span>{t('brand')}</span>
           </NavLink>
 
-          <nav className="nav" aria-label="Ana gezinme">
+          <nav className="nav" aria-label={t('nav.aria')}>
             <NavLink to="/" end className="nav-link">
-              Projeler
+              {t('nav.projects')}
             </NavLink>
             <NavLink to="/uyeler" className="nav-link">
-              Üyeler
+              {t('nav.members')}
             </NavLink>
             <NavLink to="/takimlar" className="nav-link">
-              Takımlar
+              {t('nav.teams')}
             </NavLink>
             <NavLink to="/pr" className="nav-link">
-              Bekleyen PR'lar
+              {t('nav.pulls')}
               {pendingPRs > 0 && (
-                <span className="nav-badge" aria-label={`${pendingPRs} bekleyen PR`}>
+                <span className="nav-badge" aria-label={t('nav.pendingAria', { n: pendingPRs })}>
                   {pendingPRs}
                 </span>
               )}
@@ -48,9 +66,18 @@ export function AppShell() {
           <button
             type="button"
             className="btn btn-ghost btn-sm"
+            onClick={toggle}
+            aria-label={t('lang.toggleAria', { label: t(`lang.${lang}`) })}
+          >
+            {lang.toUpperCase()}
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
             onClick={cycle}
-            title={THEME_LABEL[choice]}
-            aria-label={`Tema: ${THEME_LABEL[choice]}. Değiştirmek için tıklayın.`}
+            title={themeLabel}
+            aria-label={t('theme.toggleAria', { label: themeLabel })}
           >
             <span aria-hidden="true">{THEME_ICON[choice]}</span>
           </button>
@@ -68,7 +95,7 @@ export function AppShell() {
                 {user.login}
               </span>
               <button type="button" className="btn btn-ghost btn-sm" onClick={signOut}>
-                Çıkış
+                {t('auth.signOut')}
               </button>
             </div>
           )}
@@ -81,7 +108,7 @@ export function AppShell() {
 
       <footer className="container" style={{ paddingBottom: 'var(--sp-8)' }}>
         <p className="subtle">
-          Konfigürasyon kaynağı:{' '}
+          {t('footer.source')}{' '}
           <a
             href={`https://github.com/${CONFIG_OWNER}/${CONFIG_REPO}`}
             target="_blank"
@@ -89,7 +116,7 @@ export function AppShell() {
           >
             {CONFIG_OWNER}/{CONFIG_REPO}
           </a>{' '}
-          — her değişiklik PR olarak açılır, doğrudan yazılmaz.
+          {t('footer.note')}
         </p>
       </footer>
     </>

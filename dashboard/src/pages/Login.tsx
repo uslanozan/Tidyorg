@@ -6,6 +6,7 @@ import {
   requestDeviceCode,
 } from '../services/deviceFlow'
 import { GitHubError } from '../services/githubApi'
+import { useT } from '../i18n'
 import { useAuth } from '../hooks/useAuth'
 import type { DeviceCodeResponse } from '../types/github'
 
@@ -20,6 +21,7 @@ function errorMessage(error: unknown): string {
 
 export function Login() {
   const { signIn } = useAuth()
+  const t = useT()
   const [phase, setPhase] = useState<Phase>('idle')
   const [device, setDevice] = useState<DeviceCodeResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -91,12 +93,21 @@ export function Login() {
     <div className="login-wrap">
       <div className="card login-card stack" style={{ gap: 'var(--sp-5)' }}>
         <div className="stack" style={{ alignItems: 'center', gap: 'var(--sp-3)' }}>
-          <span className="brand-mark" style={{ width: 48, height: 48, fontSize: 'var(--text-lg)' }}>
-            TO
-          </span>
+          <svg viewBox="0 0 32 32" width="48" height="48" aria-hidden="true">
+            <g fill="#2f6fed">
+              <rect x="2" y="12" width="8" height="8" rx="2" />
+              <rect x="2" y="22" width="8" height="8" rx="2" />
+              <rect x="12" y="22" width="8" height="8" rx="2" />
+            </g>
+            <g fill="#5b8ff5">
+              <rect x="2" y="2" width="8" height="8" rx="2" />
+              <rect x="12" y="12" width="8" height="8" rx="2" />
+              <rect x="22" y="22" width="8" height="8" rx="2" />
+            </g>
+          </svg>
           <div>
-            <h1 style={{ fontSize: 'var(--text-xl)' }}>tidyorg Yönetim Paneli</h1>
-            <p className="subtle">Projeleri ve ekipleri GitHub üzerinden yönetin</p>
+            <h1 style={{ fontSize: 'var(--text-xl)' }}>{t('login.title')}</h1>
+            <p className="subtle">{t('login.subtitle')}</p>
           </div>
         </div>
 
@@ -110,7 +121,7 @@ export function Login() {
             {(phase === 'requesting' || phase === 'authorizing') && (
               <span className="spinner" aria-hidden="true" />
             )}
-            {phase === 'authorizing' ? 'Giriş yapılıyor…' : 'GitHub ile giriş yap'}
+            {phase === 'authorizing' ? t('login.authorizing') : t('login.signIn')}
           </button>
         )}
 

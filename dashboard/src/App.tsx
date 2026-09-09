@@ -2,6 +2,7 @@ import { BrowserRouter, Link, Route, Routes } from 'react-router-dom'
 import { AppShell } from './components/AppShell'
 import { AccessDenied, EmptyState } from './components/States'
 import { Toaster } from './components/Toaster'
+import { I18nProvider, useT } from './i18n'
 import { GitHubError } from './services/githubApi'
 import { AuthProvider, useAuth } from './hooks/useAuth'
 import { ConfigProvider, useConfig } from './hooks/useProjects'
@@ -18,11 +19,12 @@ import { Teams } from './pages/Teams'
 
 /** Saklı token doğrulanırken gösterilir — giriş ekranının bir an parlamasını önler. */
 function Booting() {
+  const t = useT()
   return (
     <div className="login-wrap">
       <div className="row">
         <span className="spinner" aria-hidden="true" />
-        <span className="muted">Oturum kontrol ediliyor…</span>
+        <span className="muted">{t('app.booting')}</span>
       </div>
     </div>
   )
@@ -35,6 +37,7 @@ function Booting() {
 function AuthenticatedRoutes() {
   const { user } = useAuth()
   const { error, reload } = useConfig()
+  const t = useT()
 
   if (
     error instanceof GitHubError &&
@@ -58,10 +61,10 @@ function AuthenticatedRoutes() {
           element={
             <EmptyState
               icon="🧭"
-              title="Sayfa bulunamadı"
+              title={t('app.notFoundTitle')}
               action={
                 <Link className="btn" to="/">
-                  Projelere dön
+                  {t('app.backToProjects')}
                 </Link>
               }
             />
@@ -84,14 +87,16 @@ function Gate() {
 export default function App() {
   return (
     <BrowserRouter>
-      <ToastProvider>
-        <AuthProvider>
-          <ConfigProvider>
-            <Gate />
-            <Toaster />
-          </ConfigProvider>
-        </AuthProvider>
-      </ToastProvider>
+      <I18nProvider>
+        <ToastProvider>
+          <AuthProvider>
+            <ConfigProvider>
+              <Gate />
+              <Toaster />
+            </ConfigProvider>
+          </AuthProvider>
+        </ToastProvider>
+      </I18nProvider>
     </BrowserRouter>
   )
 }
