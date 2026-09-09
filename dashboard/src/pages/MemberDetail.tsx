@@ -7,12 +7,28 @@ import { useAuth, useClient } from '../hooks/useAuth'
 import { useConfig } from '../hooks/useProjects'
 import { useProposal } from '../hooks/useProposal'
 import {
+  canManageProject,
   isHeadOfEngineering,
   isOrgOwner,
   membershipsFor,
   orgStanding,
   proposeOrgRemoval,
+  proposeRepoConfigUpdate,
 } from '../services/configRepo'
+import { assertCanRemoveMentor } from '../services/validation'
+import type { ProjectRole } from '../types/config'
+
+const ROLE_LABEL: Record<ProjectRole, string> = {
+  mentor: 'Mentör',
+  developer: 'Developer',
+  viewer: 'Viewer',
+}
+const LIST_KEY: Record<ProjectRole, 'mentors' | 'developers' | 'viewers'> = {
+  mentor: 'mentors',
+  developer: 'developers',
+  viewer: 'viewers',
+}
+const ROLE_ORDER: ProjectRole[] = ['mentor', 'developer', 'viewer']
 
 export function MemberDetail() {
   const { login = '' } = useParams<{ login: string }>()
@@ -21,6 +37,11 @@ export function MemberDetail() {
   const client = useClient()
   const { busy, submit } = useProposal()
   const [confirmRemove, setConfirmRemove] = useState(false)
+  const [roleEdit, setRoleEdit] = useState<{
+    project: string
+    from: ProjectRole
+    to: ProjectRole | 'remove'
+  } | null>(null)
 
   const memberships = membershipsFor(login, projects)
   const standing = orgStanding(login, people, privileged)
@@ -63,6 +84,40 @@ export function MemberDetail() {
       `${login} organizasyondan çıkarıldı`,
     )
     if (result) setConfirmRemove(false)
+  }
+
+  async function applyRoleChange() {
+    if (!roleEdit) return
+    const project = projects.find((p) => p.name === roleEdit.project)
+    if (!project) return
+    const { from, to } = roleEdit
+    const key = login.toLowerCase()
+    const drop = (arr?: string[]) => (arr ?? []).filter((l) => l.toLowerCase() !== key)
+
+    const result = await submit(
+      () =>
+        proposeRepoConfigUpdate({
+          client,
+          project,
+          edits: (cfg) => {
+            const changes: Record<string, string[]> = {}
+            changes[LIST_KEY[from]] = drop(cfg[LIST_KEY[from]])
+            if (to !== 'remove') changes[LIST_KEY[to]] = [...drop(cfg[LIST_KEY[to]]), login]
+            return changes
+          },
+          summary:
+            to === 'remove'
+              ? `${login} ${ROLE_LABEL[from]} listesinden çıkarıldı`
+              : `${login}: ${ROLE_LABEL[from]} → ${ROLE_LABEL[to]}`,
+          details: [
+            to === 'remove'
+              ? `\`${login}\` **${ROLE_LABEL[from]}** rolünden çıkarıldı`
+              : `\`${login}\` **${ROLE_LABEL[from]}** → **${ROLE_LABEL[to]}**`,
+          ],
+        }),
+      `${login} rolü güncellendi (${roleEdit.project})`,
+    )
+    if (result) setRoleEdit(null)
   }
 
   return (
@@ -140,7 +195,7 @@ export function MemberDetail() {
           <EmptyState
             icon="🗂️"
             title="Bu kişi hiçbir projede görünmüyor"
-            description="Konfigürasyondaki mentör ve developer listelerinde adı geçmiyor."
+            description="Konfigürasyondaki mentör, developer veya viewer listelerinde adı geçmiyor."
           />
         ) : (
           <div className="table-scroll">
@@ -154,18 +209,41 @@ export function MemberDetail() {
               </thead>
               <tbody>
                 {memberships.map(({ project, role }) => {
-                  const config = projects.find((item) => item.name === project)?.config
+                  const proj = projects.find((item) => item.name === project)
+                  const config = proj?.config
+                  const editable =
+                    proj != null &&
+                    !config?.archived &&
+                    canManageProject(user?.login ?? '', proj, privileged)
                   return (
                     <tr key={`${project}-${role}`}>
                       <td>
                         <Link to={`/projeler/${project}`}>{project}</Link>
                       </td>
                       <td>
-                        <span
-                          className={role === 'mentor' ? 'badge badge-accent' : 'badge'}
-                        >
-                          {role === 'mentor' ? 'Mentör' : 'Developer'}
-                        </span>
+                        {editable ? (
+                          <select
+                            className="select"
+                            value={role}
+                            disabled={busy}
+                            aria-label={`${project} içindeki rol`}
+                            onChange={(event) => {
+                              const to = event.target.value as ProjectRole | 'remove'
+                              if (to !== role) setRoleEdit({ project, from: role, to })
+                            }}
+                          >
+                            {ROLE_ORDER.map((r) => (
+                              <option key={r} value={r}>
+                                {ROLE_LABEL[r]}
+                              </option>
+                            ))}
+                            <option value="remove">Repodan çıkar</option>
+                          </select>
+                        ) : (
+                          <span className={role === 'mentor' ? 'badge badge-accent' : 'badge'}>
+                            {ROLE_LABEL[role]}
+                          </span>
+                        )}
                       </td>
                       <td>{config && <LanguageBadge language={config.language} />}</td>
                     </tr>
@@ -176,6 +254,56 @@ export function MemberDetail() {
           </div>
         )}
       </section>
+
+      {roleEdit && (
+        <ConfirmDialog
+          title={`${roleEdit.project} — rol değişikliği`}
+          message={
+            <div className="stack" style={{ gap: 'var(--sp-2)' }}>
+              <p style={{ margin: 0 }}>
+                <strong>{login}</strong>, <code>{roleEdit.project}</code> reposunda{' '}
+                {roleEdit.to === 'remove' ? (
+                  <>
+                    <strong>{ROLE_LABEL[roleEdit.from]}</strong> rolünden çıkarılacak (repodan
+                    tamamen)
+                  </>
+                ) : (
+                  <>
+                    <strong>{ROLE_LABEL[roleEdit.from]}</strong> →{' '}
+                    <strong>{ROLE_LABEL[roleEdit.to]}</strong>
+                  </>
+                )}
+                . Bir PR açar; merge edilene kadar GitHub'da değişmez.
+              </p>
+
+              {(() => {
+                const cfg = projects.find((p) => p.name === roleEdit.project)?.config
+                const orphans =
+                  roleEdit.from === 'mentor' &&
+                  roleEdit.to !== 'mentor' &&
+                  cfg != null &&
+                  Boolean(assertCanRemoveMentor(cfg, login))
+                return orphans ? (
+                  <div
+                    className="card card-pad"
+                    style={{ background: 'var(--danger-soft)', border: '1px solid var(--danger)' }}
+                  >
+                    <p className="subtle" style={{ margin: 0 }}>
+                      ⚠️ {login} bu repo'nun tek mentörü — bu değişiklik repo'yu mentörsüz bırakır
+                      ve <strong>plan aşamasında reddedilir</strong>. Önce başka bir mentör ata.
+                    </p>
+                  </div>
+                ) : null
+              })()}
+            </div>
+          }
+          confirmLabel="Değiştir ve PR aç"
+          danger={roleEdit.to === 'remove'}
+          busy={busy}
+          onConfirm={() => void applyRoleChange()}
+          onCancel={() => setRoleEdit(null)}
+        />
+      )}
 
       {confirmRemove && (
         <ConfirmDialog

@@ -118,6 +118,9 @@ export function membershipsFor(login: string, projects: Project[]): Membership[]
     if (project.config.developers?.some((d) => d.toLowerCase() === key)) {
       result.push({ project: project.name, role: 'developer' })
     }
+    if (project.config.viewers?.some((v) => v.toLowerCase() === key)) {
+      result.push({ project: project.name, role: 'viewer' })
+    }
   }
 
   return result

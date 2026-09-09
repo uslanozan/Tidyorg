@@ -21,6 +21,7 @@ import type { ProjectRole } from '../types/config'
 const ROLE_LABEL: Record<ProjectRole, string> = {
   mentor: 'Mentör',
   developer: 'Developer',
+  viewer: 'Viewer',
 }
 
 /** Dal koruması tablosu sütunları — başlıklara hover ile açıklama düşer. */
@@ -45,10 +46,14 @@ const RULE_COLUMNS: { label: string; hint?: string }[] = [
   },
 ]
 
-type MemberList = 'mentors' | 'developers'
+type MemberList = 'mentors' | 'developers' | 'viewers'
 
-const listKey = (role: ProjectRole): MemberList =>
-  role === 'mentor' ? 'mentors' : 'developers'
+const LIST_KEY: Record<ProjectRole, MemberList> = {
+  mentor: 'mentors',
+  developer: 'developers',
+  viewer: 'viewers',
+}
+const listKey = (role: ProjectRole): MemberList => LIST_KEY[role]
 
 function VisibilityBadge({ value, isDefault }: { value?: string; isDefault: boolean }) {
   const isPrivate = value === 'private'
@@ -351,6 +356,7 @@ export function ProjectDetail() {
 
       {memberSection('mentor')}
       {memberSection('developer')}
+      {memberSection('viewer')}
 
       <section className="card card-pad section">
         <h2 style={{ fontSize: 'var(--text-lg)' }}>Dal koruması</h2>
@@ -444,7 +450,11 @@ export function ProjectDetail() {
               all={peopleConfig?.members ?? []}
               selected={toAdd}
               onChange={setToAdd}
-              exclude={[...(config.mentors ?? []), ...(config.developers ?? [])]}
+              exclude={[
+                ...(config.mentors ?? []),
+                ...(config.developers ?? []),
+                ...(config.viewers ?? []),
+              ]}
               hint="Yalnızca org üyeleri. Seçtiklerin tek PR'da eklenir; merge edilince repo'da yetkilenir."
             />
             {addError && (

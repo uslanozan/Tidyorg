@@ -150,7 +150,7 @@ export interface PrivilegedConfig {
   roles: Record<string, string[]>
 }
 
-export type ProjectRole = 'mentor' | 'developer'
+export type ProjectRole = 'mentor' | 'developer' | 'viewer'
 
 /** "Bu kişi hangi projede, hangi rolde?" görünümünün satırı. */
 export interface Membership {
