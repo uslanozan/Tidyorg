@@ -102,6 +102,16 @@ resource "github_organization_settings" "this" {
   # üç gün gözden kaçtı. O yüzden yönetime alındı — ama değeri artık HCP'de yaşıyor.
   billing_email = var.billing_email
 
+  # billing_email boşsa (TF_VAR_billing_email set edilmemişse) org'un GERÇEK
+  # e-postasını EZMESİN. Alan provider'da zorunlu (atlanamıyor), ama ignore_changes
+  # ile Terraform bu alandaki farkı yok sayar → GitHub UI'daki değer korunur.
+  # "Empty = leave unmanaged" niyeti ancak böyle GERÇEKTEN sağlanır.
+  # Not: değeri yönetmek istersen var'ı doldur + bu bloğu kaldır. Eğer daha önce
+  # boş apply ile silinmişse, önce UI'dan bir kez doğru değeri gir; sonrası korunur.
+  lifecycle {
+    ignore_changes = [billing_email]
+  }
+
   # Bugüne kadar `read` — yani org'a eklenen herkes, hiçbir takımda olmasa bile
   # bütün repo'ları okuyabiliyordu. `none` ile erişimin tek kaynağı takım
   # üyeliği olur (ROADMAP Faz 6 / ACCESS-MODEL en az yetki ilkesi).
