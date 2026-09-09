@@ -150,20 +150,6 @@ pre {
   gap: var(--sp-4);
 }
 
-/* Anasayfa: solda org sütunu, sağda içerik. Dar ekranda tek kolon. */
-.home-layout {
-  display: grid;
-  grid-template-columns: 240px minmax(0, 1fr);
-  gap: var(--sp-6);
-  align-items: start;
-}
-
-@media (max-width: 860px) {
-  .home-layout {
-    grid-template-columns: 1fr;
-  }
-}
-
 .page-header {
   display: flex;
   flex-direction: row;
