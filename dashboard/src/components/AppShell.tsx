@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { usePendingPRs } from '../hooks/usePendingPRs'
 import { useTheme } from '../hooks/useTheme'
 import { CONFIG_OWNER, CONFIG_REPO } from '../services/env'
 
@@ -9,6 +10,7 @@ const THEME_LABEL = { system: 'Sistem teması', light: 'Açık tema', dark: 'Koy
 export function AppShell() {
   const { user, signOut } = useAuth()
   const { choice, cycle } = useTheme()
+  const pendingPRs = usePendingPRs()
 
   return (
     <>
@@ -33,6 +35,11 @@ export function AppShell() {
             </NavLink>
             <NavLink to="/pr" className="nav-link">
               Bekleyen PR'lar
+              {pendingPRs > 0 && (
+                <span className="nav-badge" aria-label={`${pendingPRs} bekleyen PR`}>
+                  {pendingPRs}
+                </span>
+              )}
             </NavLink>
           </nav>
 

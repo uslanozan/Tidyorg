@@ -23,6 +23,28 @@ const ROLE_LABEL: Record<ProjectRole, string> = {
   developer: 'Developer',
 }
 
+/** Dal koruması tablosu sütunları — başlıklara hover ile açıklama düşer. */
+const RULE_COLUMNS: { label: string; hint?: string }[] = [
+  { label: 'Dal' },
+  { label: 'Onay', hint: 'Merge öncesi gereken onaylayan sayısı (required approving reviews).' },
+  {
+    label: 'CODEOWNERS',
+    hint: 'Değişen dosyanın CODEOWNERS sahibinden ayrıca onay isteniyor mu.',
+  },
+  {
+    label: 'Status check',
+    hint: 'Merge öncesi yeşil olması gereken CI kontrolleri (ör. plan, test).',
+  },
+  {
+    label: 'Force push',
+    hint: 'Geçmişi ezen zorla push izni. Kapalı = geçmiş korunur.',
+  },
+  {
+    label: 'Kaynak',
+    hint: 'Varsayılan = org geneli kural; Repo = bu repo dosyasında geçersiz kılınmış.',
+  },
+]
+
 type MemberList = 'mentors' | 'developers'
 
 const listKey = (role: ProjectRole): MemberList =>
@@ -340,12 +362,11 @@ export function ProjectDetail() {
           <table className="rule-table">
             <thead>
               <tr>
-                <th>Dal</th>
-                <th>Onay</th>
-                <th>CODEOWNERS</th>
-                <th>Status check</th>
-                <th>Force push</th>
-                <th>Kaynak</th>
+                {RULE_COLUMNS.map((col) => (
+                  <th key={col.label} title={col.hint}>
+                    {col.hint ? <span className="th-help">{col.label}</span> : col.label}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>

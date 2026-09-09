@@ -683,6 +683,9 @@ a.person:hover {
 }
 
 .nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
   padding: 0.35rem 0.7rem;
   border-radius: var(--radius-md);
   color: var(--fg-muted);
@@ -691,6 +694,21 @@ a.person:hover {
   transition:
     background var(--dur-fast) var(--ease),
     color var(--dur-fast) var(--ease);
+}
+
+.nav-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: var(--text-xs);
+  font-weight: 650;
+  line-height: 1;
 }
 
 .nav-link:hover {
@@ -775,6 +793,12 @@ a.person:hover {
 
 .rule-table tr:last-child td {
   border-bottom: 0;
+}
+
+/* Açıklaması olan sütun başlığı: hover ile title tooltip'i, imleç ipucu. */
+.rule-table th .th-help {
+  cursor: help;
+  border-bottom: 1px dotted var(--fg-subtle);
 }
 
 .table-scroll {
