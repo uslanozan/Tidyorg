@@ -63,6 +63,8 @@ export interface RepoConfig {
   language: Language
   mentors: string[]
   developers?: string[]
+  /** Salt-okunur (pull) erişimi olan kişiler. Org config'inde `viewer` rolü. */
+  viewers?: string[]
   visibility?: Visibility
   archived?: boolean
   has_issues?: boolean

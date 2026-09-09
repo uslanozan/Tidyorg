@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { LanguageBadge } from '../components/LanguageBadge'
 import { ConfirmDialog } from '../components/Modal'
@@ -11,7 +11,7 @@ import {
   isOrgOwner,
   membershipsFor,
   orgStanding,
-  proposePeopleUpdate,
+  proposeOrgRemoval,
 } from '../services/configRepo'
 
 export function MemberDetail() {
@@ -24,6 +24,25 @@ export function MemberDetail() {
 
   const memberships = membershipsFor(login, projects)
   const standing = orgStanding(login, people, privileged)
+
+  // "Org'dan tamamen çıkar" öncesi: kişinin bulunduğu repolar + o reponun TEK
+  // mentörü mü (öyleyse çıkarınca repo mentörsüz kalır → engine plan'da reddeder).
+  const affectedRepos = useMemo(() => {
+    const key = login.toLowerCase()
+    const inList = (arr?: string[]) => (arr ?? []).some((l) => l.toLowerCase() === key)
+    return projects
+      .filter((p) => inList(p.config.mentors) || inList(p.config.developers) || inList(p.config.viewers))
+      .map((p) => {
+        const roles: string[] = []
+        const isMentor = inList(p.config.mentors)
+        if (isMentor) roles.push('mentör')
+        if (inList(p.config.developers)) roles.push('developer')
+        if (inList(p.config.viewers)) roles.push('viewer')
+        return { name: p.name, roles, soleMentor: isMentor && (p.config.mentors ?? []).length === 1 }
+      })
+  }, [projects, login])
+
+  const soleMentorRepos = affectedRepos.filter((r) => r.soleMentor)
 
   const canManageOrg =
     isHeadOfEngineering(user?.login ?? '', privileged) ||
@@ -40,8 +59,8 @@ export function MemberDetail() {
 
   async function removeFromOrg() {
     const result = await submit(
-      () => proposePeopleUpdate({ client, remove: login }),
-      `${login} org üyeliğinden çıkarıldı`,
+      () => proposeOrgRemoval({ client, login, projects }),
+      `${login} organizasyondan çıkarıldı`,
     )
     if (result) setConfirmRemove(false)
   }
@@ -94,9 +113,10 @@ export function MemberDetail() {
             <div className="stack" style={{ gap: 'var(--sp-1)' }}>
               <h2 style={{ fontSize: 'var(--text-lg)' }}>Organizasyon üyeliği</h2>
               <p className="subtle">
-                Çıkarmak kişiyi org'dan atmaz; rolü <code>member</code>a düşer. Yetki
-                (owner / head-of-engineering) buradan değiştirilemez — o{' '}
-                <code>privileged.yml</code> içindedir.
+                Kişiyi organizasyondan <strong>tamamen</strong> çıkarır: önce bulunduğu tüm
+                repo rollerinden, sonra <code>people.yml</code> üyeliğinden — tek PR'da. Owner /
+                head-of-engineering yetkisi buradan değiştirilemez ({' '}
+                <code>privileged.yml</code> içindedir).
               </p>
             </div>
             <button
@@ -105,7 +125,7 @@ export function MemberDetail() {
               onClick={() => setConfirmRemove(true)}
               disabled={busy}
             >
-              Org üyeliğinden çıkar
+              Org'dan tamamen çıkar
             </button>
           </div>
         </section>
@@ -159,16 +179,52 @@ export function MemberDetail() {
 
       {confirmRemove && (
         <ConfirmDialog
-          title={`${login} org üyeliğinden çıkarılsın mı?`}
+          title={`${login} organizasyondan çıkarılsın mı?`}
           message={
-            <>
-              <strong>{login}</strong> <code>people.yml</code> üye listesinden çıkarılacak.
-              Bu bir PR açar; merge edilene kadar GitHub'da hiçbir şey değişmez. Kişinin
-              repo erişimleri ayrıca ilgili <code>repositories/*.yml</code> dosyalarından
-              kaldırılmalıdır.
-            </>
+            <div className="stack" style={{ gap: 'var(--sp-3)' }}>
+              <p style={{ margin: 0 }}>
+                <strong>{login}</strong> organizasyondan <strong>tamamen</strong> çıkarılacak:
+                önce bulunduğu tüm repo rollerinden, sonra <code>people.yml</code> üyeliğinden —
+                hepsi tek PR'da. Merge edilene kadar GitHub'da hiçbir şey değişmez; merge sonrası
+                kişi org üyesi olmaktan çıkar ve bu repolara erişimi kalmaz.
+              </p>
+
+              {affectedRepos.length > 0 ? (
+                <div className="stack" style={{ gap: 'var(--sp-1)' }}>
+                  <span className="meta-label">Çıkarılacağı repolar</span>
+                  <ul className="subtle" style={{ margin: 0, paddingLeft: '1.2em' }}>
+                    {affectedRepos.map((r) => (
+                      <li key={r.name}>
+                        <code>{r.name}</code> — {r.roles.join(', ')}
+                        {r.soleMentor && ' ⚠️ tek mentör'}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <p className="subtle" style={{ margin: 0 }}>
+                  Hiçbir repoda rolü yok; yalnızca üyelikten çıkarılacak.
+                </p>
+              )}
+
+              {soleMentorRepos.length > 0 && (
+                <div
+                  className="card card-pad"
+                  style={{ background: 'var(--danger-soft)', border: '1px solid var(--danger)' }}
+                >
+                  <div className="meta-label" style={{ color: 'var(--danger)' }}>
+                    ⚠️ Bu kişi {soleMentorRepos.length} repo'nun TEK mentörü
+                  </div>
+                  <p className="subtle" style={{ margin: '4px 0 0' }}>
+                    {soleMentorRepos.map((r) => r.name).join(', ')} mentörsüz kalır. Engine bir
+                    repo'yu mentörsüz kabul etmez → bu PR <strong>plan aşamasında reddedilir</strong>.
+                    Önce bu repolara başka bir mentör atayın, sonra çıkarın.
+                  </p>
+                </div>
+              )}
+            </div>
           }
-          confirmLabel="Çıkar ve PR aç"
+          confirmLabel="Org'dan çıkar ve PR aç"
           danger
           busy={busy}
           onConfirm={() => void removeFromOrg()}

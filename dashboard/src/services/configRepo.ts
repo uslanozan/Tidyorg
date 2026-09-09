@@ -309,6 +309,69 @@ export async function proposeChange({
   )
 }
 
+export interface FileChange {
+  /** Repo kökünden dosya yolu (hep 'update'; dosya mevcut olmalı). */
+  path: string
+  /** Dosyanın güncel hâlinden yeni içeriği üretir. Değişiklik yoksa aynı metni döndür. */
+  build: (current: { text: string; sha: string }) => string
+}
+
+/**
+ * Birden çok dosyayı TEK branch + TEK PR içinde değiştirir (atomik).
+ *
+ * "Org'dan tamamen çıkar" gibi işlemler için gerekli: kişi hem tüm repolardan hem
+ * people.yml'dan aynı PR'da çıkarılmalı — yoksa merge sonrası ara durumda engine'in
+ * "repo referansı people.yml'da yok" doğrulaması patlar (dangling).
+ *
+ * Not: proposeChange'deki tek-dosya çakışma-retry döngüsü burada yok; nadir bir
+ * yönetici işlemi olduğu için çakışmada hata verir ve kullanıcı tekrar dener.
+ */
+export async function proposeMultiChange({
+  client,
+  slug,
+  commitMessage,
+  prTitle,
+  prBody,
+  files,
+}: {
+  client: GitHubClient
+  slug: string
+  commitMessage: string
+  prTitle: string
+  prBody: string
+  files: FileChange[]
+}): Promise<ProposalResult> {
+  const branch = `dashboard/update-${slug}-${Date.now()}`
+  const baseSha = await client.getBranchSha(CONFIG_OWNER, CONFIG_REPO, CONFIG_BRANCH)
+  await client.createBranch(CONFIG_OWNER, CONFIG_REPO, branch, baseSha)
+
+  for (const file of files) {
+    const current = await client.readTextFile(CONFIG_OWNER, CONFIG_REPO, file.path, CONFIG_BRANCH)
+    const content = file.build(current)
+    if (content === current.text) continue // bu dosyada değişiklik yok — atla
+    await client.putFile({
+      owner: CONFIG_OWNER,
+      repo: CONFIG_REPO,
+      path: file.path,
+      branch,
+      message: commitMessage,
+      content,
+      sha: current.sha,
+    })
+  }
+
+  const pullRequest = await client.createPullRequest({
+    owner: CONFIG_OWNER,
+    repo: CONFIG_REPO,
+    title: prTitle,
+    body: prBody,
+    head: branch,
+    base: CONFIG_BRANCH,
+  })
+
+  return { pullRequest, branch, retried: false }
+}
+
 const PR_FOOTER = [
   '',
   '---',
@@ -451,6 +514,79 @@ export function proposePeopleUpdate({
       if (!exists) throw new Error(`${target} zaten üye listesinde değil.`)
       return serializePeopleConfig(members.filter((l) => !sameLogin(l, target)))
     },
+  })
+}
+
+/**
+ * Bir kişiyi organizasyondan TAMAMEN çıkarır: önce bulunduğu tüm repolardan (mentor
+ * /developer/viewer) çıkarır, sonra people.yml üye listesinden — hepsi TEK PR'da.
+ *
+ * Sıra ve atomiklik önemli: people.yml'dan tek başına çıkarmak, kişi hâlâ bir repo
+ * config'inde referanslıyken engine'in doğrulamasını patlatır (dangling). Tek PR
+ * ile merge sonrası durum tutarlı olur.
+ *
+ * ⚠️ Kişi bir repo'nun TEK mentörüyse, o repo mentörsüz kalır ve engine plan'da
+ * reddeder — bu durumda önce başka bir mentör atanmalı. Çağıran taraf bunu uyarır.
+ */
+export function proposeOrgRemoval({
+  client,
+  login,
+  projects,
+}: {
+  client: GitHubClient
+  login: string
+  projects: Project[]
+}): Promise<ProposalResult> {
+  const key = login.toLowerCase()
+  const has = (arr?: string[]) => (arr ?? []).some((l) => l.toLowerCase() === key)
+
+  const affected = projects.filter(
+    (p) => has(p.config.mentors) || has(p.config.developers) || has(p.config.viewers),
+  )
+
+  const files: FileChange[] = [
+    ...affected.map(
+      (project): FileChange => ({
+        path: project.path,
+        build: (current) => {
+          const cfg = parseRepoConfig(current.text)
+          const drop = (arr?: string[]) => (arr ?? []).filter((l) => l.toLowerCase() !== key)
+          const edits: Record<string, YamlValue | undefined> = {}
+          if (has(cfg.mentors)) edits.mentors = drop(cfg.mentors)
+          if (has(cfg.developers)) edits.developers = drop(cfg.developers)
+          if (has(cfg.viewers)) edits.viewers = drop(cfg.viewers)
+          return applyEdits(current.text, edits)
+        },
+      }),
+    ),
+    {
+      path: PATHS.people,
+      build: (current) => {
+        const { members } = parsePeopleConfig(current.text)
+        return serializePeopleConfig(members.filter((l) => !sameLogin(l, login)))
+      },
+    },
+  ]
+
+  const repoList = affected.map((p) => `\`${p.name}\``).join(', ') || '(hiçbiri)'
+
+  return proposeMultiChange({
+    client,
+    slug: `remove-${key.replace(/[^a-z0-9-]/g, '') || 'member'}`,
+    commitMessage: `config: ${login} organizasyondan tamamen çıkarıldı`,
+    prTitle: `config: ${login} organizasyondan çıkarıldı`,
+    prBody:
+      [
+        `\`${login}\` organizasyondan **tamamen** çıkarılıyor.`,
+        '',
+        `- Repo rollerinden çıkarıldı: ${repoList}`,
+        '- `people.yml` üye listesinden çıkarıldı',
+        '',
+        '> Önce tüm repo rollerinden, sonra üyelikten çıkarılır — böylece dangling',
+        '> referans oluşmaz. Merge sonrası kişi org üyesi olmaktan çıkar ve bu repolara',
+        '> erişimi kalmaz.',
+      ].join('\n') + PR_FOOTER,
+    files,
   })
 }
 

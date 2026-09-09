@@ -26,7 +26,7 @@ export function Projects() {
   const [orgInfo, setOrgInfo] = useState<GitHubOrg | null>(null)
   const [query, setQuery] = useState('')
   const [language, setLanguage] = useState('')
-  const [groupBy, setGroupBy] = useState<'' | 'mentor'>('')
+  const [groupBy, setGroupBy] = useState<'' | 'mentor' | 'archived'>('')
   const [addingMember, setAddingMember] = useState(false)
 
   useEffect(() => {
@@ -60,20 +60,38 @@ export function Projects() {
     })
   }, [projects, query, language])
 
-  // Mentöre göre grupla: bir proje birden çok mentöre sahipse her birinde görünür.
-  const grouped = useMemo(() => {
-    if (groupBy !== 'mentor') return null
-    const map = new Map<string, Project[]>()
-    for (const project of visible) {
-      const mentors = project.config.mentors ?? []
-      const keys = mentors.length ? mentors : ['—']
-      for (const key of keys) {
-        const arr = map.get(key) ?? []
-        arr.push(project)
-        map.set(key, arr)
+  // Gruplama. Mentör: bir proje birden çok mentöre sahipse her birinde görünür.
+  // Arşivli: Aktif / Arşivli olarak ikiye ayrılır (boş grup gösterilmez).
+  const grouped = useMemo<[string, Project[]][] | null>(() => {
+    if (groupBy === 'mentor') {
+      const map = new Map<string, Project[]>()
+      for (const project of visible) {
+        const mentors = project.config.mentors ?? []
+        const keys = mentors.length ? mentors : ['—']
+        for (const key of keys) {
+          const arr = map.get(key) ?? []
+          arr.push(project)
+          map.set(key, arr)
+        }
       }
+      return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0], 'tr'))
     }
-    return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0], 'tr'))
+
+    if (groupBy === 'archived') {
+      const active: Project[] = []
+      const archived: Project[] = []
+      for (const project of visible) {
+        ;(project.config.archived ? archived : active).push(project)
+      }
+      return (
+        [
+          ['Aktif', active],
+          ['Arşivli', archived],
+        ] as [string, Project[]][]
+      ).filter(([, items]) => items.length > 0)
+    }
+
+    return null
   }, [visible, groupBy])
 
   return (
@@ -170,11 +188,12 @@ export function Projects() {
         <select
           className="select"
           value={groupBy}
-          onChange={(event) => setGroupBy(event.target.value as '' | 'mentor')}
+          onChange={(event) => setGroupBy(event.target.value as '' | 'mentor' | 'archived')}
           aria-label="Gruplama"
         >
           <option value="">Gruplama yok</option>
           <option value="mentor">Mentöre göre</option>
+          <option value="archived">Arşiv durumuna göre</option>
         </select>
       </div>
 
@@ -193,13 +212,17 @@ export function Projects() {
         />
       ) : grouped ? (
         <div className="stack" style={{ gap: 'var(--sp-6)' }}>
-          {grouped.map(([mentor, items]) => (
-            <section key={mentor} className="stack" style={{ gap: 'var(--sp-3)' }}>
+          {grouped.map(([key, items]) => (
+            <section key={key} className="stack" style={{ gap: 'var(--sp-3)' }}>
               <div className="row" style={{ gap: 'var(--sp-2)', alignItems: 'center' }}>
-                {mentor === '—' ? (
-                  <h2 style={{ fontSize: 'var(--text-lg)' }}>Mentör atanmamış</h2>
+                {groupBy === 'mentor' ? (
+                  key === '—' ? (
+                    <h2 style={{ fontSize: 'var(--text-lg)' }}>Mentör atanmamış</h2>
+                  ) : (
+                    <Person login={key} size={26} />
+                  )
                 ) : (
-                  <Person login={mentor} size={26} />
+                  <h2 style={{ fontSize: 'var(--text-lg)' }}>{key}</h2>
                 )}
                 <span className="subtle">({items.length})</span>
               </div>
