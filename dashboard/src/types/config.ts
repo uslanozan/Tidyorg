@@ -21,6 +21,16 @@ export const LANGUAGES = [
   'dart',
   'elixir',
   'shell',
+  'hcl',
+  'html',
+  'css',
+  'vue',
+  'lua',
+  'r',
+  'perl',
+  'haskell',
+  'clojure',
+  'groovy',
 ] as const
 export type Language = (typeof LANGUAGES)[number]
 

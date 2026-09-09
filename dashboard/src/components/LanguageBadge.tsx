@@ -20,6 +20,16 @@ const LANG_LABELS: Record<string, string> = {
   dart: 'Dart',
   elixir: 'Elixir',
   shell: 'Shell',
+  hcl: 'Terraform',
+  html: 'HTML',
+  css: 'CSS',
+  vue: 'Vue',
+  lua: 'Lua',
+  r: 'R',
+  perl: 'Perl',
+  haskell: 'Haskell',
+  clojure: 'Clojure',
+  groovy: 'Groovy',
 }
 
 // Config token'ı olmayan ama gelebilecek yaygın yazımlar → kanonik token.
@@ -37,6 +47,14 @@ const ALIASES: Record<string, string> = {
   kt: 'kotlin',
   sh: 'shell',
   bash: 'shell',
+  terraform: 'hcl',
+  tf: 'hcl',
+  html5: 'html',
+  htm: 'html',
+  css3: 'css',
+  vuejs: 'vue',
+  perl5: 'perl',
+  clj: 'clojure',
 }
 
 const UNKNOWN_COLOR = '#94A3B8'
