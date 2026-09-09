@@ -5,7 +5,7 @@ import { ConfirmDialog, Modal } from '../components/Modal'
 import { Person } from '../components/Person'
 import { RepoSettingsDialog } from '../components/RepoSettingsDialog'
 import { EmptyState, ErrorState, Skeleton } from '../components/States'
-import { UsernameField } from '../components/UsernameField'
+import { MemberPicker } from '../components/MemberPicker'
 import { useAuth, useClient } from '../hooks/useAuth'
 import { useConfig, useProject } from '../hooks/useProjects'
 import { useProposal } from '../hooks/useProposal'
@@ -68,7 +68,7 @@ export function ProjectDetail() {
   const { busy, submit } = useProposal()
 
   const [addRole, setAddRole] = useState<ProjectRole | null>(null)
-  const [newLogin, setNewLogin] = useState('')
+  const [toAdd, setToAdd] = useState<string[]>([])
   const [addError, setAddError] = useState<string | null>(null)
   const [removeTarget, setRemoveTarget] = useState<{ login: string; role: ProjectRole } | null>(
     null,
@@ -113,43 +113,30 @@ export function ProjectDetail() {
 
   function closeAdd() {
     setAddRole(null)
-    setNewLogin('')
+    setToAdd([])
     setAddError(null)
   }
 
   async function confirmAdd() {
-    if (!project || !addRole) return
+    if (!project || !addRole || toAdd.length === 0) return
 
-    const login = newLogin.trim()
     const key = listKey(addRole)
-    const current = project.config[key] ?? []
 
     const blocked = assertCanAddMember(project.config)
     if (blocked) return setAddError(blocked)
 
-    if (current.some((item) => item.toLowerCase() === login.toLowerCase())) {
-      return setAddError(`${login} zaten ${ROLE_LABEL[addRole].toLowerCase()} listesinde.`)
-    }
-
-    // Repo'ya eklenen kişi mutlaka org üyesi olmalı — engine bunu zaten zorunlu
-    // kılıyor (repo_people_missing_from_people), UI'da baştan engelliyoruz.
-    const isMember = (peopleConfig?.members ?? []).some(
-      (m) => m.toLowerCase() === login.toLowerCase(),
-    )
-    if (!isMember) {
-      return setAddError('Org üyesi değil. Önce "Üye Ekle" ile organizasyona ekleyin.')
-    }
-
+    // Seçilenlerin hepsi tek PR'da eklenir. Zaten org üyesi (picker'dan) ve repo'da
+    // olmayanlar (exclude) — ek doğrulama gerekmez.
     const result = await submit(
       () =>
         proposeRepoConfigUpdate({
           client,
           project,
-          edits: (cfg) => ({ [key]: [...(cfg[key] ?? []), login] }),
-          summary: `${login} ${addRole} olarak eklendi`,
-          details: [`\`${login}\` → **${ROLE_LABEL[addRole]}**`],
+          edits: (cfg) => ({ [key]: [...(cfg[key] ?? []), ...toAdd] }),
+          summary: `${toAdd.length} ${addRole} eklendi`,
+          details: toAdd.map((login) => `\`${login}\` → **${ROLE_LABEL[addRole]}**`),
         }),
-      `${login} → ${ROLE_LABEL[addRole]} (${project.name})`,
+      `${toAdd.join(', ')} → ${ROLE_LABEL[addRole]} (${project.name})`,
     )
 
     if (result) closeAdd()
@@ -422,21 +409,22 @@ export function ProjectDetail() {
                 type="button"
                 className="btn btn-primary"
                 onClick={() => void confirmAdd()}
-                disabled={busy || !newLogin.trim()}
+                disabled={busy || toAdd.length === 0}
               >
                 {busy && <span className="spinner" aria-hidden="true" />}
-                PR oluştur
+                {toAdd.length > 1 ? `${toAdd.length} kişiyi ekle (PR)` : 'PR oluştur'}
               </button>
             </>
           }
         >
           <div className="stack">
-            <UsernameField
-              label="Org üyesi"
-              value={newLogin}
-              onChange={setNewLogin}
-              members={peopleConfig?.members ?? []}
-              hint="Yalnızca mevcut org üyeleri. PR merge edilince repo'da yetkilenir."
+            <MemberPicker
+              label={`${ROLE_LABEL[addRole]} seç`}
+              all={peopleConfig?.members ?? []}
+              selected={toAdd}
+              onChange={setToAdd}
+              exclude={[...(config.mentors ?? []), ...(config.developers ?? [])]}
+              hint="Yalnızca org üyeleri. Seçtiklerin tek PR'da eklenir; merge edilince repo'da yetkilenir."
             />
             {addError && (
               <p className="field-error" role="alert">
