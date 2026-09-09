@@ -1,0 +1,99 @@
+# =============================================================================
+# organization.yml — Organizasyon geneli konfigürasyon (ÖRNEK)
+# =============================================================================
+# Bu dizini (config.example/) `./config` olarak kopyala ve kendi değerlerinle
+# doldur:  cp -r config.example config  (sonra düzenle)
+#
+# Bu dosya UI/dashboard ile Terraform arasındaki SÖZLEŞMEDİR.
+# Dashboard bu dosyayı düzenleyip PR açar; Terraform bunu okuyup GitHub'a uygular.
+# Terraform kodu (HCL) bu dosyaya bakar; dashboard HCL'e asla dokunmaz.
+#
+# Bu dosya YALNIZCA organizasyon geneli ayarları tanımlar.
+# Tekil repo tanımları için bkz: repositories/ dizini.
+#
+# Tasarım ilkesi: KURALLAR ROLE BAĞLIDIR, KİŞİYE DEĞİL.
+# Kişi değiştiğinde kural değişmez; sadece rol ataması değişir.
+# =============================================================================
+
+version: 1
+organization: your-org # ← kendi GitHub org slug'ın (TF_VAR_github_org_name ile aynı)
+
+# -----------------------------------------------------------------------------
+# ROLLER — Yetkinin ne anlama geldiği burada tanımlanır, tek yerde.
+# -----------------------------------------------------------------------------
+roles:
+  head-of-engineering:
+    scope: organization # Tüm repo'lara uygulanır
+    repo_permission: admin
+    bypass_branch_protection: true
+
+  mentor:
+    scope: repository # Yalnızca atandığı repo'da geçerli
+    repo_permission: admin
+    bypass_branch_protection: true
+
+  developer:
+    scope: repository
+    repo_permission: push # Repo geneline write; branch kısıtı ayrıca uygulanır
+    bypass_branch_protection: false
+
+# -----------------------------------------------------------------------------
+# KİŞİLER — bu dosyada DEĞİL, ayrı dosyalarda
+# -----------------------------------------------------------------------------
+#   people.yml       → org üyeliği (makine-sahipli; dashboard yazar)
+#   privileged.yml   → org owner + org rolleri (insan-sahipli, CODEOWNERS
+#                      korumalı; dashboard ASLA yazmaz)
+#
+# Bu ayrım yetki yükseltme kapısıdır: dashboard'ın yazabildiği dosya yetki ifade
+# EDEMEZ. Gerekçe: terraform/people.tf başlığı ve ACCESS-MODEL.md.
+
+# -----------------------------------------------------------------------------
+# VARSAYILANLAR — Her repo bunları miras alır. Repo bazında ezilebilir.
+# Yeni bir repo hiçbir şey yazmadan da güvenli varsayılanlarla doğar.
+# -----------------------------------------------------------------------------
+defaults:
+  visibility: private
+  has_issues: true
+  has_projects: false
+  has_wiki: false
+  auto_init: true
+  default_branch: develop
+
+  protected_branches:
+    main:
+      required_reviews: 2
+      require_code_owner_review: true # Mentör onayı zorunlu
+      dismiss_stale_reviews: true
+      require_status_checks: [ci/test]
+      require_conversation_resolution: true
+      allow_force_push: false
+      allow_deletions: false
+      # Bu branch'e yalnızca şu ROLLER push atabilir (kişi listesi değil!)
+      push_allowed_roles: [mentor, head-of-engineering]
+
+    develop:
+      required_reviews: 1
+      require_code_owner_review: false # Başka bir developer'ın onayı yeterli
+      dismiss_stale_reviews: true
+      require_status_checks: [ci/test]
+      require_conversation_resolution: false
+      allow_force_push: false
+      allow_deletions: false
+      push_allowed_roles: [mentor, head-of-engineering]
+
+  labels:
+    - { name: "type: bug", color: "d73a4a" }
+    - { name: "type: feature", color: "0e8a16" }
+    - { name: "type: chore", color: "cfd3d7" }
+    - { name: "type: docs", color: "0075ca" }
+    - { name: "priority: critical", color: "b60205" }
+    - { name: "priority: high", color: "d93f0b" }
+    - { name: "priority: medium", color: "fbca04" }
+    - { name: "priority: low", color: "c2e0c6" }
+    - { name: "status: in-review", color: "5319e7" }
+    - { name: "status: blocked", color: "e99695" }
+    - { name: "status: ready", color: "0e8a16" }
+    - { name: "good first issue", color: "7057ff" }
+    - { name: "help wanted", color: "008672" }
+
+# Takım adları config'de yok, repo adından türetilir: "<repo>-devs".

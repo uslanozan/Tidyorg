@@ -1,0 +1,61 @@
+# =============================================================================
+# repositories/<repo-adı>.yml — Tekil repo konfigürasyonu (ÖRNEK)
+# =============================================================================
+# Dosyanın adı = GitHub'da oluşacak repo ismi. Bu örnek dosya "example-service"
+# adında bir repo tanımlar; kendi repolarını eklemek için kopyala/yeniden adlandır.
+#
+# Yalnızca varsayılandan FARKLI olan alanlar yazılır. Boş bırakılan alanlar
+# organization.yml içindeki "defaults" bölümünden miras alınır.
+#
+# Bkz. ACCESS-MODEL.md & docs/config-guide.md
+# =============================================================================
+
+# Repo'nun açıklaması (Zorunlu)
+description: "Ödeme geçidi entegrasyon servisi"
+
+# Projenin yazıldığı ana programlama dili (görsel etiket; CI gerçek dili algılar)
+language: go
+
+# Projeden sorumlu mentörlerin GitHub kullanıcı adları (Liste)
+# En az 1 mentör atanmalıdır. Mentörler repo'da 'admin' yetkisine sahip olur.
+mentors:
+  - mentor-a
+
+# Geliştiriciler (Liste) — repo'da 'push' yetkisi alır, branch protection'a tabidir.
+developers:
+  - dev-1
+  - dev-2
+
+# Repo görünürlüğü (Opsiyonel) — public | private. Belirtilmezse defaults.visibility.
+visibility: private
+
+# Arşivlenme (Opsiyonel) — true = repo dondurulur (read-only). Silmek yerine bunu kullan.
+archived: false
+
+# GitHub özellik ayarları (Opsiyonel, belirtilmezse defaults kullanılır)
+has_issues: true
+has_projects: false
+has_wiki: false
+auto_init: true
+default_branch: develop
+
+# Dal koruması ezmeleri (Opsiyonel) — yalnızca varsayılandan farklı alanlar yazılır.
+protected_branches:
+  main:
+    required_reviews: 3 # Varsayılan 2 yerine 3 onay
+  develop:
+    required_reviews: 0 # Hızlı deneme için onaysız merge
+    require_status_checks: [] # CI beklemeden merge
+
+# Yol bazlı review yönlendirmesi (CODEOWNERS) (Opsiyonel)
+# DİKKAT: merge YETKİSİNİ kısıtlamaz, sadece PR'da onay zorunluluğu ekler
+# (require_code_owner_review: true iken zorlayıcıdır).
+code_owners:
+  "/backend/": [dev-1]
+  "/frontend/": [dev-2]
+
+# Harici dağıtılacak workflow'lar (Opsiyonel) — ci | release | dependabot
+workflows:
+  - ci
+  - release
+  - dependabot

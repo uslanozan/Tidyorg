@@ -22,6 +22,9 @@ services:
       TF_VAR_github_org_name: your-org
       TF_VAR_github_app_id: "000000"
       TF_VAR_github_app_installation_id: "00000000"
-      # Optional: billing email (empty leaves it unmanaged)
+      # Billing email. ⚠️ Terraform APPLIES this value and cannot read the current
+      # one back: if you leave it unset an empty string is written, which can
+      # OVERWRITE your org's real billing email. Set it explicitly here, or edit
+      # terraform/org-settings.tf to stop managing billing_email entirely.
       # TF_VAR_billing_email: billing@your-org.example
     command: ["plan"]

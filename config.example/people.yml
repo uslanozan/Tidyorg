@@ -1,0 +1,22 @@
+# =============================================================================
+# people.yml — org ÜYELİĞİ (yetki DEĞİL)
+# =============================================================================
+# terraform/people.tf tarafından okunur. Her isim org üyesidir (varsayılan
+# `member`). Owner'lık ve org kapsamlı roller (head-of-engineering) privileged.yml
+# içindedir — bu dosya YETKİ İFADE EDEMEZ (secure by construction). Makine-sahipli:
+# dashboard bu dosyaya üye ekler/çıkarır.
+#
+# ⚠️ İsimler GERÇEK GitHub kullanıcı adları olmalı — bir isim eklemek `apply`
+# sırasında gerçek bir org daveti üretir. Aşağıdaki değerler yalnızca örnektir;
+# kendi üyelerinle değiştir.
+#
+# Repo yetkisi (mentor/developer) repositories/*.yml içindedir, burada değil.
+# =============================================================================
+
+version: 1
+
+members:
+  - mentor-a
+  - dev-1
+  - dev-2
+  - dev-3
