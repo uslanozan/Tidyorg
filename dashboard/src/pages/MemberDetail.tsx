@@ -186,7 +186,10 @@ export function MemberDetail() {
                 <strong>{login}</strong> organizasyondan <strong>tamamen</strong> çıkarılacak:
                 önce bulunduğu tüm repo rollerinden, sonra <code>people.yml</code> üyeliğinden —
                 hepsi tek PR'da. Merge edilene kadar GitHub'da hiçbir şey değişmez; merge sonrası
-                kişi org üyesi olmaktan çıkar ve bu repolara erişimi kalmaz.
+                kişi org üyesi olmaktan çıkar ve erişimi kalmaz.{' '}
+                <span className="subtle">
+                  (Geri alınabilir: tekrar üye olarak eklersen yeni bir davet gider.)
+                </span>
               </p>
 
               {affectedRepos.length > 0 ? (

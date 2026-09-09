@@ -133,10 +133,12 @@ resource "github_membership" "people" {
   # `member`. Üyelik dosyasının kendisi rolü ifade edemez (secure by construction).
   role = contains(local.privileged_owners, each.key) ? "admin" : "member"
 
-  # Kaynak koddan kaldırılırsa kişi organizasyondan ATILMAZ, yalnızca `member`a
-  # düşürülür. Birini gerçekten çıkarmak bilinçli bir adım olmalı — yanlışlıkla
-  # silinen bir YAML satırının sonucu değil.
-  downgrade_on_destroy = true
+  # people.yml'dan çıkarılan kişi organizasyondan GERÇEKTEN çıkarılır (evict).
+  # Bu güvenli: (a) her değişiklik PR + apply'dan geçer, ani/kazara değil; (b) üye
+  # atımı GERİ ALINABİLİR — tekrar people.yml'a eklemek yeni bir davet gönderir.
+  # (Repo silme geri alınamaz olduğu için orada ayrı, bilinçli bir yol var; üyelik
+  # için gerekmiyor.) Böylece dashboard'ın "org'dan çıkar" işlemi söz verdiğini yapar.
+  downgrade_on_destroy = false
 }
 
 # --- head-of-engineering takımı ----------------------------------------------
