@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useClient } from '../hooks/useAuth'
 import { validateUsername } from '../services/validation'
 import { GitHubError } from '../services/githubApi'
+import type { GitHubUser } from '../types/github'
 
 interface Props {
   label: string
@@ -9,6 +10,12 @@ interface Props {
   onChange: (value: string) => void
   /** Doğrulama sonucu. `members` verildiyse: org üyesi mi? Aksi halde: GitHub'da var mı? */
   onVerified?: (ok: boolean) => void
+  /**
+   * Varsayılan modda GitHub doğrulaması başarılı olunca çözülen kullanıcı (avatar +
+   * gerçek ad) döner; alan boşaldığında / doğrulama başarısızsa `null`. Çağıran taraf
+   * "kimi ekliyoruz" önizlemesi gösterebilsin diye.
+   */
+  onResolved?: (user: GitHubUser | null) => void
   hint?: string
   /**
    * Verilirse alan bir ÜYE SEÇİCİ olur: autocomplete bu listeden gelir ve yalnızca
@@ -26,7 +33,15 @@ type Check = 'idle' | 'checking' | 'ok' | 'missing' | 'error'
  *  - Varsayılan: alandan çıkınca `GET /users/{login}` ile kullanıcının var olduğunu doğrular.
  *  - `members` verildiğinde: org üyesi seçici (datalist autocomplete + yerel doğrulama).
  */
-export function UsernameField({ label, value, onChange, onVerified, hint, members }: Props) {
+export function UsernameField({
+  label,
+  value,
+  onChange,
+  onVerified,
+  onResolved,
+  hint,
+  members,
+}: Props) {
   const client = useClient()
   const [check, setCheck] = useState<Check>('idle')
   const [message, setMessage] = useState<string | null>(null)
@@ -37,6 +52,7 @@ export function UsernameField({ label, value, onChange, onVerified, hint, member
     if (!login) {
       setCheck('idle')
       setMessage(null)
+      onResolved?.(null)
       return
     }
 
@@ -60,6 +76,7 @@ export function UsernameField({ label, value, onChange, onVerified, hint, member
       setCheck('error')
       setMessage(formatError)
       onVerified?.(false)
+      onResolved?.(null)
       return
     }
 
@@ -70,10 +87,12 @@ export function UsernameField({ label, value, onChange, onVerified, hint, member
         setCheck('ok')
         setMessage(`${user.name ?? user.login} — GitHub'da bulundu`)
         onVerified?.(true)
+        onResolved?.(user)
       } else {
         setCheck('missing')
         setMessage('Bu kullanıcı adı GitHub\'da bulunamadı.')
         onVerified?.(false)
+        onResolved?.(null)
       }
     } catch (error) {
       setCheck('error')
@@ -81,6 +100,7 @@ export function UsernameField({ label, value, onChange, onVerified, hint, member
         error instanceof GitHubError ? error.userMessage : 'Doğrulama yapılamadı.',
       )
       onVerified?.(false)
+      onResolved?.(null)
     }
   }
 
@@ -104,6 +124,7 @@ export function UsernameField({ label, value, onChange, onVerified, hint, member
           setCheck('idle')
           setMessage(null)
           onVerified?.(false)
+          onResolved?.(null)
         }}
         onBlur={verify}
       />

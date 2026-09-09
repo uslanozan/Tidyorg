@@ -12,7 +12,7 @@ import { useProposal } from '../hooks/useProposal'
 import { CONFIG_OWNER } from '../services/env'
 import { isHeadOfEngineering, isOrgOwner, proposePeopleUpdate } from '../services/configRepo'
 import { LANGUAGES, type Project } from '../types/config'
-import type { GitHubOrg } from '../types/github'
+import type { GitHubOrg, GitHubUser } from '../types/github'
 
 /** Bare domain'i tıklanabilir URL'e çevir. */
 function normalizeUrl(url: string): string {
@@ -240,6 +240,7 @@ function AddMemberDialog({
   const { busy, submit } = useProposal()
   const [login, setLogin] = useState('')
   const [verified, setVerified] = useState(false)
+  const [preview, setPreview] = useState<GitHubUser | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   async function confirm() {
@@ -288,8 +289,32 @@ function AddMemberDialog({
             setError(null)
           }}
           onVerified={setVerified}
+          onResolved={setPreview}
           hint="people.yml üye listesine eklenir. Merge sonrası GitHub org daveti gönderilir. Bu adım yalnızca üyelik verir — repo erişimi ve yetki ayrıdır."
         />
+
+        {preview && (
+          <a
+            className="card card-pad row"
+            href={preview.html_url}
+            target="_blank"
+            rel="noreferrer"
+            style={{ gap: 'var(--sp-3)', alignItems: 'center', textDecoration: 'none' }}
+          >
+            <img
+              src={preview.avatar_url}
+              alt=""
+              width={44}
+              height={44}
+              style={{ borderRadius: '50%', flexShrink: 0 }}
+            />
+            <div className="stack" style={{ gap: 2 }}>
+              <strong>{preview.name ?? preview.login}</strong>
+              <span className="subtle">@{preview.login} · GitHub'da aç ↗</span>
+            </div>
+          </a>
+        )}
+
         {error && (
           <p className="field-error" role="alert">
             {error}
