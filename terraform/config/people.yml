@@ -1,30 +1,6 @@
-# =============================================================================
-# Kişiler — CANLI DOSYA · org ÜYELİĞİ (yetki DEĞİL)
-# =============================================================================
-# terraform/people.tf tarafından okunur. Buradaki her isim org üyesidir.
-#
-# ⚠️ Kişi EKLEMEK gerçek bir org daveti üretir.
-#    Kişi ÇIKARMAK onu org'dan atmaz, yalnızca `member`a düşürür
-#    (`downgrade_on_destroy = true`) — gerçekten çıkarmak bilinçli bir adımdır.
-#
-# -----------------------------------------------------------------------------
-# BU DOSYA YALNIZCA ÜYELİK TAŞIR — YETKİ TAŞIMAZ
-# -----------------------------------------------------------------------------
-# Bir kişinin burada olması yalnızca "org üyesi" demektir (varsayılan `member`).
-# Owner'lık ve org kapsamlı roller (head-of-engineering) config/privileged.yml'da
-# tanımlanır — CODEOWNERS korumalı, dashboard'ın yazamadığı dosya.
-#
-# Bu ayrım bilinçlidir (secure by construction): bu dosya sık değişir ve ileride
-# dashboard yazacak; yükseltmeyi buradan tek satırla yapılamaz kılmak için yetki
-# alanları başka dosyaya taşındı. Gerekçe: terraform/people.tf başlığı.
-#
-# Repo yetkisi (mentor/developer) config/repositories/*.yml içindedir.
-# =============================================================================
-
 version: 1
 
 members:
-  - uslanozan     # org owner + head-of-engineering — bkz. config/privileged.yml
-  - paitblack     # 2026-08-15 projeden ayrıldı; repo erişimi repositories/*.yml'da
-  - medine2906    # dashboard geliştiricisi; repo yetkisi repositories/*.yml'da
-  - Dogancan-Acar # 2026-09-07 şirket kapsamı işi; kontrol düzlemi mentörü (repo config)
+  - uslanozan
+  - medine2906
+  - Dogancan-Acar
