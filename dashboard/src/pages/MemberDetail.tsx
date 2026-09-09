@@ -101,7 +101,7 @@ export function MemberDetail() {
             </div>
             <button
               type="button"
-              className="btn btn-sm btn-danger"
+              className="btn btn-danger btn-sm"
               onClick={() => setConfirmRemove(true)}
               disabled={busy}
             >

@@ -924,12 +924,45 @@ a.person:hover {
     grid-template-columns: 1fr;
   }
 
-  .nav-link {
-    padding: 0.35rem 0.5rem;
+  /* Başlık iki satıra döner: üst satır marka + tema + kullanıcı, alt satır tam
+     genişlikte kayan nav. Sabit yükseklik yerine içeriğe göre uzar. */
+  .header {
+    height: auto;
   }
 
   .header-inner {
+    flex-wrap: wrap;
+    gap: var(--sp-2) var(--sp-3);
+    padding-block: var(--sp-2);
+  }
+
+  .nav {
+    order: 5;
+    width: 100%;
+    margin-left: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nav-link {
+    padding: 0.35rem 0.5rem;
+    white-space: nowrap;
+  }
+
+  /* Sayfa başlığı ve aksiyon butonları dar ekranda üst üste yığılır. */
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
     gap: var(--sp-3);
+  }
+
+  .row-between {
+    flex-wrap: wrap;
   }
 
   .toast-region {
@@ -937,5 +970,12 @@ a.person:hover {
     left: var(--sp-3);
     bottom: var(--sp-3);
     width: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  /* En dar ekranda kullanıcı adını gizle — avatar + çıkış yeterli. */
+  .header-user {
+    display: none;
   }
 }

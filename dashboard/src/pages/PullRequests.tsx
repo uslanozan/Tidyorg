@@ -248,7 +248,7 @@ export function PullRequests() {
                 </a>
                 {plan.commentUrl && (
                   <a
-                    className="btn btn-sm btn-ghost"
+                    className="btn btn-ghost btn-sm"
                     href={plan.commentUrl}
                     target="_blank"
                     rel="noreferrer"

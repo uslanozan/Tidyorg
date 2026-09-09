@@ -64,7 +64,7 @@ export function AppShell() {
                 width={28}
                 height={28}
               />
-              <span className="subtle" style={{ maxWidth: 140 }}>
+              <span className="subtle header-user" style={{ maxWidth: 140 }}>
                 {user.login}
               </span>
               <button type="button" className="btn btn-ghost btn-sm" onClick={signOut}>

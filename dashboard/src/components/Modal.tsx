@@ -7,18 +7,48 @@ interface ModalProps {
   footer?: ReactNode
 }
 
-/** Esc ile kapanan, açılınca odağı içine alan basit diyalog. */
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
+/**
+ * Esc ile kapanan diyalog. Açılınca odağı içine alır, Tab ile odak panelde
+ * hapsolur (arka plana kaçmaz) ve kapanınca odak tetikleyen öğeye geri döner.
+ */
 export function Modal({ title, onClose, children, footer }: ModalProps) {
   const panel = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    const previouslyFocused = document.activeElement as HTMLElement | null
+
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
+      if (event.key === 'Escape') {
+        onClose()
+        return
+      }
+      if (event.key !== 'Tab') return
+
+      const focusables = panel.current?.querySelectorAll<HTMLElement>(FOCUSABLE)
+      if (!focusables || focusables.length === 0) return
+      const first = focusables[0]
+      const last = focusables[focusables.length - 1]
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
     }
+
     document.addEventListener('keydown', onKeyDown)
     panel.current?.querySelector<HTMLElement>('input, button, select, textarea')?.focus()
 
-    return () => document.removeEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      // Odağı, diyaloğu açan öğeye (buton) geri ver — klavye kullanıcısı kaybolmasın.
+      previouslyFocused?.focus?.()
+    }
   }, [onClose])
 
   return (
