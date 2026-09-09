@@ -98,6 +98,7 @@ module "repositories" {
 
   mentors     = try(each.value.mentors, [])
   developers  = try(each.value.developers, [])
+  viewers     = try(each.value.viewers, [])
   code_owners = try(each.value.code_owners, {})
 
   role_permissions    = local.role_permissions

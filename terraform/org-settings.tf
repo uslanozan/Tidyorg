@@ -112,6 +112,16 @@ resource "github_organization_settings" "this" {
     ignore_changes = [billing_email]
   }
 
+  # --- Org profili (GitHub UI'da görünen) -----------------------------------
+  # Bu alanlar UI'dan elle girilmişti; config yönetmediği sürece Terraform her
+  # apply'da onları SİLMEYE çalışıyordu. Config'e alarak yönetime sokuyoruz —
+  # artık config ne derse o. (Rebrand'de değerler burada değişir.)
+  # `try(..., null)`: profile bölümü yoksa alan yönetilmez gibi null kalır.
+  name        = try(local.org_config.profile.name, null)
+  description = try(local.org_config.profile.description, null)
+  blog        = try(local.org_config.profile.blog, null)
+  location    = try(local.org_config.profile.location, null)
+
   # Bugüne kadar `read` — yani org'a eklenen herkes, hiçbir takımda olmasa bile
   # bütün repo'ları okuyabiliyordu. `none` ile erişimin tek kaynağı takım
   # üyeliği olur (ROADMAP Faz 6 / ACCESS-MODEL en az yetki ilkesi).

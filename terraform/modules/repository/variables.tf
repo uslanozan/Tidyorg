@@ -147,6 +147,12 @@ variable "developers" {
   default     = []
 }
 
+variable "viewers" {
+  type        = list(string)
+  description = "GitHub usernames with read-only (pull) access to the repository"
+  default     = []
+}
+
 variable "role_permissions" {
   type        = map(string)
   description = <<-EOT
@@ -157,6 +163,7 @@ variable "role_permissions" {
   default = {
     mentor    = "admin"
     developer = "push"
+    viewer    = "pull"
   }
 }
 

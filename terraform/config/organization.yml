@@ -37,8 +37,23 @@ roles:
     repo_permission: push
     bypass_branch_protection: false
 
+  # Salt-okunur repo rolü. `viewers:` listesindeki kişiler repo'yu görür ve
+  # klonlar ama push atamaz. Örn. başka takımdan bir gözlemci / danışman.
+  viewer:
+    scope: repository
+    repo_permission: pull
+    bypass_branch_protection: false
+
 # head-of-engineering rolünü taşıyan organizasyon seviyesi takım
 org_admin_team: platform-admins
+
+# Organizasyon profili (GitHub UI'da görünen). Config yönetir ki her apply bu
+# alanları silmeye çalışmasın. Rebrand'de burada değişecek.
+profile:
+  name: "Tidyorg"
+  description: "Desc created by Ozan"
+  blog: "https://x.example.com/"
+  location: "United Kingdom"
 
 # -----------------------------------------------------------------------------
 # KİŞİLER — ayrı dosyada

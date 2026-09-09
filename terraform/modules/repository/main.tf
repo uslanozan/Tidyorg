@@ -196,34 +196,54 @@ resource "github_team" "developers" {
   privacy     = "closed"
 }
 
-resource "github_team_repository" "mentors" {
-  team_id    = github_team.mentors.id
-  repository = github_repository.this.name
-  permission = lookup(var.role_permissions, "mentor", "admin")
+resource "github_team" "viewers" {
+  name        = "${var.name}-viewers"
+  description = "${var.name} viewers - read-only access"
+  privacy     = "closed"
 }
 
 # head-of-engineering rolü organizasyon geneli kapsama sahiptir: her repo'da
-# admin yetkisi bulunur.
-#
-# Bu yetki aynı zamanda teknik bir zorunluluktur. GitHub, bir takımı branch
-# protection'ın push izin listesine ancak o takımın repo'ya erişimi varsa kabul
-# eder; erişimi yoksa isteği sessizce yok sayar. Bu kaynak olmadan
-# push_allowed_roles içindeki "head-of-engineering" hiçbir zaman yerleşmez ve
-# her plan'da tekrar uygulanmaya çalışılır (kalıcı drift).
+# admin yetkisi bulunur. Bu erişim aynı zamanda teknik bir zorunluluktur:
+# GitHub, bir takımı branch protection'ın push izin listesine ancak takımın
+# repo'ya erişimi varsa kabul eder. Aşağıdaki collaborators kaynağı bu erişimi de
+# sağlar (org_admins team bloğu).
 data "github_team" "org_admins" {
   slug = var.org_admin_team_slug
 }
 
-resource "github_team_repository" "org_admins" {
-  team_id    = data.github_team.org_admins.id
+# --- Erişim: OTORİTER collaborator seti ------------------------------------
+# Repo erişimi YALNIZCA takımlardan gelir; bu kaynak repo'nun collaborator + team
+# listesinin TEK ve TAM kaynağıdır (authoritative). Config'te (yani bu takımlarda)
+# olmayan HER doğrudan (direct) kullanıcı grant'i apply'da SİLİNİR — "config'ten
+# çıkar = erişim gerçekten gider" vaadini sağlayan budur. Doğrudan collaborator
+# eklemek modeli delen bir arka kapıydı (bkz. 2026-09-09 erişim testi); kapatıldı.
+#
+# ⚠️ Arşivlenmiş repo GitHub'da read-only olur; collaborator değiştirilemez. Bu
+# yüzden yalnızca AKTİF repolarda yönetilir (count). Arşivli repo zaten kimsenin
+# yazamadığı dondurulmuş bir durumdur.
+resource "github_repository_collaborators" "this" {
+  count      = local.active ? 1 : 0
   repository = github_repository.this.name
-  permission = lookup(var.role_permissions, "head-of-engineering", "admin")
-}
 
-resource "github_team_repository" "developers" {
-  team_id    = github_team.developers.id
-  repository = github_repository.this.name
-  permission = lookup(var.role_permissions, "developer", "push")
+  team {
+    team_id    = github_team.mentors.slug
+    permission = lookup(var.role_permissions, "mentor", "admin")
+  }
+
+  team {
+    team_id    = github_team.developers.slug
+    permission = lookup(var.role_permissions, "developer", "push")
+  }
+
+  team {
+    team_id    = github_team.viewers.slug
+    permission = lookup(var.role_permissions, "viewer", "pull")
+  }
+
+  team {
+    team_id    = data.github_team.org_admins.slug
+    permission = lookup(var.role_permissions, "head-of-engineering", "admin")
+  }
 }
 
 resource "github_team_membership" "mentors" {
@@ -238,6 +258,14 @@ resource "github_team_membership" "developers" {
   for_each = toset(var.developers)
 
   team_id  = github_team.developers.id
+  username = each.value
+  role     = "member"
+}
+
+resource "github_team_membership" "viewers" {
+  for_each = toset(var.viewers)
+
+  team_id  = github_team.viewers.id
   username = each.value
   role     = "member"
 }
@@ -415,5 +443,5 @@ resource "github_branch_protection" "this" {
     }
   }
 
-  depends_on = [github_branch.default]
+  depends_on = [github_branch.default, github_repository_collaborators.this]
 }
