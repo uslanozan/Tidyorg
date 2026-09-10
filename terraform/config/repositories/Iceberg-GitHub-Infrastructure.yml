@@ -72,3 +72,5 @@ files:
 
 protected_branches:
   develop: null
+
+viewers: [paitblack]
