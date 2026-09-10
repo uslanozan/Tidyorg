@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useT } from '../i18n'
 import { useClient } from '../hooks/useAuth'
 import { validateUsername } from '../services/validation'
 import { GitHubError } from '../services/githubApi'
@@ -42,6 +43,7 @@ export function UsernameField({
   hint,
   members,
 }: Props) {
+  const t = useT()
   const client = useClient()
   const [check, setCheck] = useState<Check>('idle')
   const [message, setMessage] = useState<string | null>(null)
@@ -61,11 +63,11 @@ export function UsernameField({
       const found = members.some((m) => m.toLowerCase() === login.toLowerCase())
       if (found) {
         setCheck('ok')
-        setMessage(`${login} — org üyesi`)
+        setMessage(t('ui.orgMemberOk', { login }))
         onVerified?.(true)
       } else {
         setCheck('missing')
-        setMessage('Org üyesi değil. Önce "Üye Ekle" ile organizasyona ekleyin.')
+        setMessage(t('ui.notOrgMember'))
         onVerified?.(false)
       }
       return
@@ -85,19 +87,19 @@ export function UsernameField({
       const user = await client.userExists(login)
       if (user) {
         setCheck('ok')
-        setMessage(`${user.name ?? user.login} — GitHub'da bulundu`)
+        setMessage(t('ui.githubFound', { name: user.name ?? user.login }))
         onVerified?.(true)
         onResolved?.(user)
       } else {
         setCheck('missing')
-        setMessage('Bu kullanıcı adı GitHub\'da bulunamadı.')
+        setMessage(t('ui.githubNotFound'))
         onVerified?.(false)
         onResolved?.(null)
       }
     } catch (error) {
       setCheck('error')
       setMessage(
-        error instanceof GitHubError ? error.userMessage : 'Doğrulama yapılamadı.',
+        error instanceof GitHubError ? error.userMessage : t('ui.verifyFailed'),
       )
       onVerified?.(false)
       onResolved?.(null)
@@ -117,7 +119,7 @@ export function UsernameField({
         value={value}
         autoComplete="off"
         list={members ? listId : undefined}
-        placeholder={members ? 'org üyesi seç…' : 'github-kullanici-adi'}
+        placeholder={members ? t('ui.selectMemberPlaceholder') : t('ui.usernamePlaceholder')}
         aria-invalid={invalid}
         onChange={(event) => {
           onChange(event.target.value)
@@ -136,7 +138,7 @@ export function UsernameField({
         </datalist>
       )}
       {hint && !message && <span className="hint">{hint}</span>}
-      {check === 'checking' && <span className="hint">Kontrol ediliyor…</span>}
+      {check === 'checking' && <span className="hint">{t('ui.checking')}</span>}
       {message && (
         <span className={invalid ? 'field-error' : 'hint'}>
           {check === 'ok' ? '✓ ' : ''}

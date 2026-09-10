@@ -6,6 +6,12 @@
  * Yeni sayfa çevirisi eklerken: TR metnini buraya taşı, EN karşılığını yaz,
  * bileşende hard-coded metni t('...') ile değiştir.
  */
+import { projects } from './dict/projects'
+import { projectDetail, repoSettings } from './dict/projectDetail'
+import { memberDetail, members, teams } from './dict/members'
+import { orgSettings, newProject } from './dict/orgSettings'
+import { pulls, cart, ui } from './dict/misc'
+
 export type Lang = 'tr' | 'en'
 
 export const messages = {
@@ -66,6 +72,18 @@ export const messages = {
       signIn: 'GitHub ile giriş yap',
       authorizing: 'Giriş yapılıyor…',
     },
+
+    projects: projects.tr,
+    projectDetail: projectDetail.tr,
+    repoSettings: repoSettings.tr,
+    memberDetail: memberDetail.tr,
+    members: members.tr,
+    teams: teams.tr,
+    orgSettings: orgSettings.tr,
+    newProject: newProject.tr,
+    pulls: pulls.tr,
+    cart: cart.tr,
+    ui: ui.tr,
   },
 
   en: {
@@ -124,5 +142,17 @@ export const messages = {
       signIn: 'Sign in with GitHub',
       authorizing: 'Signing in…',
     },
+
+    projects: projects.en,
+    projectDetail: projectDetail.en,
+    repoSettings: repoSettings.en,
+    memberDetail: memberDetail.en,
+    members: members.en,
+    teams: teams.en,
+    orgSettings: orgSettings.en,
+    newProject: newProject.en,
+    pulls: pulls.en,
+    cart: cart.en,
+    ui: ui.en,
   },
 } as const

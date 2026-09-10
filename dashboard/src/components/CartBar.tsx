@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Modal } from './Modal'
+import { useT } from '../i18n'
 import { useClient } from '../hooks/useAuth'
 import { useCart, type CartItem } from '../hooks/useCart'
 import { useProposal } from '../hooks/useProposal'
@@ -17,6 +18,7 @@ const shortPath = (p: string) => p.replace(/^terraform\/config\//, '')
  * dosyaya düşen öğeler sırayla bestelenir.
  */
 export function CartBar() {
+  const t = useT()
   const { batchMode, setBatchMode, items, count, remove, clear } = useCart()
   const client = useClient()
   const { busy, submit } = useProposal()
@@ -68,10 +70,26 @@ export function CartBar() {
         type="button"
         className={batchMode ? 'btn btn-sm btn-primary' : 'btn btn-ghost btn-sm'}
         onClick={() => setBatchMode(!batchMode)}
-        title="Toplu mod: açıkken işlemler sepete birikir, hepsi tek PR + tek apply olur"
+        title={t('cart.toggleTitle')}
         aria-pressed={batchMode}
+        style={{ gap: 'var(--sp-1)' }}
       >
-        🧺 Toplu{batchMode ? ' ✓' : ''}
+        <svg
+          viewBox="0 0 24 24"
+          width="15"
+          height="15"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.8}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M12 2 2 7l10 5 10-5-10-5Z" />
+          <path d="m2 12 10 5 10-5" />
+          <path d="m2 17 10 5 10-5" />
+        </svg>
+        {t('cart.batch')}{batchMode ? ' ✓' : ''}
       </button>
 
       {count > 0 && (
@@ -79,15 +97,15 @@ export function CartBar() {
           type="button"
           className="btn btn-sm"
           onClick={() => setOpen(true)}
-          aria-label={`Değişiklik sepeti: ${count} işlem`}
+          aria-label={t('cart.cartAria', { n: count })}
         >
-          Sepet {count}
+          {t('cart.cart')} {count}
         </button>
       )}
 
       {open && (
         <Modal
-          title={`Değişiklik sepeti — ${count} işlem`}
+          title={t('cart.panelTitle', { n: count })}
           onClose={busy ? () => undefined : () => setOpen(false)}
           footer={
             <>
@@ -97,10 +115,10 @@ export function CartBar() {
                 onClick={clear}
                 disabled={busy || count === 0}
               >
-                Sepeti boşalt
+                {t('cart.clear')}
               </button>
               <button type="button" className="btn" onClick={() => setOpen(false)} disabled={busy}>
-                Kapat
+                {t('cart.close')}
               </button>
               <button
                 type="button"
@@ -109,24 +127,22 @@ export function CartBar() {
                 disabled={busy || count === 0}
               >
                 {busy && <span className="spinner" aria-hidden="true" />}
-                Tek PR'da uygula ({count})
+                {t('cart.applyN', { n: count })}
               </button>
             </>
           }
         >
           <div className="stack" style={{ gap: 'var(--sp-4)' }}>
             <p className="subtle" style={{ margin: 0 }}>
-              Tüm işlemler <strong>tek PR</strong>'da açılır; merge edilince{' '}
-              <strong>tek apply</strong> ile uygulanır. Aynı dosyaya düşen değişiklikler
-              birleştirilir.
+              {t('cart.intro')}
             </p>
             {count === 0 ? (
-              <p className="subtle">Sepet boş.</p>
+              <p className="subtle">{t('cart.empty')}</p>
             ) : (
               [...groups.entries()].map(([file, its]) => (
                 <section key={file} className="card card-pad stack" style={{ gap: 'var(--sp-2)' }}>
                   <div className="meta-label">
-                    <code>{shortPath(file)}</code> · {its.length} değişiklik
+                    <code>{shortPath(file)}</code> · {t('cart.changesN', { n: its.length })}
                   </div>
                   {its.map((item) => (
                     <div key={item.id} className="row-between">
@@ -134,7 +150,7 @@ export function CartBar() {
                       <button
                         type="button"
                         className="btn btn-ghost btn-sm"
-                        aria-label="Sepetten çıkar"
+                        aria-label={t('cart.removeItem')}
                         onClick={() => remove(item.id)}
                         disabled={busy}
                       >

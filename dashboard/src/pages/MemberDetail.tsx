@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { LanguageBadge } from '../components/LanguageBadge'
 import { ConfirmDialog } from '../components/Modal'
 import { EmptyState, Skeleton } from '../components/States'
+import { useT } from '../i18n'
 import { useAuth, useClient } from '../hooks/useAuth'
 import { useCart } from '../hooks/useCart'
 import { useConfig } from '../hooks/useProjects'
@@ -34,6 +35,7 @@ const LIST_KEY: Record<ProjectRole, 'mentors' | 'developers' | 'viewers'> = {
 const ROLE_ORDER: ProjectRole[] = ['mentor', 'developer', 'viewer']
 
 export function MemberDetail() {
+  const t = useT()
   const { login = '' } = useParams<{ login: string }>()
   const { projects, people, privileged, loading } = useConfig()
   const { user } = useAuth()
@@ -194,7 +196,7 @@ export function MemberDetail() {
     <div className="stack" style={{ gap: 'var(--sp-6)' }}>
       <div>
         <Link className="subtle" to="/">
-          ← Projeler
+          ← {t('memberDetail.projects')}
         </Link>
       </div>
 
@@ -209,16 +211,16 @@ export function MemberDetail() {
         <div className="stack" style={{ gap: 'var(--sp-1)' }}>
           <h1>{login}</h1>
           <div className="row" style={{ flexWrap: 'wrap' }}>
-            {standing.owner && <span className="badge badge-warning">org owner</span>}
+            {standing.owner && <span className="badge badge-warning">{t('memberDetail.orgOwner')}</span>}
             {standing.roles.map((role) => (
               <span key={role} className="badge badge-accent">
                 {role}
               </span>
             ))}
             {standing.member ? (
-              <span className="badge">org üyesi</span>
+              <span className="badge">{t('memberDetail.orgMember')}</span>
             ) : (
-              <span className="subtle">people.yml içinde kayıtlı değil</span>
+              <span className="subtle">{t('memberDetail.notInPeople')}</span>
             )}
             <a
               href={`https://github.com/${encodeURIComponent(login)}`}
@@ -226,7 +228,7 @@ export function MemberDetail() {
               rel="noreferrer"
               style={{ fontSize: 'var(--text-sm)' }}
             >
-              GitHub profili ↗
+              {t('memberDetail.githubProfile')} ↗
             </a>
           </div>
         </div>
@@ -236,12 +238,16 @@ export function MemberDetail() {
         <section className="card card-pad section">
           <div className="row-between">
             <div className="stack" style={{ gap: 'var(--sp-1)' }}>
-              <h2 style={{ fontSize: 'var(--text-lg)' }}>Organizasyon üyeliği</h2>
+              <h2 style={{ fontSize: 'var(--text-lg)' }}>{t('memberDetail.orgMembership')}</h2>
               <p className="subtle">
-                Kişiyi organizasyondan <strong>tamamen</strong> çıkarır: önce bulunduğu tüm
-                repo rollerinden, sonra <code>people.yml</code> üyeliğinden — tek PR'da. Owner /
-                head-of-engineering yetkisi buradan değiştirilemez ({' '}
-                <code>privileged.yml</code> içindedir).
+                {t('memberDetail.orgMembershipDesc1')}
+                <strong>{t('memberDetail.fully')}</strong>
+                {t('memberDetail.orgMembershipDesc2')}
+                <code>people.yml</code>
+                {t('memberDetail.orgMembershipDesc3')}
+                {' '}
+                <code>privileged.yml</code>
+                {t('memberDetail.orgMembershipDesc4')}
               </p>
             </div>
             <button
@@ -250,7 +256,7 @@ export function MemberDetail() {
               onClick={() => setConfirmRemove(true)}
               disabled={busy}
             >
-              Org'dan tamamen çıkar
+              {t('memberDetail.removeOrgFullyBtn')}
             </button>
           </div>
         </section>
@@ -258,23 +264,23 @@ export function MemberDetail() {
 
       <section className="card card-pad section">
         <h2 style={{ fontSize: 'var(--text-lg)' }}>
-          Projeler <span className="subtle">({memberships.length})</span>
+          {t('memberDetail.projects')} <span className="subtle">({memberships.length})</span>
         </h2>
 
         {memberships.length === 0 ? (
           <EmptyState
             icon="🗂️"
-            title="Bu kişi hiçbir projede görünmüyor"
-            description="Konfigürasyondaki mentör, developer veya viewer listelerinde adı geçmiyor."
+            title={t('memberDetail.emptyProjectsTitle')}
+            description={t('memberDetail.emptyProjectsDesc')}
           />
         ) : (
           <div className="table-scroll">
             <table className="rule-table">
               <thead>
                 <tr>
-                  <th>Proje</th>
-                  <th>Rol</th>
-                  <th>Dil</th>
+                  <th>{t('memberDetail.colProject')}</th>
+                  <th>{t('memberDetail.colRole')}</th>
+                  <th>{t('memberDetail.colLanguage')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -296,7 +302,7 @@ export function MemberDetail() {
                             className="select"
                             value={role}
                             disabled={busy}
-                            aria-label={`${project} içindeki rol`}
+                            aria-label={t('memberDetail.roleInProject', { project })}
                             onChange={(event) => {
                               const to = event.target.value as ProjectRole | 'remove'
                               if (to !== role) setRoleEdit({ project, from: role, to })
@@ -307,7 +313,7 @@ export function MemberDetail() {
                                 {ROLE_LABEL[r]}
                               </option>
                             ))}
-                            <option value="remove">Repodan çıkar</option>
+                            <option value="remove">{t('memberDetail.removeFromRepo')}</option>
                           </select>
                         ) : (
                           <span className={role === 'mentor' ? 'badge badge-accent' : 'badge'}>
@@ -327,15 +333,16 @@ export function MemberDetail() {
 
       {roleEdit && (
         <ConfirmDialog
-          title={`${roleEdit.project} — rol değişikliği`}
+          title={t('memberDetail.roleChangeTitle', { project: roleEdit.project })}
           message={
             <div className="stack" style={{ gap: 'var(--sp-2)' }}>
               <p style={{ margin: 0 }}>
-                <strong>{login}</strong>, <code>{roleEdit.project}</code> reposunda{' '}
+                <strong>{login}</strong>, <code>{roleEdit.project}</code>
+                {t('memberDetail.roleChangeRepoMid')}
                 {roleEdit.to === 'remove' ? (
                   <>
-                    <strong>{ROLE_LABEL[roleEdit.from]}</strong> rolünden çıkarılacak (repodan
-                    tamamen)
+                    <strong>{ROLE_LABEL[roleEdit.from]}</strong>
+                    {t('memberDetail.roleChangeRemoveSuffix')}
                   </>
                 ) : (
                   <>
@@ -343,7 +350,7 @@ export function MemberDetail() {
                     <strong>{ROLE_LABEL[roleEdit.to]}</strong>
                   </>
                 )}
-                . Bir PR açar; merge edilene kadar GitHub'da değişmez.
+                {t('memberDetail.roleChangePrNote')}
               </p>
 
               {(() => {
@@ -359,15 +366,16 @@ export function MemberDetail() {
                     style={{ background: 'var(--danger-soft)', border: '1px solid var(--danger)' }}
                   >
                     <p className="subtle" style={{ margin: 0 }}>
-                      ⚠️ {login} bu repo'nun tek mentörü — bu değişiklik repo'yu mentörsüz bırakır
-                      ve <strong>plan aşamasında reddedilir</strong>. Önce başka bir mentör ata.
+                      ⚠️ {t('memberDetail.soleMentorWarnPre', { login })}
+                      <strong>{t('memberDetail.planRejected')}</strong>
+                      {t('memberDetail.soleMentorWarnPost')}
                     </p>
                   </div>
                 ) : null
               })()}
             </div>
           }
-          confirmLabel={batchMode ? '🧺 Sepete ekle' : 'Değiştir ve PR aç'}
+          confirmLabel={batchMode ? t('memberDetail.addToCart') : t('memberDetail.roleChangeConfirm')}
           danger={roleEdit.to === 'remove'}
           busy={busy}
           onConfirm={() => void applyRoleChange()}
@@ -377,34 +385,35 @@ export function MemberDetail() {
 
       {confirmRemove && (
         <ConfirmDialog
-          title={`${login} organizasyondan çıkarılsın mı?`}
+          title={t('memberDetail.removeOrgTitle', { login })}
           message={
             <div className="stack" style={{ gap: 'var(--sp-3)' }}>
               <p style={{ margin: 0 }}>
-                <strong>{login}</strong> organizasyondan <strong>tamamen</strong> çıkarılacak:
-                önce bulunduğu tüm repo rollerinden, sonra <code>people.yml</code> üyeliğinden —
-                hepsi tek PR'da. Merge edilene kadar GitHub'da hiçbir şey değişmez; merge sonrası
-                kişi org üyesi olmaktan çıkar ve erişimi kalmaz.{' '}
+                <strong>{login}</strong>{t('memberDetail.removeOrgDesc1')}
+                <strong>{t('memberDetail.fully')}</strong>
+                {t('memberDetail.removeOrgDesc2')}
+                <code>people.yml</code>
+                {t('memberDetail.removeOrgDesc3')}{' '}
                 <span className="subtle">
-                  (Geri alınabilir: tekrar üye olarak eklersen yeni bir davet gider.)
+                  {t('memberDetail.removeOrgReversible')}
                 </span>
               </p>
 
               {affectedRepos.length > 0 ? (
                 <div className="stack" style={{ gap: 'var(--sp-1)' }}>
-                  <span className="meta-label">Çıkarılacağı repolar</span>
+                  <span className="meta-label">{t('memberDetail.reposToRemove')}</span>
                   <ul className="subtle" style={{ margin: 0, paddingLeft: '1.2em' }}>
                     {affectedRepos.map((r) => (
                       <li key={r.name}>
                         <code>{r.name}</code> — {r.roles.join(', ')}
-                        {r.soleMentor && ' ⚠️ tek mentör'}
+                        {r.soleMentor && ` ⚠️ ${t('memberDetail.soleMentorTag')}`}
                       </li>
                     ))}
                   </ul>
                 </div>
               ) : (
                 <p className="subtle" style={{ margin: 0 }}>
-                  Hiçbir repoda rolü yok; yalnızca üyelikten çıkarılacak.
+                  {t('memberDetail.noRoleAnyRepo')}
                 </p>
               )}
 
@@ -414,18 +423,19 @@ export function MemberDetail() {
                   style={{ background: 'var(--danger-soft)', border: '1px solid var(--danger)' }}
                 >
                   <div className="meta-label" style={{ color: 'var(--danger)' }}>
-                    ⚠️ Bu kişi {soleMentorRepos.length} repo'nun TEK mentörü
+                    {t('memberDetail.soleMentorCount', { n: soleMentorRepos.length })}
                   </div>
                   <p className="subtle" style={{ margin: '4px 0 0' }}>
-                    {soleMentorRepos.map((r) => r.name).join(', ')} mentörsüz kalır. Engine bir
-                    repo'yu mentörsüz kabul etmez → bu PR <strong>plan aşamasında reddedilir</strong>.
-                    Önce bu repolara başka bir mentör atayın, sonra çıkarın.
+                    {soleMentorRepos.map((r) => r.name).join(', ')}
+                    {t('memberDetail.soleMentorReposMid')}
+                    <strong>{t('memberDetail.planRejected')}</strong>
+                    {t('memberDetail.soleMentorReposPost')}
                   </p>
                 </div>
               )}
             </div>
           }
-          confirmLabel={batchMode ? '🧺 Sepete ekle' : "Org'dan çıkar ve PR aç"}
+          confirmLabel={batchMode ? t('memberDetail.addToCart') : t('memberDetail.removeOrgConfirm')}
           danger
           busy={busy}
           onConfirm={() => void removeFromOrg()}

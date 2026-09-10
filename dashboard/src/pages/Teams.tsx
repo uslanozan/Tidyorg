@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { EmptyState, ErrorState, Skeleton } from '../components/States'
+import { useT } from '../i18n'
 import { useConfig } from '../hooks/useProjects'
 
 type MemberRole = 'mentor' | 'developer' | 'viewer' | 'admin'
@@ -9,13 +10,6 @@ const ROLE_COLOR: Record<MemberRole, string> = {
   developer: '#64748b',
   viewer: '#0891b2',
   admin: '#dc2626',
-}
-
-const ROLE_LABEL: Record<MemberRole, string> = {
-  mentor: 'Mentör (admin)',
-  developer: 'Developer (push)',
-  viewer: 'Viewer (pull)',
-  admin: 'Org admin',
 }
 
 interface TeamMember {
@@ -34,6 +28,7 @@ const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…`
 
 /** Hub-and-spoke küme: merkezde takım, çevrede üyeler (avatar + rol rengi). */
 function TeamCluster({ team }: { team: Team }) {
+  const t = useT()
   const S = 300
   const cx = S / 2
   const cy = S / 2
@@ -49,7 +44,7 @@ function TeamCluster({ team }: { team: Team }) {
     <svg
       viewBox={`0 0 ${S} ${S}`}
       role="img"
-      aria-label={`${team.hub} takımı, ${n} üye`}
+      aria-label={t('teams.clusterAria', { hub: team.hub, n })}
       style={{ width: '100%', height: 'auto' }}
     >
       <defs>
@@ -120,6 +115,7 @@ function TeamCluster({ team }: { team: Team }) {
 }
 
 export function Teams() {
+  const t = useT()
   const { projects, org, privileged, loading, error, reload } = useConfig()
 
   const teams = useMemo<Team[]>(() => {
@@ -156,18 +152,18 @@ export function Teams() {
     <div className="stack" style={{ gap: 'var(--sp-2)' }}>
       <div className="page-header">
         <div>
-          <h1>Takımlar</h1>
+          <h1>{t('teams.title')}</h1>
           <p>
             {loading
-              ? 'Konfigürasyon okunuyor…'
-              : 'Her repo bir takım — mentörler admin, developer\'lar push. Config\'ten türetildi.'}
+              ? t('teams.loading')
+              : t('teams.subtitle')}
           </p>
         </div>
         <div className="row" style={{ gap: 'var(--sp-3)', flexWrap: 'wrap' }}>
           {(['mentor', 'developer', 'viewer', 'admin'] as MemberRole[]).map((r) => (
             <span key={r} className="badge">
               <span className="badge-dot" style={{ background: ROLE_COLOR[r] }} aria-hidden="true" />
-              {ROLE_LABEL[r]}
+              {t(`teams.role.${r}`)}
             </span>
           ))}
         </div>
@@ -184,7 +180,7 @@ export function Teams() {
           ))}
         </div>
       ) : teams.length === 0 ? (
-        <EmptyState icon="🕸️" title="Takım yok" description="Config'te repo/takım bulunamadı." />
+        <EmptyState icon="🕸️" title={t('teams.emptyTitle')} description={t('teams.emptyDesc')} />
       ) : (
         <div className="grid-cards">
           {teams.map((team) => (
@@ -193,7 +189,7 @@ export function Teams() {
                 <p className="subtle" style={{ textAlign: 'center', padding: 'var(--sp-8) 0' }}>
                   <strong>{team.hub}</strong>
                   <br />
-                  üye yok
+                  {t('teams.noMembers')}
                 </p>
               ) : (
                 <TeamCluster team={team} />

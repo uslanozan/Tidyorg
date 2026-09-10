@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { useT } from '../i18n'
 import { LabelChip } from '../components/LabelChip'
 import { EmptyState, ErrorState, Skeleton } from '../components/States'
 import { useAuth, useClient } from '../hooks/useAuth'
@@ -36,12 +37,13 @@ const FILE_KEYS = [
 const WORKFLOW_KEYS = ['ci', 'release', 'dependabot'] as const
 const ROLE_PERMISSIONS = ['pull', 'triage', 'push', 'maintain', 'admin'] as const
 
-const BRANCH_BOOLS: { key: keyof ProtectedBranchRule; label: string }[] = [
-  { key: 'require_code_owner_review', label: 'CODEOWNERS onayı zorunlu' },
-  { key: 'dismiss_stale_reviews', label: 'Yeni commit onayları düşürür' },
-  { key: 'require_conversation_resolution', label: 'Tüm yorumlar çözülmeli' },
-  { key: 'allow_force_push', label: 'Force push serbest' },
-  { key: 'allow_deletions', label: 'Dal silme serbest' },
+// label metinleri render sırasında t(`orgSettings.branches.${key}`) ile çözülür.
+const BRANCH_BOOLS: { key: keyof ProtectedBranchRule }[] = [
+  { key: 'require_code_owner_review' },
+  { key: 'dismiss_stale_reviews' },
+  { key: 'require_conversation_resolution' },
+  { key: 'allow_force_push' },
+  { key: 'allow_deletions' },
 ]
 
 const splitList = (raw: string): string[] =>
@@ -67,6 +69,7 @@ function cleanLabels(rows: RepoLabel[]): RepoLabel[] {
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
 
 export function OrgSettings() {
+  const t = useT()
   const { org, privileged, loading, error, reload } = useConfig()
   const { user } = useAuth()
 
@@ -83,7 +86,7 @@ export function OrgSettings() {
   }
   if (error && !org) return <ErrorState error={error} onRetry={() => void reload()} />
   if (!org) {
-    return <EmptyState icon="⚙" title="Org config bulunamadı" description="organization.yml okunamadı." />
+    return <EmptyState icon="⚙" title={t('orgSettings.notFoundTitle')} description={t('orgSettings.notFoundDesc')} />
   }
 
   const canManage =
@@ -96,6 +99,7 @@ export function OrgSettings() {
 /* ─────────────────────────────────────────────────────────────────────────── */
 
 function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolean }) {
+  const t = useT()
   const client = useClient()
   const { batchMode, add: addToCart } = useCart()
   const { busy, submit } = useProposal()
@@ -237,7 +241,7 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
   async function save() {
     setError(null)
     const { changes, details } = computeChanges()
-    if (!changes.length) return setError('Hiçbir alan değişmedi.')
+    if (!changes.length) return setError(t('orgSettings.noFieldsChanged'))
     if (batchMode) {
       addToCart({
         file: PATHS.organization,
@@ -272,19 +276,19 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
             style={{ borderRadius: 'var(--radius-md)' }}
           />
           <div className="stack" style={{ gap: 'var(--sp-2)' }}>
-            <h1>Org Ayarları</h1>
+            <h1>{t('orgSettings.header.title')}</h1>
             <p className="muted">
-              <code>organization.yml</code> — org geneli varsayılanlar, roller ve profil.{' '}
+              <code>organization.yml</code> {t('orgSettings.header.intro')}{' '}
             {!canManage && (
-              <span className="badge" title="Değiştirmek için org owner veya head-of-engineering olmalısın">
-                Salt okunur
+              <span className="badge" title={t('orgSettings.header.readOnlyTitle')}>
+                {t('orgSettings.header.readOnly')}
               </span>
               )}
             </p>
           </div>
         </div>
         <a className="btn btn-sm" href={configFileUrl(`terraform/config/organization.yml`)} target="_blank" rel="noreferrer">
-          Dosyayı aç ↗
+          {t('orgSettings.header.openFile')}
         </a>
       </div>
 
@@ -293,17 +297,22 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
         style={{ background: 'var(--surface-sunken)', borderStyle: 'dashed' }}
       >
         <p className="subtle" style={{ margin: 0 }}>
-          Her kaydetme <strong>bir PR açar</strong>; merge edilene kadar GitHub'da hiçbir şey
-          değişmez. Bu dosya CODEOWNERS korumalı — değişiklik <strong>platform-admin onayı</strong>{' '}
-          gerektirir. 🔒 Org owner'lar (<code>privileged.yml</code>) buradan{' '}
-          <strong>değiştirilemez</strong>; yükseltme yalnızca elle PR + insan onayıyla olur.
+          {t('orgSettings.prCallout.s1')}
+          <strong>{t('orgSettings.prCallout.b1')}</strong>
+          {t('orgSettings.prCallout.s2')}
+          <strong>{t('orgSettings.prCallout.b2')}</strong>
+          {t('orgSettings.prCallout.s3')}
+          <code>privileged.yml</code>
+          {t('orgSettings.prCallout.s4')}
+          <strong>{t('orgSettings.prCallout.b3')}</strong>
+          {t('orgSettings.prCallout.s5')}
         </p>
       </div>
 
       {/* PROFİL */}
-      <Section title="Profil" hint="GitHub'da görünen org kimliği (kozmetik)." icon={ICONS.profile}>
+      <Section title={t('orgSettings.section.profileTitle')} hint={t('orgSettings.section.profileHint')} icon={ICONS.profile}>
         <div className="field">
-          <label className="label">Fotoğraf</label>
+          <label className="label">{t('orgSettings.profile.photo')}</label>
           <div className="row" style={{ gap: 'var(--sp-3)', alignItems: 'center' }}>
             <img
               className="avatar"
@@ -319,24 +328,21 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
               target="_blank"
               rel="noreferrer"
             >
-              GitHub'da değiştir ↗
+              {t('orgSettings.profile.changeOnGitHub')}
             </a>
           </div>
-          <p className="hint">
-            Org fotoğrafı yalnızca GitHub arayüzünden değiştirilebilir — Terraform/API ile
-            ayarlanamaz, o yüzden config'de tutulmuyor. Burada canlı hâli gösterilir.
-          </p>
+          <p className="hint">{t('orgSettings.profile.photoHint')}</p>
         </div>
-        <TextField label="Ad" value={name} onChange={setName} disabled={!canManage} />
-        <TextField label="Açıklama" value={description} onChange={setDescription} disabled={!canManage} />
-        <TextField label="Blog / web" value={blog} onChange={setBlog} disabled={!canManage} />
-        <TextField label="Konum" value={location} onChange={setLocation} disabled={!canManage} />
+        <TextField label={t('orgSettings.profile.name')} value={name} onChange={setName} disabled={!canManage} />
+        <TextField label={t('orgSettings.profile.description')} value={description} onChange={setDescription} disabled={!canManage} />
+        <TextField label={t('orgSettings.profile.blog')} value={blog} onChange={setBlog} disabled={!canManage} />
+        <TextField label={t('orgSettings.profile.location')} value={location} onChange={setLocation} disabled={!canManage} />
       </Section>
 
       {/* DEFAULTS: GENEL */}
-      <Section title="Varsayılanlar — genel" hint="Her repo bunları miras alır, repo bazında ezilebilir." icon={ICONS.general}>
+      <Section title={t('orgSettings.section.generalTitle')} hint={t('orgSettings.section.generalHint')} icon={ICONS.general}>
         <div className="field">
-          <label className="label">Görünürlük</label>
+          <label className="label">{t('orgSettings.general.visibility')}</label>
           <select
             className="select"
             value={visibility}
@@ -347,21 +353,21 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
             <option value="private">private</option>
           </select>
         </div>
-        <TextField label="Varsayılan dal" value={defaultBranch} onChange={setDefaultBranch} disabled={!canManage} />
-        <BoolField label="Issues açık" value={hasIssues} onChange={setHasIssues} disabled={!canManage} />
-        <BoolField label="Projects açık" value={hasProjects} onChange={setHasProjects} disabled={!canManage} />
-        <BoolField label="Wiki açık" value={hasWiki} onChange={setHasWiki} disabled={!canManage} />
+        <TextField label={t('orgSettings.general.defaultBranch')} value={defaultBranch} onChange={setDefaultBranch} disabled={!canManage} />
+        <BoolField label={t('orgSettings.general.hasIssues')} value={hasIssues} onChange={setHasIssues} disabled={!canManage} />
+        <BoolField label={t('orgSettings.general.hasProjects')} value={hasProjects} onChange={setHasProjects} disabled={!canManage} />
+        <BoolField label={t('orgSettings.general.hasWiki')} value={hasWiki} onChange={setHasWiki} disabled={!canManage} />
         <BoolField label="auto_init" value={autoInit} onChange={setAutoInit} disabled={!canManage} />
       </Section>
 
       {/* DEFAULTS: GÜVENLİK */}
-      <Section title="Varsayılanlar — güvenlik" icon={ICONS.security}>
-        <BoolField label="Dependabot uyarıları (vulnerability_alerts)" value={vulnAlerts} onChange={setVulnAlerts} disabled={!canManage} />
-        <BoolField label="Secret scanning + push protection" value={secretScanning} onChange={setSecretScanning} disabled={!canManage} />
+      <Section title={t('orgSettings.section.securityTitle')} icon={ICONS.security}>
+        <BoolField label={t('orgSettings.security.vulnAlerts')} value={vulnAlerts} onChange={setVulnAlerts} disabled={!canManage} />
+        <BoolField label={t('orgSettings.security.secretScanning')} value={secretScanning} onChange={setSecretScanning} disabled={!canManage} />
       </Section>
 
       {/* DEFAULTS: WORKFLOWS */}
-      <Section title="Varsayılanlar — workflow'lar" hint="terraform/templates/.github/workflows/<ad>.yml" icon={ICONS.workflows}>
+      <Section title={t('orgSettings.section.workflowsTitle')} hint={t('orgSettings.section.workflowsHint')} icon={ICONS.workflows}>
         {WORKFLOW_KEYS.map((wf) => (
           <label key={wf} className="row" style={{ gap: 'var(--sp-2)', fontSize: 'var(--text-sm)' }}>
             <input
@@ -376,12 +382,12 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
           </label>
         ))}
         {!workflows.includes('ci') && (
-          <p className="hint">⚠️ `ci` yoksa `ci/test` status check'i hiç raporlanmaz — dal koruması onu bekliyorsa PR'lar takılır.</p>
+          <p className="hint">{t('orgSettings.workflows.ciWarning')}</p>
         )}
       </Section>
 
       {/* DEFAULTS: FILES */}
-      <Section title="Varsayılanlar — şablon dosyaları" hint="strict = TF sahiplenir · seed = ilk oluşturmada · none = yazılmaz" icon={ICONS.files}>
+      <Section title={t('orgSettings.section.filesTitle')} hint={t('orgSettings.section.filesHint')} icon={ICONS.files}>
         {FILE_KEYS.map((key) => (
           <div className="field" key={key}>
             <label className="label">{key}</label>
@@ -400,22 +406,22 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
       </Section>
 
       {/* DEFAULTS: SEED LABELS */}
-      <Section title="Varsayılanlar — seed etiketleri" hint="Repo kendi labels'ını tanımlamazsa bu set uygulanır." icon={ICONS.labels}>
-        {labels.length === 0 && <p className="hint">Etiket yok.</p>}
+      <Section title={t('orgSettings.section.labelsTitle')} hint={t('orgSettings.section.labelsHint')} icon={ICONS.labels}>
+        {labels.length === 0 && <p className="hint">{t('orgSettings.labels.empty')}</p>}
         {labels.map((row, i) => (
           <div key={i} className="row" style={{ gap: 'var(--sp-2)', alignItems: 'center' }}>
             <input
               type="color"
-              aria-label="Renk"
+              aria-label={t('orgSettings.labels.colorAria')}
               style={{ width: 40, height: 32, padding: 0, flex: 'none' }}
               value={`#${(row.color || 'ededed').replace('#', '')}`}
               disabled={!canManage}
               onChange={(e) => patchLabel(i, { color: e.target.value.replace('#', '') })}
             />
-            <input className="input" placeholder="ad" value={row.name} disabled={!canManage} onChange={(e) => patchLabel(i, { name: e.target.value })} />
-            <input className="input" placeholder="açıklama (ops.)" value={row.description ?? ''} disabled={!canManage} onChange={(e) => patchLabel(i, { description: e.target.value })} />
+            <input className="input" placeholder={t('orgSettings.labels.namePlaceholder')} value={row.name} disabled={!canManage} onChange={(e) => patchLabel(i, { name: e.target.value })} />
+            <input className="input" placeholder={t('orgSettings.labels.descPlaceholder')} value={row.description ?? ''} disabled={!canManage} onChange={(e) => patchLabel(i, { description: e.target.value })} />
             {canManage && (
-              <button type="button" className="btn btn-ghost btn-sm" aria-label="Etiketi kaldır" onClick={() => setLabels((prev) => prev.filter((_, j) => j !== i))}>
+              <button type="button" className="btn btn-ghost btn-sm" aria-label={t('orgSettings.labels.removeAria')} onClick={() => setLabels((prev) => prev.filter((_, j) => j !== i))}>
                 ✕
               </button>
             )}
@@ -430,19 +436,19 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
         )}
         {canManage && (
           <button type="button" className="btn btn-sm" onClick={() => setLabels((prev) => [...prev, { name: '', color: 'ededed', description: '' }])}>
-            + Etiket ekle
+            {t('orgSettings.labels.add')}
           </button>
         )}
       </Section>
 
       {/* DEFAULTS: PROTECTED BRANCHES */}
-      <Section title="Varsayılanlar — dal koruması" hint="Org geneli branch protection. Repo kendi dosyasında ezebilir." icon={ICONS.branches}>
-        {Object.keys(branches).length === 0 && <p className="hint">Tanımlı dal koruması yok.</p>}
+      <Section title={t('orgSettings.section.branchesTitle')} hint={t('orgSettings.section.branchesHint')} icon={ICONS.branches}>
+        {Object.keys(branches).length === 0 && <p className="hint">{t('orgSettings.branches.empty')}</p>}
         {Object.entries(branches).map(([branch, rule]) => (
           <div key={branch} className="card card-pad stack" style={{ gap: 'var(--sp-2)' }}>
             <strong><code>{branch}</code></strong>
             <label className="row" style={{ gap: 'var(--sp-2)', fontSize: 'var(--text-sm)' }}>
-              Onay sayısı
+              {t('orgSettings.branches.requiredReviews')}
               <input
                 type="number"
                 min={0}
@@ -453,7 +459,7 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
                 onChange={(e) => patchBranch(branch, { required_reviews: Number(e.target.value) })}
               />
             </label>
-            {BRANCH_BOOLS.map(({ key, label }) => (
+            {BRANCH_BOOLS.map(({ key }) => (
               <label key={key} className="row" style={{ gap: 'var(--sp-2)', fontSize: 'var(--text-sm)' }}>
                 <input
                   type="checkbox"
@@ -461,11 +467,11 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
                   disabled={!canManage}
                   onChange={(e) => patchBranch(branch, { [key]: e.target.checked })}
                 />
-                {label}
+                {t(`orgSettings.branches.${key}`)}
               </label>
             ))}
             <div className="field">
-              <span className="label">Status check'ler (virgülle)</span>
+              <span className="label">{t('orgSettings.branches.statusChecks')}</span>
               <input
                 className="input"
                 value={(rule.require_status_checks ?? []).join(', ')}
@@ -474,7 +480,7 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
               />
             </div>
             <div className="field">
-              <span className="label">Push izinli roller (virgülle)</span>
+              <span className="label">{t('orgSettings.branches.pushRoles')}</span>
               <input
                 className="input"
                 value={(rule.push_allowed_roles ?? []).join(', ')}
@@ -487,26 +493,27 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
       </Section>
 
       {/* ROLLER */}
-      <Section title="Roller" hint="Yetkinin ne anlama geldiği. Repo dosyaları bu rol adlarını kullanır." icon={ICONS.roles}>
+      <Section title={t('orgSettings.section.rolesTitle')} hint={t('orgSettings.section.rolesHint')} icon={ICONS.roles}>
         <div className="card card-pad" style={{ background: 'var(--danger-soft)', border: '1px solid var(--danger)' }}>
           <p className="subtle" style={{ margin: 0 }}>
-            ⚠️ <strong>bypass_branch_protection</strong> bir yükseltme yüzeyidir: açık bir rol, o rolü
-            taşıyan herkese korumalı dallarda muafiyet verir. Değişiklik CODEOWNERS onayına takılır
-            ama dikkatli ol. Owner'lık burada DEĞİL, <code>privileged.yml</code>'da yaşar.
+            ⚠️ <strong>bypass_branch_protection</strong>
+            {t('orgSettings.roles.warn1')}
+            <code>privileged.yml</code>
+            {t('orgSettings.roles.warn2')}
           </p>
         </div>
         {Object.entries(roles).map(([role, def]) => (
           <div key={role} className="card card-pad stack" style={{ gap: 'var(--sp-2)' }}>
             <strong><code>{role}</code></strong>
             <div className="field">
-              <label className="label">Kapsam (scope)</label>
+              <label className="label">{t('orgSettings.roles.scope')}</label>
               <select className="select" value={def.scope} disabled={!canManage} onChange={(e) => patchRole(role, { scope: e.target.value as OrgRoleDefinition['scope'] })}>
                 <option value="organization">organization</option>
                 <option value="repository">repository</option>
               </select>
             </div>
             <div className="field">
-              <label className="label">Repo izni (repo_permission)</label>
+              <label className="label">{t('orgSettings.roles.repoPermission')}</label>
               <select className="select" value={def.repo_permission} disabled={!canManage} onChange={(e) => patchRole(role, { repo_permission: e.target.value })}>
                 {ROLE_PERMISSIONS.map((p) => (
                   <option key={p} value={p}>{p}</option>
@@ -522,16 +529,16 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
       </Section>
 
       {/* SALT-OKUNUR: kimlik + gerçek GitHub org ayarları */}
-      <Section title="Yapısal (salt-okunur)" icon={ICONS.structural}>
+      <Section title={t('orgSettings.section.structuralTitle')} icon={ICONS.structural}>
         <div className="meta-grid">
           <ReadOnly label="organization" value={org.organization} />
           <ReadOnly label="version" value={String(org.version)} />
           <ReadOnly label="org_admin_team" value={org.org_admin_team} />
         </div>
         <p className="hint">
-          Gerçek GitHub org ayarları (base permission, repo-açma yetkisi, yeni-repo güvenlik
-          varsayılanları, billing) <code>org-settings.tf</code>'te motorda tanımlı — config'de
-          olmadığı için buradan düzenlenemez. Panele almak ayrı bir engine değişikliği gerektirir.
+          {t('orgSettings.structural.hint1')}
+          <code>org-settings.tf</code>
+          {t('orgSettings.structural.hint2')}
         </p>
       </Section>
 
@@ -541,7 +548,7 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
         <div className="row" style={{ justifyContent: 'flex-end' }}>
           <button type="button" className="btn btn-primary" onClick={() => void save()} disabled={busy}>
             {busy && <span className="spinner" aria-hidden="true" />}
-            {batchMode ? '🧺 Sepete ekle' : 'Kaydet (PR aç)'}
+            {batchMode ? t('orgSettings.save.addToCart') : t('orgSettings.save.save')}
           </button>
         </div>
       )}

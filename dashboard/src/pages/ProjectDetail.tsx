@@ -19,6 +19,7 @@ import {
 import { configFileUrl, repoUrl } from '../services/env'
 import { assertCanAddMember, assertCanRemoveMentor } from '../services/validation'
 import { applyEdits, parseRepoConfig } from '../services/yaml'
+import { useT } from '../i18n'
 import type { ProjectRole } from '../types/config'
 
 const ROLE_LABEL: Record<ProjectRole, string> = {
@@ -28,25 +29,16 @@ const ROLE_LABEL: Record<ProjectRole, string> = {
 }
 
 /** Dal koruması tablosu sütunları — başlıklara hover ile açıklama düşer. */
-const RULE_COLUMNS: { label: string; hint?: string }[] = [
-  { label: 'Dal' },
-  { label: 'Onay', hint: 'Merge öncesi gereken onaylayan sayısı (required approving reviews).' },
+const RULE_COLUMNS: { labelKey: string; hintKey?: string }[] = [
+  { labelKey: 'projectDetail.ruleCol.branch' },
+  { labelKey: 'projectDetail.ruleCol.approvals', hintKey: 'projectDetail.ruleCol.approvalsHint' },
+  { labelKey: 'projectDetail.ruleCol.codeowners', hintKey: 'projectDetail.ruleCol.codeownersHint' },
   {
-    label: 'CODEOWNERS',
-    hint: 'Değişen dosyanın CODEOWNERS sahibinden ayrıca onay isteniyor mu.',
+    labelKey: 'projectDetail.ruleCol.statusCheck',
+    hintKey: 'projectDetail.ruleCol.statusCheckHint',
   },
-  {
-    label: 'Status check',
-    hint: 'Merge öncesi yeşil olması gereken CI kontrolleri (ör. plan, test).',
-  },
-  {
-    label: 'Force push',
-    hint: 'Geçmişi ezen zorla push izni. Kapalı = geçmiş korunur.',
-  },
-  {
-    label: 'Kaynak',
-    hint: 'Varsayılan = org geneli kural; Repo = bu repo dosyasında geçersiz kılınmış.',
-  },
+  { labelKey: 'projectDetail.ruleCol.forcePush', hintKey: 'projectDetail.ruleCol.forcePushHint' },
+  { labelKey: 'projectDetail.ruleCol.source', hintKey: 'projectDetail.ruleCol.sourceHint' },
 ]
 
 type MemberList = 'mentors' | 'developers' | 'viewers'
@@ -59,9 +51,17 @@ const LIST_KEY: Record<ProjectRole, MemberList> = {
 const listKey = (role: ProjectRole): MemberList => LIST_KEY[role]
 
 function VisibilityBadge({ value, isDefault }: { value?: string; isDefault: boolean }) {
+  const t = useT()
   const isPrivate = value === 'private'
   return (
-    <span className="badge" title={isPrivate ? 'Yalnızca org üyeleri görebilir' : 'Herkese açık'}>
+    <span
+      className="badge"
+      title={
+        isPrivate
+          ? t('projectDetail.visibility.privateTitle')
+          : t('projectDetail.visibility.publicTitle')
+      }
+    >
       <span
         className="badge-dot"
         style={{ background: isPrivate ? 'var(--warning)' : 'var(--success)' }}
@@ -69,7 +69,7 @@ function VisibilityBadge({ value, isDefault }: { value?: string; isDefault: bool
       />
       {isPrivate ? '🔒 ' : '🌐 '}
       {value ?? '—'}
-      {isDefault && ' (varsayılan)'}
+      {isDefault && t('projectDetail.defaultParen')}
     </span>
   )
 }
@@ -97,6 +97,7 @@ export function ProjectDetail() {
   const client = useClient()
   const { batchMode, add: addToCart } = useCart()
   const { busy, submit } = useProposal()
+  const t = useT()
 
   const [addRole, setAddRole] = useState<ProjectRole | null>(null)
   const [toAdd, setToAdd] = useState<string[]>([])
@@ -126,11 +127,11 @@ export function ProjectDetail() {
     return (
       <EmptyState
         icon="🔍"
-        title="Proje bulunamadı"
-        description={`"${name}" adında bir konfigürasyon dosyası yok.`}
+        title={t('projectDetail.notFoundTitle')}
+        description={t('projectDetail.notFoundDesc', { name: name ?? '' })}
         action={
           <Link className="btn" to="/">
-            Projelere dön
+            {t('projectDetail.backToProjects')}
           </Link>
         }
       />
@@ -286,7 +287,7 @@ export function ProjectDetail() {
       <section className="card card-pad section">
         <div className="row-between">
           <h2 style={{ fontSize: 'var(--text-lg)' }}>
-            {ROLE_LABEL[role]}ler{' '}
+            {t('projectDetail.roleHeading', { role: ROLE_LABEL[role] })}{' '}
             <span className="subtle">({people.length})</span>
           </h2>
           {canManage && (
@@ -295,15 +296,15 @@ export function ProjectDetail() {
               className="btn btn-sm"
               onClick={() => setAddRole(role)}
               disabled={config.archived}
-              title={config.archived ? 'Arşivlenmiş repo düzenlenemez' : undefined}
+              title={config.archived ? t('projectDetail.archivedCannotEdit') : undefined}
             >
-              + {ROLE_LABEL[role]} Ekle
+              + {t('projectDetail.addRole', { role: ROLE_LABEL[role] })}
             </button>
           )}
         </div>
 
         {people.length === 0 ? (
-          <p className="subtle">Henüz kimse yok.</p>
+          <p className="subtle">{t('projectDetail.noMembers')}</p>
         ) : (
           <div className="person-list">
             {people.map((login) => (
@@ -313,8 +314,8 @@ export function ProjectDetail() {
                   <button
                     type="button"
                     className="btn btn-ghost btn-sm"
-                    aria-label={`${login} kişisini çıkar`}
-                    title={removalBlocked(login) ?? `${login} kişisini çıkar`}
+                    aria-label={t('projectDetail.removeMemberAria', { login })}
+                    title={removalBlocked(login) ?? t('projectDetail.removeMemberAria', { login })}
                     disabled={Boolean(removalBlocked(login)) || config.archived}
                     onClick={() => setRemoveTarget({ login, role })}
                   >
@@ -333,7 +334,7 @@ export function ProjectDetail() {
     <div className="stack" style={{ gap: 'var(--sp-6)' }}>
       <div>
         <Link className="subtle" to="/">
-          ← Projeler
+          {t('projectDetail.backLink')}
         </Link>
       </div>
 
@@ -342,25 +343,27 @@ export function ProjectDetail() {
           <div className="row" style={{ flexWrap: 'wrap' }}>
             <h1>{project.name}</h1>
             <LanguageBadge language={config.language} />
-            {config.archived && <span className="badge badge-warning">Arşivli</span>}
+            {config.archived && (
+              <span className="badge badge-warning">{t('projectDetail.archivedBadge')}</span>
+            )}
             {!canManage && (
-              <span className="badge" title="Bu projeyi düzenlemek için mentör veya owner olmalısın">
-                Salt okunur
+              <span className="badge" title={t('projectDetail.readonlyTitle')}>
+                {t('projectDetail.readonly')}
               </span>
             )}
           </div>
-          <p className="muted">{config.description || 'Açıklama yok'}</p>
+          <p className="muted">{config.description || t('projectDetail.noDescription')}</p>
         </div>
 
         <div className="row">
           {canManage && (
             <button type="button" className="btn btn-sm" onClick={() => setEditing(true)}>
-              ⚙ Ayarlar
+              {t('projectDetail.settings')}
             </button>
           )}
           {canManage && (
             <button type="button" className="btn btn-sm" onClick={() => setArchiving(true)}>
-              {config.archived ? 'Arşivden çıkar' : '🗄 Arşivle'}
+              {config.archived ? t('projectDetail.unarchive') : t('projectDetail.archive')}
             </button>
           )}
           <a
@@ -369,7 +372,7 @@ export function ProjectDetail() {
             target="_blank"
             rel="noreferrer"
           >
-            GitHub'da aç ↗
+            {t('projectDetail.openInGitHub')}
           </a>
         </div>
       </div>
@@ -377,13 +380,13 @@ export function ProjectDetail() {
       <section className="card card-pad">
         <div className="meta-grid">
           <div className="meta-item">
-            <span className="meta-label">Dil</span>
+            <span className="meta-label">{t('projectDetail.metaLanguage')}</span>
             <span className="meta-value">
               <LanguageBadge language={config.language} />
             </span>
           </div>
           <div className="meta-item">
-            <span className="meta-label">Görünürlük</span>
+            <span className="meta-label">{t('projectDetail.metaVisibility')}</span>
             <span className="meta-value">
               <VisibilityBadge
                 value={config.visibility ?? org?.defaults.visibility}
@@ -392,17 +395,17 @@ export function ProjectDetail() {
             </span>
           </div>
           <div className="meta-item">
-            <span className="meta-label">Varsayılan dal</span>
+            <span className="meta-label">{t('projectDetail.metaDefaultBranch')}</span>
             <span className="meta-value">
               <span className="badge">
                 <BranchIcon />
                 {config.default_branch ?? org?.defaults.default_branch ?? '—'}
-                {!config.default_branch && ' (varsayılan)'}
+                {!config.default_branch && t('projectDetail.defaultParen')}
               </span>
             </span>
           </div>
           <div className="meta-item">
-            <span className="meta-label">Config dosyası</span>
+            <span className="meta-label">{t('projectDetail.metaConfigFile')}</span>
             <a
               className="meta-value"
               href={configFileUrl(project.path)}
@@ -420,20 +423,22 @@ export function ProjectDetail() {
       {memberSection('viewer')}
 
       <section className="card card-pad section">
-        <h2 style={{ fontSize: 'var(--text-lg)' }}>Dal koruması</h2>
-        <p className="subtle">
-          Repo dosyasında yazmayan alanlar organizasyon varsayılanından gelir.
-        </p>
+        <h2 style={{ fontSize: 'var(--text-lg)' }}>{t('projectDetail.branchProtection')}</h2>
+        <p className="subtle">{t('projectDetail.branchProtectionHint')}</p>
 
         <div className="table-scroll">
           <table className="rule-table">
             <thead>
               <tr>
-                {RULE_COLUMNS.map((col) => (
-                  <th key={col.label} title={col.hint}>
-                    {col.hint ? <span className="th-help">{col.label}</span> : col.label}
-                  </th>
-                ))}
+                {RULE_COLUMNS.map((col) => {
+                  const label = t(col.labelKey)
+                  const hint = col.hintKey ? t(col.hintKey) : undefined
+                  return (
+                    <th key={col.labelKey} title={hint}>
+                      {hint ? <span className="th-help">{label}</span> : label}
+                    </th>
+                  )
+                })}
               </tr>
             </thead>
             <tbody>
@@ -445,10 +450,12 @@ export function ProjectDetail() {
                       <code>{branch}</code>
                     </td>
                     <td colSpan={4} className="muted">
-                      Koruma kaldırılmış (config'de <code>null</code>)
+                      {t('projectDetail.protectionRemovedPre')}
+                      <code>null</code>
+                      {t('projectDetail.protectionRemovedPost')}
                     </td>
                     <td>
-                      <span className="badge badge-warning">Repo</span>
+                      <span className="badge badge-warning">{t('projectDetail.sourceRepo')}</span>
                     </td>
                   </tr>
                 ) : (
@@ -457,16 +464,26 @@ export function ProjectDetail() {
                       <code>{branch}</code>
                     </td>
                     <td>{rule.required_reviews ?? '—'}</td>
-                    <td>{rule.require_code_owner_review ? 'Zorunlu' : 'Hayır'}</td>
+                    <td>
+                      {rule.require_code_owner_review
+                        ? t('projectDetail.cellRequired')
+                        : t('projectDetail.cellNo')}
+                    </td>
                     <td>
                       {rule.require_status_checks?.length
                         ? rule.require_status_checks.join(', ')
                         : '—'}
                     </td>
-                    <td>{rule.allow_force_push ? 'Açık' : 'Kapalı'}</td>
+                    <td>
+                      {rule.allow_force_push
+                        ? t('projectDetail.cellOn')
+                        : t('projectDetail.cellOff')}
+                    </td>
                     <td>
                       <span className={rule.overridden ? 'badge badge-accent' : 'badge'}>
-                        {rule.overridden ? 'Repo' : 'Varsayılan'}
+                        {rule.overridden
+                          ? t('projectDetail.sourceRepo')
+                          : t('projectDetail.sourceDefault')}
                       </span>
                     </td>
                   </tr>
@@ -475,7 +492,7 @@ export function ProjectDetail() {
               {Object.keys(rules).length === 0 && (
                 <tr>
                   <td colSpan={6} className="subtle">
-                    Tanımlı dal koruması yok.
+                    {t('projectDetail.noBranchRules')}
                   </td>
                 </tr>
               )}
@@ -492,19 +509,21 @@ export function ProjectDetail() {
           <section className="card card-pad section">
             <div className="row-between">
               <h2 style={{ fontSize: 'var(--text-lg)' }}>
-                Etiketler <span className="subtle">({shown.length})</span>
+                {t('projectDetail.labelsHeading')} <span className="subtle">({shown.length})</span>
               </h2>
               <span className={isCustom ? 'badge badge-accent' : 'badge'}>
-                {isCustom ? 'Bu repoya özel' : 'Org varsayılanı (miras)'}
+                {isCustom
+                  ? t('projectDetail.labelsCustomBadge')
+                  : t('projectDetail.labelsInheritedBadge')}
               </span>
             </div>
             <p className="subtle">
               {isCustom
-                ? 'Bu repo kendi etiket setini tanımlıyor; org varsayılanının yerine geçer. Issue ve PR’larda bu etiketler kullanılabilir.'
-                : 'Org genel etiket seti miras alınıyor. Bu repoya özel bir set için ⚙ Ayarlar → Etiketler.'}
+                ? t('projectDetail.labelsCustomHint')
+                : t('projectDetail.labelsInheritedHint')}
             </p>
             {shown.length === 0 ? (
-              <p className="subtle">Etiket yok.</p>
+              <p className="subtle">{t('projectDetail.noLabels')}</p>
             ) : (
               <div className="row" style={{ flexWrap: 'wrap', gap: 'var(--sp-2)' }}>
                 {shown.map((label) => (
@@ -518,12 +537,15 @@ export function ProjectDetail() {
 
       {addRole && (
         <Modal
-          title={`${ROLE_LABEL[addRole]} Ekle — ${project.name}`}
+          title={t('projectDetail.addRoleTitle', {
+            role: ROLE_LABEL[addRole],
+            name: project.name,
+          })}
           onClose={closeAdd}
           footer={
             <>
               <button type="button" className="btn" onClick={closeAdd} disabled={busy}>
-                Vazgeç
+                {t('projectDetail.cancel')}
               </button>
               <button
                 type="button"
@@ -533,17 +555,17 @@ export function ProjectDetail() {
               >
                 {busy && <span className="spinner" aria-hidden="true" />}
                 {batchMode
-                  ? '🧺 Sepete ekle'
+                  ? t('projectDetail.addToCart')
                   : toAdd.length > 1
-                    ? `${toAdd.length} kişiyi ekle (PR)`
-                    : 'PR oluştur'}
+                    ? t('projectDetail.addPeoplePr', { count: toAdd.length })
+                    : t('projectDetail.createPr')}
               </button>
             </>
           }
         >
           <div className="stack">
             <MemberPicker
-              label={`${ROLE_LABEL[addRole]} seç`}
+              label={t('projectDetail.selectRole', { role: ROLE_LABEL[addRole] })}
               all={peopleConfig?.members ?? []}
               selected={toAdd}
               onChange={setToAdd}
@@ -552,7 +574,7 @@ export function ProjectDetail() {
                 ...(config.developers ?? []),
                 ...(config.viewers ?? []),
               ]}
-              hint="Yalnızca org üyeleri. Seçtiklerin tek PR'da eklenir; merge edilince repo'da yetkilenir."
+              hint={t('projectDetail.addHint')}
             />
             {addError && (
               <p className="field-error" role="alert">
@@ -565,15 +587,17 @@ export function ProjectDetail() {
 
       {removeTarget && (
         <ConfirmDialog
-          title={`${removeTarget.login} çıkarılsın mı?`}
+          title={t('projectDetail.removeTitle', { login: removeTarget.login })}
           message={
             <>
-              <strong>{removeTarget.login}</strong>, {project.name} projesinin{' '}
-              {ROLE_LABEL[removeTarget.role].toLowerCase()} listesinden çıkarılacak.
-              Bu işlem bir PR açar; merge edilene kadar GitHub'da hiçbir şey değişmez.
+              <strong>{removeTarget.login}</strong>
+              {t('projectDetail.removeMessage', {
+                name: project.name,
+                role: ROLE_LABEL[removeTarget.role].toLowerCase(),
+              })}
             </>
           }
-          confirmLabel={batchMode ? '🧺 Sepete ekle' : 'Çıkar ve PR aç'}
+          confirmLabel={batchMode ? t('projectDetail.addToCart') : t('projectDetail.removeAndPr')}
           danger
           busy={busy}
           onConfirm={() => void confirmRemove()}
@@ -585,22 +609,24 @@ export function ProjectDetail() {
         <ConfirmDialog
           title={
             config.archived
-              ? `${project.name} arşivden çıkarılsın mı?`
-              : `${project.name} arşivlensin mi?`
+              ? t('projectDetail.unarchiveTitle', { name: project.name })
+              : t('projectDetail.archiveTitle', { name: project.name })
           }
           message={
             config.archived ? (
               <>
-                <strong>{project.name}</strong> tekrar yazılabilir hale gelir (
-                <code>archived: false</code>). Bu işlem bir PR açar.
+                <strong>{project.name}</strong>
+                {t('projectDetail.unarchiveMsgPre')}
+                <code>archived: false</code>
+                {t('projectDetail.unarchiveMsgPost')}
               </>
             ) : (
               <div className="stack" style={{ gap: 'var(--sp-3)' }}>
                 <p style={{ margin: 0 }}>
-                  <strong>{project.name}</strong> arşivlenir: repo dondurulur (read-only),
-                  tüm içerik ve geçmiş korunur, istediğinde geri alınır (
-                  <code>archived: true</code>). Bir PR açılır; merge edilene kadar GitHub'da
-                  hiçbir şey değişmez.
+                  <strong>{project.name}</strong>
+                  {t('projectDetail.archiveMsgPre')}
+                  <code>archived: true</code>
+                  {t('projectDetail.archiveMsgPost')}
                 </p>
                 <div
                   className="card card-pad"
@@ -638,10 +664,10 @@ export function ProjectDetail() {
           }
           confirmLabel={
             batchMode
-              ? '🧺 Sepete ekle'
+              ? t('projectDetail.addToCart')
               : config.archived
-                ? 'Arşivden çıkar ve PR aç'
-                : 'Arşivle ve PR aç'
+                ? t('projectDetail.unarchiveAndPr')
+                : t('projectDetail.archiveAndPr')
           }
           busy={busy}
           onConfirm={() => void confirmArchive()}
@@ -656,7 +682,7 @@ export function ProjectDetail() {
           defaultBranches={Object.keys(org?.defaults.protected_branches ?? {})}
           defaultLabels={org?.defaults.labels ?? []}
           busy={busy}
-          primaryLabel={batchMode ? '🧺 Sepete ekle' : 'PR oluştur'}
+          primaryLabel={batchMode ? 'Sepete ekle' : 'PR oluştur'}
           onCancel={() => setEditing(false)}
           onSave={async (changes, details) => {
             if (batchMode) {

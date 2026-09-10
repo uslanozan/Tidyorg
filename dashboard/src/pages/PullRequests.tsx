@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { EmptyState, ErrorState, Skeleton } from '../components/States'
+import { useT } from '../i18n'
 import { useAuth, useClient } from '../hooks/useAuth'
 import { isDashboardBranch } from '../services/configRepo'
 import { CONFIG_OWNER, CONFIG_REPO } from '../services/env'
@@ -13,11 +14,11 @@ import type { PullRequest } from '../types/github'
 
 const REFRESH_MS = 30_000
 
-const ACTION_META: Record<PlanAction, { label: string; color: string }> = {
-  create: { label: '+ oluştur', color: 'var(--success)' },
-  update: { label: '~ değiştir', color: 'var(--warning)' },
-  destroy: { label: '- sil', color: 'var(--danger)' },
-  replace: { label: '± yenile', color: 'var(--danger)' },
+const ACTION_META: Record<PlanAction, { labelKey: string; color: string }> = {
+  create: { labelKey: 'pulls.actionCreate', color: 'var(--success)' },
+  update: { labelKey: 'pulls.actionUpdate', color: 'var(--warning)' },
+  destroy: { labelKey: 'pulls.actionDestroy', color: 'var(--danger)' },
+  replace: { labelKey: 'pulls.actionReplace', color: 'var(--danger)' },
 }
 
 interface Row {
@@ -35,21 +36,23 @@ function formatDate(iso: string): string {
 }
 
 function PlanBadge({ plan }: { plan: PlanSummary }) {
+  const t = useT()
   if (plan.status === 'pending') {
     return (
       <span className="badge">
         <span className="spinner" style={{ width: 12, height: 12 }} aria-hidden="true" />
-        Plan bekleniyor…
+        {t('pulls.badgePending')}
       </span>
     )
   }
-  if (plan.status === 'error') return <span className="badge badge-danger">Plan hatası</span>
-  if (plan.hasDestroy) return <span className="badge badge-danger">⚠ Yok etme içeriyor</span>
-  if (plan.status === 'no-changes') return <span className="badge">Değişiklik yok</span>
-  return <span className="badge badge-success">Plan hazır</span>
+  if (plan.status === 'error') return <span className="badge badge-danger">{t('pulls.badgeError')}</span>
+  if (plan.hasDestroy) return <span className="badge badge-danger">{t('pulls.badgeDestroy')}</span>
+  if (plan.status === 'no-changes') return <span className="badge">{t('pulls.badgeNoChanges')}</span>
+  return <span className="badge badge-success">{t('pulls.badgeReady')}</span>
 }
 
 export function PullRequests() {
+  const t = useT()
   const client = useClient()
   const { user } = useAuth()
   const [rows, setRows] = useState<Row[]>([])
@@ -115,10 +118,11 @@ export function PullRequests() {
     <div className="stack" style={{ gap: 'var(--sp-5)' }}>
       <div className="row-between page-header">
         <div>
-          <h1>Bekleyen PR'lar</h1>
+          <h1>{t('pulls.title')}</h1>
           <p>
-            Panelden açılan, henüz merge edilmemiş değişiklikler
-            {refreshedAt && ` · son yenileme ${formatDate(refreshedAt.toISOString())}`}
+            {t('pulls.subtitle')}
+            {refreshedAt &&
+              ` · ${t('pulls.lastRefresh', { time: formatDate(refreshedAt.toISOString()) })}`}
           </p>
         </div>
 
@@ -129,10 +133,10 @@ export function PullRequests() {
               checked={onlyMine}
               onChange={(event) => setOnlyMine(event.target.checked)}
             />
-            Yalnızca benimkiler
+            {t('pulls.onlyMine')}
           </label>
           <button type="button" className="btn btn-sm" onClick={() => void load()}>
-            Yenile
+            {t('pulls.refresh')}
           </button>
         </div>
       </div>
@@ -151,12 +155,8 @@ export function PullRequests() {
       ) : visible.length === 0 ? (
         <EmptyState
           icon="✅"
-          title="Bekleyen PR yok"
-          description={
-            onlyMine
-              ? 'Panelden açtığınız tüm PR\'lar merge edilmiş ya da kapatılmış.'
-              : 'Panelden açılmış açık bir PR bulunamadı.'
-          }
+          title={t('pulls.emptyTitle')}
+          description={onlyMine ? t('pulls.emptyMineDesc') : t('pulls.emptyAllDesc')}
         />
       ) : (
         <div className="stack">
@@ -185,7 +185,7 @@ export function PullRequests() {
                   padding: 'var(--sp-3) var(--sp-4)',
                 }}
               >
-                <div className="meta-label">Terraform planı</div>
+                <div className="meta-label">{t('pulls.planLabel')}</div>
                 <div style={{ fontWeight: 550 }}>
                   {plan.hasDestroy && '⚠️ '}
                   {plan.text}
@@ -221,7 +221,7 @@ export function PullRequests() {
                             flexShrink: 0,
                           }}
                         >
-                          {ACTION_META[r.action].label}
+                          {t(ACTION_META[r.action].labelKey)}
                         </span>
                         <code style={{ overflowWrap: 'anywhere', fontSize: 'var(--text-xs)' }}>
                           {r.address}
@@ -236,15 +236,13 @@ export function PullRequests() {
                   </p>
                 )}
                 {plan.status === 'pending' && (
-                  <p className="subtle">
-                    GitOps workflow'u planı yazınca burası otomatik güncellenir (30 sn).
-                  </p>
+                  <p className="subtle">{t('pulls.pendingHint')}</p>
                 )}
               </div>
 
               <div className="row">
                 <a className="btn btn-sm" href={pr.html_url} target="_blank" rel="noreferrer">
-                  GitHub'da aç ↗
+                  {t('pulls.openOnGitHub')}
                 </a>
                 {plan.commentUrl && (
                   <a
@@ -253,7 +251,7 @@ export function PullRequests() {
                     target="_blank"
                     rel="noreferrer"
                   >
-                    Plan yorumunu gör ↗
+                    {t('pulls.viewPlanComment')}
                   </a>
                 )}
               </div>

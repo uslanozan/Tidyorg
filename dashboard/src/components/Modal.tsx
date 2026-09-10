@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { useT } from '../i18n'
 
 interface ModalProps {
   title: string
@@ -89,12 +90,13 @@ interface ConfirmProps {
 export function ConfirmDialog({
   title,
   message,
-  confirmLabel = 'Onayla',
+  confirmLabel,
   danger = false,
   busy = false,
   onConfirm,
   onCancel,
 }: ConfirmProps) {
+  const t = useT()
   return (
     <Modal
       title={title}
@@ -102,7 +104,7 @@ export function ConfirmDialog({
       footer={
         <>
           <button type="button" className="btn" onClick={onCancel} disabled={busy}>
-            Vazgeç
+            {t('ui.cancel')}
           </button>
           <button
             type="button"
@@ -111,7 +113,7 @@ export function ConfirmDialog({
             disabled={busy}
           >
             {busy && <span className="spinner" aria-hidden="true" />}
-            {confirmLabel}
+            {confirmLabel ?? t('ui.confirm')}
           </button>
         </>
       }

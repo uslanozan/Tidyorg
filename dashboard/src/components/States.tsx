@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useT } from '../i18n'
 import { GitHubError } from '../services/githubApi'
 
 /** Yükleniyor — iskelet blok. */
@@ -7,8 +8,9 @@ export function Skeleton({ height = 14, width = '100%' }: { height?: number; wid
 }
 
 export function SkeletonCards({ count = 6 }: { count?: number }) {
+  const t = useT()
   return (
-    <div className="grid-cards" aria-busy="true" aria-label="Projeler yükleniyor">
+    <div className="grid-cards" aria-busy="true" aria-label={t('ui.projectsLoading')}>
       {Array.from({ length: count }, (_, index) => (
         <div className="card card-pad stack" key={index}>
           <Skeleton height={18} width="55%" />
@@ -55,21 +57,20 @@ export function AccessDenied({
   login?: string
   onRetry?: () => void
 }) {
+  const t = useT()
   return (
     <div className="login-wrap">
       <div className="card login-card stack" style={{ gap: 'var(--sp-4)', textAlign: 'center' }}>
         <div className="state-icon" aria-hidden="true">
           🔒
         </div>
-        <div className="state-title">Bu hesabın erişimi yok</div>
+        <div className="state-title">{t('ui.accessDeniedTitle')}</div>
         <p className="subtle">
-          {login ? <strong>{login}</strong> : 'Bu hesap'} ile giriş yapıldı, ancak tidyorg
-          GitHub App'i bu kullanıcı için konfigürasyon deposuna kurulu değil. Bir organizasyon
-          yöneticisinin App'i sizin için yetkilendirmesi gerekir.
+          {t('ui.accessDeniedBody', { who: login ? login : t('ui.thisAccount') })}
         </p>
         {onRetry && (
           <button type="button" className="btn" onClick={onRetry}>
-            Tekrar dene
+            {t('ui.retry')}
           </button>
         )}
       </div>
@@ -85,19 +86,20 @@ export function ErrorState({
   error: Error | GitHubError
   onRetry?: () => void
 }) {
+  const t = useT()
   const message =
-    error instanceof GitHubError ? error.userMessage : (error.message ?? 'Bilinmeyen hata')
+    error instanceof GitHubError ? error.userMessage : (error.message ?? t('ui.unknownError'))
 
   return (
     <div className="state" role="alert">
       <div className="state-icon" aria-hidden="true">
         ⚠️
       </div>
-      <div className="state-title">Bir şeyler ters gitti</div>
+      <div className="state-title">{t('ui.errorTitle')}</div>
       <p>{message}</p>
       {onRetry && (
         <button type="button" className="btn" onClick={onRetry}>
-          Tekrar dene
+          {t('ui.retry')}
         </button>
       )}
     </div>

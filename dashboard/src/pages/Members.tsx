@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Person } from '../components/Person'
 import { EmptyState, ErrorState, Skeleton } from '../components/States'
+import { useT } from '../i18n'
 import { useConfig } from '../hooks/useProjects'
 import {
   isHeadOfEngineering,
@@ -36,6 +37,7 @@ interface MemberRow {
 }
 
 export function Members() {
+  const t = useT()
   const { projects, people, privileged, loading, error, reload } = useConfig()
   const [query, setQuery] = useState('')
   const [role, setRole] = useState<'' | RoleKey>('')
@@ -72,11 +74,11 @@ export function Members() {
     <div className="stack" style={{ gap: 'var(--sp-2)' }}>
       <div className="page-header">
         <div>
-          <h1>Üyeler</h1>
+          <h1>{t('members.title')}</h1>
           <p>
             {loading
-              ? 'Konfigürasyon okunuyor…'
-              : `${rows.length} org üyesi · roller config'ten türetildi`}
+              ? t('members.loading')
+              : t('members.count', { n: rows.length })}
           </p>
         </div>
       </div>
@@ -85,20 +87,20 @@ export function Members() {
         <input
           className="input"
           type="search"
-          placeholder="Üye ara…"
+          placeholder={t('members.searchPlaceholder')}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          aria-label="Üye ara"
+          aria-label={t('members.searchAria')}
         />
         <select
           className="select"
           value={role}
           onChange={(event) => setRole(event.target.value as '' | RoleKey)}
-          aria-label="Role göre filtrele"
+          aria-label={t('members.filterAria')}
         >
           {FILTERS.map((f) => (
             <option key={f.value} value={f.value}>
-              {f.label}
+              {f.value ? t(`members.role.${f.value}`) : t('members.filterAll')}
             </option>
           ))}
         </select>
@@ -117,11 +119,11 @@ export function Members() {
       ) : visible.length === 0 ? (
         <EmptyState
           icon="🧑‍🤝‍🧑"
-          title={rows.length === 0 ? 'Henüz üye yok' : 'Eşleşen üye yok'}
+          title={rows.length === 0 ? t('members.emptyNoneTitle') : t('members.emptyMatchTitle')}
           description={
             rows.length === 0
-              ? 'config/people.yml içinde üye bulunamadı.'
-              : 'Arama veya rol filtresini değiştirmeyi deneyin.'
+              ? t('members.emptyNoneDesc')
+              : t('members.emptyMatchDesc')
           }
         />
       ) : (
@@ -131,7 +133,7 @@ export function Members() {
               <Person login={r.login} size={28} />
               <div className="row" style={{ gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
                 {r.roles.length === 0 ? (
-                  <span className="subtle">yalnızca üye</span>
+                  <span className="subtle">{t('members.memberOnly')}</span>
                 ) : (
                   r.roles.map((rk) => (
                     <span key={rk} className="badge">
@@ -140,7 +142,7 @@ export function Members() {
                         style={{ background: ROLE_META[rk].color }}
                         aria-hidden="true"
                       />
-                      {ROLE_META[rk].label}
+                      {t(`members.role.${rk}`)}
                       {rk === 'mentor' && r.mentorCount > 1 ? ` ×${r.mentorCount}` : ''}
                       {rk === 'developer' && r.devCount > 1 ? ` ×${r.devCount}` : ''}
                       {rk === 'viewer' && r.viewerCount > 1 ? ` ×${r.viewerCount}` : ''}

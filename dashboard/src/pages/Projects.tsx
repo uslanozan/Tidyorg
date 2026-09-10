@@ -10,6 +10,7 @@ import { useAuth, useClient } from '../hooks/useAuth'
 import { useCart } from '../hooks/useCart'
 import { useConfig } from '../hooks/useProjects'
 import { useProposal } from '../hooks/useProposal'
+import { useT } from '../i18n'
 import { CONFIG_OWNER, PATHS } from '../services/env'
 import { isHeadOfEngineering, isOrgOwner, proposePeopleUpdate } from '../services/configRepo'
 import { parsePeopleConfig, serializePeopleConfig } from '../services/yaml'
@@ -22,6 +23,7 @@ function normalizeUrl(url: string): string {
 }
 
 export function Projects() {
+  const t = useT()
   const { projects, people, privileged, loading, error, reload } = useConfig()
   const { user } = useAuth()
   const client = useClient()
@@ -87,8 +89,8 @@ export function Projects() {
       }
       return (
         [
-          ['Aktif', active],
-          ['Arşivli', archived],
+          [t('projects.active'), active],
+          [t('projects.archived'), archived],
         ] as [string, Project[]][]
       ).filter(([, items]) => items.length > 0)
     }
@@ -139,11 +141,11 @@ export function Projects() {
 
       <div className="row-between page-header">
         <div>
-          <h1>Projeler</h1>
+          <h1>{t('projects.title')}</h1>
           <p>
             {loading
-              ? 'Konfigürasyon okunuyor…'
-              : `${projects.length} proje · konfigürasyondan okundu`}
+              ? t('projects.loading')
+              : t('projects.count', { n: projects.length })}
           </p>
         </div>
 
@@ -154,12 +156,12 @@ export function Projects() {
               className="btn"
               onClick={() => setAddingMember(true)}
             >
-              + Üye Ekle
+              {t('projects.addMember')}
             </button>
           )}
           {canCreate && (
             <Link className="btn btn-primary" to="/projeler/yeni">
-              + Yeni Proje
+              {t('projects.newProject')}
             </Link>
           )}
         </div>
@@ -169,18 +171,18 @@ export function Projects() {
         <input
           className="input"
           type="search"
-          placeholder="Proje ara…"
+          placeholder={t('projects.searchPlaceholder')}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          aria-label="Proje ara"
+          aria-label={t('projects.searchAria')}
         />
         <select
           className="select"
           value={language}
           onChange={(event) => setLanguage(event.target.value)}
-          aria-label="Dile göre filtrele"
+          aria-label={t('projects.filterByLanguageAria')}
         >
-          <option value="">Tüm diller</option>
+          <option value="">{t('projects.allLanguages')}</option>
           {LANGUAGES.map((item) => (
             <option key={item} value={item}>
               {languageLabel(item)}
@@ -191,11 +193,11 @@ export function Projects() {
           className="select"
           value={groupBy}
           onChange={(event) => setGroupBy(event.target.value as '' | 'mentor' | 'archived')}
-          aria-label="Gruplama"
+          aria-label={t('projects.groupAria')}
         >
-          <option value="">Gruplama yok</option>
-          <option value="mentor">Mentöre göre</option>
-          <option value="archived">Arşiv durumuna göre</option>
+          <option value="">{t('projects.groupNone')}</option>
+          <option value="mentor">{t('projects.groupByMentor')}</option>
+          <option value="archived">{t('projects.groupByArchived')}</option>
         </select>
       </div>
 
@@ -205,11 +207,11 @@ export function Projects() {
         <SkeletonCards />
       ) : visible.length === 0 ? (
         <EmptyState
-          title={projects.length === 0 ? 'Henüz proje yok' : 'Eşleşen proje yok'}
+          title={projects.length === 0 ? t('projects.emptyTitle') : t('projects.noMatchTitle')}
           description={
             projects.length === 0
-              ? 'Konfigürasyon dizininde repo dosyası bulunamadı.'
-              : 'Arama veya dil filtresini değiştirmeyi deneyin.'
+              ? t('projects.emptyDescription')
+              : t('projects.noMatchDescription')
           }
         />
       ) : grouped ? (
@@ -219,7 +221,7 @@ export function Projects() {
               <div className="row" style={{ gap: 'var(--sp-2)', alignItems: 'center' }}>
                 {groupBy === 'mentor' ? (
                   key === '—' ? (
-                    <h2 style={{ fontSize: 'var(--text-lg)' }}>Mentör atanmamış</h2>
+                    <h2 style={{ fontSize: 'var(--text-lg)' }}>{t('projects.noMentor')}</h2>
                   ) : (
                     <Person login={key} size={26} />
                   )
@@ -261,6 +263,7 @@ function AddMemberDialog({
   existing: string[]
   onClose: () => void
 }) {
+  const t = useT()
   const client = useClient()
   const { batchMode, add: addToCart } = useCart()
   const { busy, submit } = useProposal()
@@ -272,11 +275,11 @@ function AddMemberDialog({
   async function confirm() {
     const target = login.trim()
     if (existing.some((l) => l.toLowerCase() === target.toLowerCase())) {
-      return setError(`${target} zaten org üyesi.`)
+      return setError(t('projects.alreadyMember', { name: target }))
     }
     if (!verified) {
       const user = await client.userExists(target)
-      if (!user) return setError('Bu kullanıcı adı GitHub\'da bulunamadı.')
+      if (!user) return setError(t('projects.userNotFound'))
     }
     if (batchMode) {
       addToCart({
@@ -293,19 +296,19 @@ function AddMemberDialog({
     }
     const result = await submit(
       () => proposePeopleUpdate({ client, add: target }),
-      `${target} org üyeliğine eklendi`,
+      t('projects.memberAddedToast', { name: target }),
     )
     if (result) onClose()
   }
 
   return (
     <Modal
-      title="Organizasyona üye ekle"
+      title={t('projects.addMemberTitle')}
       onClose={onClose}
       footer={
         <>
           <button type="button" className="btn" onClick={onClose} disabled={busy}>
-            Vazgeç
+            {t('projects.cancel')}
           </button>
           <button
             type="button"
@@ -314,14 +317,14 @@ function AddMemberDialog({
             disabled={busy || !login.trim()}
           >
             {busy && <span className="spinner" aria-hidden="true" />}
-            {batchMode ? '🧺 Sepete ekle' : 'PR oluştur'}
+            {batchMode ? t('projects.addToCart') : t('projects.createPr')}
           </button>
         </>
       }
     >
       <div className="stack">
         <UsernameField
-          label="GitHub kullanıcı adı"
+          label={t('projects.usernameLabel')}
           value={login}
           onChange={(value) => {
             setLogin(value)
@@ -329,7 +332,7 @@ function AddMemberDialog({
           }}
           onVerified={setVerified}
           onResolved={setPreview}
-          hint="people.yml üye listesine eklenir. Merge sonrası GitHub org daveti gönderilir. Bu adım yalnızca üyelik verir — repo erişimi ve yetki ayrıdır."
+          hint={t('projects.addMemberHint')}
         />
 
         {preview && (
@@ -349,7 +352,7 @@ function AddMemberDialog({
             />
             <div className="stack" style={{ gap: 2 }}>
               <strong>{preview.name ?? preview.login}</strong>
-              <span className="subtle">@{preview.login} · GitHub'da aç ↗</span>
+              <span className="subtle">@{preview.login} · {t('projects.openInGitHub')} ↗</span>
             </div>
           </a>
         )}

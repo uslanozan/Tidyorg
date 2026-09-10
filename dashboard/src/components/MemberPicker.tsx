@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useT } from '../i18n'
 
 interface Props {
   label: string
@@ -18,6 +19,7 @@ const avatarUrl = (login: string) => `https://github.com/${encodeURIComponent(lo
  * Seçilenler kaldırılabilir çip olarak üstte; aday listesi altta kaydırılabilir.
  */
 export function MemberPicker({ label, hint, all, selected, onChange, exclude = [] }: Props) {
+  const t = useT()
   const [query, setQuery] = useState('')
 
   const candidates = useMemo(() => {
@@ -59,7 +61,7 @@ export function MemberPicker({ label, hint, all, selected, onChange, exclude = [
               <button
                 type="button"
                 className="btn btn-ghost btn-sm"
-                aria-label={`${login} çıkar`}
+                aria-label={t('ui.removeLogin', { login })}
                 onClick={() => remove(login)}
               >
                 ✕
@@ -72,10 +74,10 @@ export function MemberPicker({ label, hint, all, selected, onChange, exclude = [
       <input
         className="input"
         type="search"
-        placeholder="Üye ara ve ekle…"
+        placeholder={t('ui.memberSearchPlaceholder')}
         value={query}
         onChange={(event) => setQuery(event.target.value)}
-        aria-label={`${label} ara`}
+        aria-label={t('ui.searchAria', { label })}
       />
 
       <div
@@ -88,7 +90,7 @@ export function MemberPicker({ label, hint, all, selected, onChange, exclude = [
       >
         {candidates.length === 0 ? (
           <p className="subtle" style={{ padding: 'var(--sp-3)', margin: 0 }}>
-            {all.length === 0 ? 'Org üyesi yok.' : 'Eşleşen (eklenmemiş) üye yok.'}
+            {all.length === 0 ? t('ui.noOrgMembers') : t('ui.noMatchingMembers')}
           </p>
         ) : (
           candidates.slice(0, 50).map((login) => (
@@ -113,7 +115,7 @@ export function MemberPicker({ label, hint, all, selected, onChange, exclude = [
               <img className="avatar" src={avatarUrl(login)} alt="" width={24} height={24} />
               <span>{login}</span>
               <span className="subtle" style={{ marginLeft: 'auto' }}>
-                + ekle
+                {t('ui.addMember')}
               </span>
             </button>
           ))
