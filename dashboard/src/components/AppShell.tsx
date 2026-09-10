@@ -1,4 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
+import { SyncBadge } from './SyncBadge'
 import { useI18n } from '../i18n'
 import { useAuth } from '../hooks/useAuth'
 import { usePendingPRs } from '../hooks/usePendingPRs'
@@ -65,6 +66,8 @@ export function AppShell() {
           </nav>
 
           <div className="header-spacer" />
+
+          <SyncBadge />
 
           <button
             type="button"

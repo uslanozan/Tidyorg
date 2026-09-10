@@ -9,6 +9,7 @@
   "default_permissions": {
     "contents": "write",
     "pull_requests": "write",
+    "actions": "read",
     "metadata": "read"
   },
   "default_events": []

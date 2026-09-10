@@ -56,9 +56,14 @@ device code akışı çalıştırır; manifest bu kutuyu içermez, elle işaretl
 | :--- | :--- | :--- |
 | Contents | Read and write | Branch açmak + config dosyalarını commit'lemek |
 | Pull requests | Read and write | Değişiklikleri PR olarak açmak |
+| Actions | Read-only | Senkron rozeti — `terraform-apply` run durumunu okumak (merge sonrası "uygulanıyor / senkron / hata") |
 | Metadata | Read-only (otomatik) | — |
 
 > ⚠️ **Administration İZNİNİ VERME.** Bu bilinçli bir güvenlik sınırıdır — yukarıya bak.
+>
+> **Actions yalnızca `read`** — dashboard workflow tetikleyemez/değiştiremez, sadece apply
+> run'ının durumunu okur. Header'daki canlı senkron rozeti bunu kullanır. Bu izin yoksa
+> rozet sessizce "kapalı" kalır (403 yutulur), gerisi çalışmaya devam eder.
 
 **Organization permissions:** Hiçbiri.
 

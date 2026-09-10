@@ -22,6 +22,16 @@ export const messages = {
       pendingAria: '{n} bekleyen PR',
     },
 
+    sync: {
+      aria: 'Senkronizasyon durumu',
+      inSync: 'Senkron',
+      applying: 'Senkronize ediliyor…',
+      error: 'Apply hatası',
+      off: 'Senkron durumu kapalı',
+      forbiddenHint:
+        "Canlı senkron durumu için GitHub App'ine Actions (salt-okunur) izni ekleyin.",
+    },
+
     theme: {
       system: 'Sistem teması',
       light: 'Açık tema',
@@ -69,6 +79,15 @@ export const messages = {
       pulls: 'Pending PRs',
       org: 'Org Settings',
       pendingAria: '{n} pending PRs',
+    },
+
+    sync: {
+      aria: 'Sync status',
+      inSync: 'In sync',
+      applying: 'Applying…',
+      error: 'Apply failed',
+      off: 'Sync status off',
+      forbiddenHint: 'Add Actions (read-only) permission to the GitHub App for live sync status.',
     },
 
     theme: {
