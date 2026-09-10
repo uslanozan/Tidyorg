@@ -63,6 +63,8 @@ interface Props {
   /** Org varsayılan etiket seti — miras önizlemesi ve "ez"e başlangıç için. */
   defaultLabels: RepoLabel[]
   busy: boolean
+  /** Kaydet butonunun metni; toplu modda "Sepete ekle" geçilir. Varsayılan "PR oluştur". */
+  primaryLabel?: string
   onCancel: () => void
   onSave: (changes: Record<string, YamlValue | undefined>, details: string[]) => void
 }
@@ -73,6 +75,7 @@ export function RepoSettingsDialog({
   defaultBranches,
   defaultLabels,
   busy,
+  primaryLabel = 'PR oluştur',
   onCancel,
   onSave,
 }: Props) {
@@ -271,7 +274,7 @@ export function RepoSettingsDialog({
           </button>
           <button type="button" className="btn btn-primary" onClick={save} disabled={busy}>
             {busy && <span className="spinner" aria-hidden="true" />}
-            PR oluştur
+            {primaryLabel}
           </button>
         </>
       }

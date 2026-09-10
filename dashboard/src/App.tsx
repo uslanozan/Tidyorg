@@ -5,6 +5,7 @@ import { Toaster } from './components/Toaster'
 import { I18nProvider, useT } from './i18n'
 import { GitHubError } from './services/githubApi'
 import { AuthProvider, useAuth } from './hooks/useAuth'
+import { CartProvider } from './hooks/useCart'
 import { ConfigProvider, useConfig } from './hooks/useProjects'
 import { useTheme } from './hooks/useTheme'
 import { ToastProvider } from './hooks/useToast'
@@ -93,8 +94,10 @@ export default function App() {
         <ToastProvider>
           <AuthProvider>
             <ConfigProvider>
-              <Gate />
-              <Toaster />
+              <CartProvider>
+                <Gate />
+                <Toaster />
+              </CartProvider>
             </ConfigProvider>
           </AuthProvider>
         </ToastProvider>

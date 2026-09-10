@@ -8,6 +8,7 @@ import { RepoSettingsDialog } from '../components/RepoSettingsDialog'
 import { EmptyState, ErrorState, Skeleton } from '../components/States'
 import { MemberPicker } from '../components/MemberPicker'
 import { useAuth, useClient } from '../hooks/useAuth'
+import { useCart } from '../hooks/useCart'
 import { useConfig, useProject } from '../hooks/useProjects'
 import { useProposal } from '../hooks/useProposal'
 import {
@@ -17,6 +18,7 @@ import {
 } from '../services/configRepo'
 import { configFileUrl, repoUrl } from '../services/env'
 import { assertCanAddMember, assertCanRemoveMentor } from '../services/validation'
+import { applyEdits, parseRepoConfig } from '../services/yaml'
 import type { ProjectRole } from '../types/config'
 
 const ROLE_LABEL: Record<ProjectRole, string> = {
@@ -93,6 +95,7 @@ export function ProjectDetail() {
   const { org, privileged, people: peopleConfig, reload } = useConfig()
   const { user } = useAuth()
   const client = useClient()
+  const { batchMode, add: addToCart } = useCart()
   const { busy, submit } = useProposal()
 
   const [addRole, setAddRole] = useState<ProjectRole | null>(null)
@@ -145,8 +148,33 @@ export function ProjectDetail() {
     setAddError(null)
   }
 
+  /** Toplu mod: PR açmak yerine ekleme işlemini sepete koyar (yorum-koruyan transform). */
+  function stageAdd() {
+    if (!project || !addRole || toAdd.length === 0) return
+    const blocked = assertCanAddMember(project.config)
+    if (blocked) return setAddError(blocked)
+    const key = listKey(addRole)
+    const role = addRole
+    const people = [...toAdd]
+    addToCart({
+      file: project.path,
+      summary: `${project.name}: +${people.join(', ')} (${ROLE_LABEL[role]})`,
+      detail: `\`${project.name}\` → ${people.map((l) => `\`${l}\``).join(', ')} **${ROLE_LABEL[role]}**`,
+      transform: (text) => {
+        const cfg = parseRepoConfig(text)
+        const merged = [...(cfg[key] ?? [])]
+        for (const login of people) {
+          if (!merged.some((m) => m.toLowerCase() === login.toLowerCase())) merged.push(login)
+        }
+        return applyEdits(text, { [key]: merged })
+      },
+    })
+    closeAdd()
+  }
+
   async function confirmAdd() {
     if (!project || !addRole || toAdd.length === 0) return
+    if (batchMode) return stageAdd()
 
     const key = listKey(addRole)
 
@@ -170,8 +198,28 @@ export function ProjectDetail() {
     if (result) closeAdd()
   }
 
+  /** Toplu mod: çıkarma işlemini sepete koyar. */
+  function stageRemove() {
+    if (!project || !removeTarget) return
+    const { login, role } = removeTarget
+    const key = listKey(role)
+    addToCart({
+      file: project.path,
+      summary: `${project.name}: −${login} (${ROLE_LABEL[role]})`,
+      detail: `\`${login}\` → **${ROLE_LABEL[role]}** listesinden çıkarıldı (${project.name})`,
+      transform: (text) => {
+        const cfg = parseRepoConfig(text)
+        return applyEdits(text, {
+          [key]: (cfg[key] ?? []).filter((m) => m.toLowerCase() !== login.toLowerCase()),
+        })
+      },
+    })
+    setRemoveTarget(null)
+  }
+
   async function confirmRemove() {
     if (!project || !removeTarget) return
+    if (batchMode) return stageRemove()
     const { login, role } = removeTarget
     const key = listKey(role)
 
@@ -197,6 +245,18 @@ export function ProjectDetail() {
   async function confirmArchive() {
     if (!project) return
     const next = !config.archived
+    if (batchMode) {
+      const p = project
+      addToCart({
+        file: p.path,
+        summary: `${p.name}: archived → ${next}`,
+        detail: next
+          ? `\`${p.name}\` arşivlendi (\`archived: true\`)`
+          : `\`${p.name}\` arşivden çıkarıldı (\`archived: false\`)`,
+        transform: (text) => applyEdits(text, { archived: next }),
+      })
+      return setArchiving(false)
+    }
     const result = await submit(
       () =>
         proposeRepoConfigUpdate({
@@ -472,7 +532,11 @@ export function ProjectDetail() {
                 disabled={busy || toAdd.length === 0}
               >
                 {busy && <span className="spinner" aria-hidden="true" />}
-                {toAdd.length > 1 ? `${toAdd.length} kişiyi ekle (PR)` : 'PR oluştur'}
+                {batchMode
+                  ? '🧺 Sepete ekle'
+                  : toAdd.length > 1
+                    ? `${toAdd.length} kişiyi ekle (PR)`
+                    : 'PR oluştur'}
               </button>
             </>
           }
@@ -509,7 +573,7 @@ export function ProjectDetail() {
               Bu işlem bir PR açar; merge edilene kadar GitHub'da hiçbir şey değişmez.
             </>
           }
-          confirmLabel="Çıkar ve PR aç"
+          confirmLabel={batchMode ? '🧺 Sepete ekle' : 'Çıkar ve PR aç'}
           danger
           busy={busy}
           onConfirm={() => void confirmRemove()}
@@ -572,7 +636,13 @@ export function ProjectDetail() {
               </div>
             )
           }
-          confirmLabel={config.archived ? 'Arşivden çıkar ve PR aç' : 'Arşivle ve PR aç'}
+          confirmLabel={
+            batchMode
+              ? '🧺 Sepete ekle'
+              : config.archived
+                ? 'Arşivden çıkar ve PR aç'
+                : 'Arşivle ve PR aç'
+          }
           busy={busy}
           onConfirm={() => void confirmArchive()}
           onCancel={() => setArchiving(false)}
@@ -586,8 +656,20 @@ export function ProjectDetail() {
           defaultBranches={Object.keys(org?.defaults.protected_branches ?? {})}
           defaultLabels={org?.defaults.labels ?? []}
           busy={busy}
+          primaryLabel={batchMode ? '🧺 Sepete ekle' : 'PR oluştur'}
           onCancel={() => setEditing(false)}
           onSave={async (changes, details) => {
+            if (batchMode) {
+              const p = project
+              addToCart({
+                file: p.path,
+                summary: `${p.name}: ayarlar (${details.length} değişiklik)`,
+                detail: `\`${p.name}\` ayarları — ${details.join('; ')}`,
+                transform: (text) => applyEdits(text, changes),
+              })
+              setEditing(false)
+              return
+            }
             const result = await submit(
               () =>
                 proposeRepoConfigUpdate({

@@ -4,6 +4,7 @@ import { LanguageBadge } from '../components/LanguageBadge'
 import { ConfirmDialog } from '../components/Modal'
 import { EmptyState, Skeleton } from '../components/States'
 import { useAuth, useClient } from '../hooks/useAuth'
+import { useCart } from '../hooks/useCart'
 import { useConfig } from '../hooks/useProjects'
 import { useProposal } from '../hooks/useProposal'
 import {
@@ -15,7 +16,9 @@ import {
   proposeOrgRemoval,
   proposeRepoConfigUpdate,
 } from '../services/configRepo'
+import { PATHS } from '../services/env'
 import { assertCanRemoveMentor } from '../services/validation'
+import { applyEdits, parsePeopleConfig, parseRepoConfig, serializePeopleConfig } from '../services/yaml'
 import type { ProjectRole } from '../types/config'
 
 const ROLE_LABEL: Record<ProjectRole, string> = {
@@ -35,6 +38,7 @@ export function MemberDetail() {
   const { projects, people, privileged, loading } = useConfig()
   const { user } = useAuth()
   const client = useClient()
+  const { batchMode, add: addToCart } = useCart()
   const { busy, submit } = useProposal()
   const [confirmRemove, setConfirmRemove] = useState(false)
   const [roleEdit, setRoleEdit] = useState<{
@@ -78,7 +82,43 @@ export function MemberDetail() {
     )
   }
 
+  /** Toplu mod: org'dan tam çıkarma cascade'ini sepete koyar (her dosya bir öğe). */
+  function stageRemoveFromOrg() {
+    const key = login.toLowerCase()
+    const has = (arr?: string[]) => (arr ?? []).some((l) => l.toLowerCase() === key)
+    const affected = projects.filter(
+      (p) => has(p.config.mentors) || has(p.config.developers) || has(p.config.viewers),
+    )
+    for (const project of affected) {
+      addToCart({
+        file: project.path,
+        summary: `${project.name}: −${login} (org çıkarma)`,
+        detail: `\`${login}\` → \`${project.name}\` rollerinden çıkarıldı`,
+        transform: (text) => {
+          const cfg = parseRepoConfig(text)
+          const drop = (arr?: string[]) => (arr ?? []).filter((l) => l.toLowerCase() !== key)
+          const edits: Record<string, string[]> = {}
+          if (has(cfg.mentors)) edits.mentors = drop(cfg.mentors)
+          if (has(cfg.developers)) edits.developers = drop(cfg.developers)
+          if (has(cfg.viewers)) edits.viewers = drop(cfg.viewers)
+          return applyEdits(text, edits)
+        },
+      })
+    }
+    addToCart({
+      file: PATHS.people,
+      summary: `people.yml: −${login} (org üyeliği)`,
+      detail: `\`${login}\` people.yml üye listesinden çıkarıldı`,
+      transform: (text) => {
+        const { members } = parsePeopleConfig(text)
+        return serializePeopleConfig(members.filter((l) => l.toLowerCase() !== key))
+      },
+    })
+    setConfirmRemove(false)
+  }
+
   async function removeFromOrg() {
+    if (batchMode) return stageRemoveFromOrg()
     const result = await submit(
       () => proposeOrgRemoval({ client, login, projects }),
       `${login} organizasyondan çıkarıldı`,
@@ -86,8 +126,38 @@ export function MemberDetail() {
     if (result) setConfirmRemove(false)
   }
 
+  /** Toplu mod: rol değişimini sepete koyar (tek repo dosyası). */
+  function stageRoleChange() {
+    if (!roleEdit) return
+    const project = projects.find((p) => p.name === roleEdit.project)
+    if (!project) return
+    const { from, to } = roleEdit
+    const key = login.toLowerCase()
+    addToCart({
+      file: project.path,
+      summary:
+        to === 'remove'
+          ? `${project.name}: −${login} (${ROLE_LABEL[from]})`
+          : `${project.name}: ${login} ${ROLE_LABEL[from]}→${ROLE_LABEL[to]}`,
+      detail:
+        to === 'remove'
+          ? `\`${login}\` **${ROLE_LABEL[from]}** rolünden çıkarıldı (${project.name})`
+          : `\`${login}\` **${ROLE_LABEL[from]}** → **${ROLE_LABEL[to]}** (${project.name})`,
+      transform: (text) => {
+        const cfg = parseRepoConfig(text)
+        const drop = (arr?: string[]) => (arr ?? []).filter((l) => l.toLowerCase() !== key)
+        const edits: Record<string, string[]> = {}
+        edits[LIST_KEY[from]] = drop(cfg[LIST_KEY[from]])
+        if (to !== 'remove') edits[LIST_KEY[to]] = [...drop(cfg[LIST_KEY[to]]), login]
+        return applyEdits(text, edits)
+      },
+    })
+    setRoleEdit(null)
+  }
+
   async function applyRoleChange() {
     if (!roleEdit) return
+    if (batchMode) return stageRoleChange()
     const project = projects.find((p) => p.name === roleEdit.project)
     if (!project) return
     const { from, to } = roleEdit
@@ -297,7 +367,7 @@ export function MemberDetail() {
               })()}
             </div>
           }
-          confirmLabel="Değiştir ve PR aç"
+          confirmLabel={batchMode ? '🧺 Sepete ekle' : 'Değiştir ve PR aç'}
           danger={roleEdit.to === 'remove'}
           busy={busy}
           onConfirm={() => void applyRoleChange()}
@@ -355,7 +425,7 @@ export function MemberDetail() {
               )}
             </div>
           }
-          confirmLabel="Org'dan çıkar ve PR aç"
+          confirmLabel={batchMode ? '🧺 Sepete ekle' : "Org'dan çıkar ve PR aç"}
           danger
           busy={busy}
           onConfirm={() => void removeFromOrg()}

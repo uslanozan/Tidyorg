@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { LabelChip } from '../components/LabelChip'
 import { EmptyState, ErrorState, Skeleton } from '../components/States'
 import { useAuth, useClient } from '../hooks/useAuth'
+import { useCart } from '../hooks/useCart'
 import { useConfig } from '../hooks/useProjects'
 import { useProposal } from '../hooks/useProposal'
 import {
@@ -10,7 +11,8 @@ import {
   proposeOrgConfigUpdate,
   type OrgConfigChange,
 } from '../services/configRepo'
-import { configFileUrl } from '../services/env'
+import { configFileUrl, PATHS } from '../services/env'
+import { setYamlPath } from '../services/yaml'
 import type { YamlValue } from '../services/yaml'
 import type {
   OrgConfig,
@@ -95,6 +97,7 @@ export function OrgSettings() {
 
 function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolean }) {
   const client = useClient()
+  const { batchMode, add: addToCart } = useCart()
   const { busy, submit } = useProposal()
   const d = org.defaults
 
@@ -235,6 +238,15 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
     setError(null)
     const { changes, details } = computeChanges()
     if (!changes.length) return setError('Hiçbir alan değişmedi.')
+    if (batchMode) {
+      addToCart({
+        file: PATHS.organization,
+        summary: `Org ayarları: ${details.length} değişiklik`,
+        detail: `organization.yml — ${details.join('; ')}`,
+        transform: (text) => changes.reduce((t, c) => setYamlPath(t, c.path, c.value), text),
+      })
+      return
+    }
     await submit(
       () =>
         proposeOrgConfigUpdate({
@@ -529,7 +541,7 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
         <div className="row" style={{ justifyContent: 'flex-end' }}>
           <button type="button" className="btn btn-primary" onClick={() => void save()} disabled={busy}>
             {busy && <span className="spinner" aria-hidden="true" />}
-            Kaydet (PR aç)
+            {batchMode ? '🧺 Sepete ekle' : 'Kaydet (PR aç)'}
           </button>
         </div>
       )}

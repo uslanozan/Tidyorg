@@ -7,10 +7,12 @@ import { ProjectCard } from '../components/ProjectCard'
 import { EmptyState, ErrorState, SkeletonCards } from '../components/States'
 import { UsernameField } from '../components/UsernameField'
 import { useAuth, useClient } from '../hooks/useAuth'
+import { useCart } from '../hooks/useCart'
 import { useConfig } from '../hooks/useProjects'
 import { useProposal } from '../hooks/useProposal'
-import { CONFIG_OWNER } from '../services/env'
+import { CONFIG_OWNER, PATHS } from '../services/env'
 import { isHeadOfEngineering, isOrgOwner, proposePeopleUpdate } from '../services/configRepo'
+import { parsePeopleConfig, serializePeopleConfig } from '../services/yaml'
 import { LANGUAGES, type Project } from '../types/config'
 import type { GitHubOrg, GitHubUser } from '../types/github'
 
@@ -260,6 +262,7 @@ function AddMemberDialog({
   onClose: () => void
 }) {
   const client = useClient()
+  const { batchMode, add: addToCart } = useCart()
   const { busy, submit } = useProposal()
   const [login, setLogin] = useState('')
   const [verified, setVerified] = useState(false)
@@ -274,6 +277,19 @@ function AddMemberDialog({
     if (!verified) {
       const user = await client.userExists(target)
       if (!user) return setError('Bu kullanıcı adı GitHub\'da bulunamadı.')
+    }
+    if (batchMode) {
+      addToCart({
+        file: PATHS.people,
+        summary: `people.yml: +${target} (org üyeliği)`,
+        detail: `\`${target}\` org üyeliğine eklendi`,
+        transform: (text) => {
+          const { members } = parsePeopleConfig(text)
+          if (members.some((l) => l.toLowerCase() === target.toLowerCase())) return text
+          return serializePeopleConfig([...members, target])
+        },
+      })
+      return onClose()
     }
     const result = await submit(
       () => proposePeopleUpdate({ client, add: target }),
@@ -298,7 +314,7 @@ function AddMemberDialog({
             disabled={busy || !login.trim()}
           >
             {busy && <span className="spinner" aria-hidden="true" />}
-            PR oluştur
+            {batchMode ? '🧺 Sepete ekle' : 'PR oluştur'}
           </button>
         </>
       }

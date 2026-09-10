@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 
 interface ModalProps {
   title: string
@@ -42,7 +43,11 @@ export function Modal({ title, onClose, children, footer }: ModalProps) {
     }
 
     document.addEventListener('keydown', onKeyDown)
-    panel.current?.querySelector<HTMLElement>('input, button, select, textarea')?.focus()
+    // preventScroll: odak ilk öğeye giderken tarayıcı gövdeyi kaydırıp başlığı
+    // görünmez yapmasın (sepet gibi uzun modallarda üst kırpılıyordu).
+    panel.current
+      ?.querySelector<HTMLElement>('input, button, select, textarea')
+      ?.focus({ preventScroll: true })
 
     return () => {
       document.removeEventListener('keydown', onKeyDown)
@@ -51,7 +56,10 @@ export function Modal({ title, onClose, children, footer }: ModalProps) {
     }
   }, [onClose])
 
-  return (
+  // Portal document.body'ye: header'ın `backdrop-filter`'ı `position: fixed` için
+  // containing block oluşturuyor; portal olmadan modal viewport yerine header
+  // kutusuna göre konumlanıp üstten kırpılıyordu.
+  return createPortal(
     <div
       className="modal-backdrop"
       onMouseDown={(event) => {
@@ -59,11 +67,12 @@ export function Modal({ title, onClose, children, footer }: ModalProps) {
       }}
     >
       <div className="modal" role="dialog" aria-modal="true" aria-label={title} ref={panel}>
-        <h2 style={{ marginBottom: 'var(--sp-4)' }}>{title}</h2>
-        {children}
+        <h2 className="modal-title">{title}</h2>
+        <div className="modal-body">{children}</div>
         {footer && <div className="modal-actions">{footer}</div>}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 

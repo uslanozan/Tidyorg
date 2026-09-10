@@ -622,9 +622,11 @@ a.person:hover {
 }
 
 .modal {
+  display: flex;
+  flex-direction: column;
   width: min(560px, 100%);
   max-height: min(85vh, 720px);
-  overflow-y: auto;
+  overflow: hidden; /* köşeler kırpılsın; kaydırma gövdede (.modal-body) */
   padding: var(--sp-6);
   border-radius: var(--radius-xl);
   border: 1px solid var(--border-strong);
@@ -633,11 +635,29 @@ a.person:hover {
   animation: modal-in var(--dur-slow) var(--ease);
 }
 
+/* Başlık ve footer sabit kalır; yalnızca gövde kayar → üst asla kırpılmaz. */
+.modal-title {
+  flex: none;
+  margin-bottom: var(--sp-4);
+}
+
+.modal-body {
+  flex: 1 1 auto;
+  min-height: 0; /* flex çocuğunun taşabilmesi/kayabilmesi için şart */
+  overflow-y: auto;
+  /* Kayan içeriğin kenar boşluğu odak halkasını kırpmasın diye küçük iç pay. */
+  margin: 0 calc(var(--sp-2) * -1);
+  padding: 0 var(--sp-2);
+}
+
 .modal-actions {
+  flex: none;
   display: flex;
   justify-content: flex-end;
   gap: var(--sp-3);
-  margin-top: var(--sp-6);
+  margin-top: var(--sp-5);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--border);
 }
 
 @keyframes fade-in {

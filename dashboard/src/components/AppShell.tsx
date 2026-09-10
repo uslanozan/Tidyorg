@@ -1,4 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
+import { CartBar } from './CartBar'
 import { SyncBadge } from './SyncBadge'
 import { useI18n } from '../i18n'
 import { useAuth } from '../hooks/useAuth'
@@ -67,6 +68,7 @@ export function AppShell() {
 
           <div className="header-spacer" />
 
+          <CartBar />
           <SyncBadge />
 
           <button
