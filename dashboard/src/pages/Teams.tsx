@@ -2,17 +2,19 @@ import { useMemo } from 'react'
 import { EmptyState, ErrorState, Skeleton } from '../components/States'
 import { useConfig } from '../hooks/useProjects'
 
-type MemberRole = 'mentor' | 'developer' | 'admin'
+type MemberRole = 'mentor' | 'developer' | 'viewer' | 'admin'
 
 const ROLE_COLOR: Record<MemberRole, string> = {
   mentor: '#d97706',
   developer: '#64748b',
+  viewer: '#0891b2',
   admin: '#dc2626',
 }
 
 const ROLE_LABEL: Record<MemberRole, string> = {
   mentor: 'Mentör (admin)',
   developer: 'Developer (push)',
+  viewer: 'Viewer (pull)',
   admin: 'Org admin',
 }
 
@@ -142,6 +144,7 @@ export function Teams() {
           login,
           role: 'developer' as const,
         })),
+        ...(project.config.viewers ?? []).map((login) => ({ login, role: 'viewer' as const })),
       ]
       result.push({ id: project.name, hub: project.name, members })
     }
@@ -161,7 +164,7 @@ export function Teams() {
           </p>
         </div>
         <div className="row" style={{ gap: 'var(--sp-3)', flexWrap: 'wrap' }}>
-          {(['mentor', 'developer', 'admin'] as MemberRole[]).map((r) => (
+          {(['mentor', 'developer', 'viewer', 'admin'] as MemberRole[]).map((r) => (
             <span key={r} className="badge">
               <span className="badge-dot" style={{ background: ROLE_COLOR[r] }} aria-hidden="true" />
               {ROLE_LABEL[r]}

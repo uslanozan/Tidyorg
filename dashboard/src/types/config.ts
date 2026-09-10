@@ -118,8 +118,18 @@ export interface OrgDefaults {
   vulnerability_alerts?: boolean
   secret_scanning?: boolean
   protected_branches?: Record<string, ProtectedBranchRule>
+  /** Şablon dosyası → dağıtım modu (strict/seed/none). */
+  files?: Record<string, TemplateMode>
   workflows?: string[]
   labels?: RepoLabel[]
+}
+
+/** organization.yml → profile: GitHub UI'da görünen org kimliği (kozmetik). */
+export interface OrgProfile {
+  name?: string
+  description?: string
+  blog?: string
+  location?: string
 }
 
 export interface OrgConfig {
@@ -128,6 +138,7 @@ export interface OrgConfig {
   roles: Record<string, OrgRoleDefinition>
   org_admin_team: string
   defaults: OrgDefaults
+  profile?: OrgProfile
 }
 
 /**

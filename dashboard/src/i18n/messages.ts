@@ -18,6 +18,7 @@ export const messages = {
       members: 'Üyeler',
       teams: 'Takımlar',
       pulls: "Bekleyen PR'lar",
+      org: 'Org Ayarları',
       pendingAria: '{n} bekleyen PR',
     },
 
@@ -66,6 +67,7 @@ export const messages = {
       members: 'Members',
       teams: 'Teams',
       pulls: 'Pending PRs',
+      org: 'Org Settings',
       pendingAria: '{n} pending PRs',
     },
 

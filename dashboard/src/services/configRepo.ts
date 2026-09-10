@@ -8,6 +8,7 @@ import {
   parseRepoConfig,
   serializePeopleConfig,
   serializeRepoConfig,
+  setYamlPath,
   type YamlValue,
 } from './yaml'
 import { validateRepoConfig } from './validation'
@@ -426,6 +427,56 @@ export function proposeRepoConfigUpdate({
       const errors = validateRepoConfig(parseRepoConfig(nextText))
       if (errors.length) throw new Error(errors.join(' '))
       return nextText
+    },
+  })
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   ORG AYARLARI — config/organization.yml (İNSAN-SAHİPLİ, yorum dolu)
+   ───────────────────────────────────────────────────────────────────────────
+   Bu dosya baştan yazılamaz: her kararın gerekçesi yorumlarda. Yalnızca
+   değişen YAPRAKLAR nested yolla (setYamlPath) yerinde güncellenir; tüm yorumlar
+   ve dokunulmayan alanlar aynen kalır. privileged.yml (owner'lar) buraya DAHİL
+   DEĞİL — o dosya dashboard'ın asla yazmadığı yükseltme kapısı olarak kalır.   */
+
+export interface OrgConfigChange {
+  /** Nokta yolu segmentleri, ör. ['defaults','visibility'] veya ['roles','mentor','scope']. */
+  path: string[]
+  /** Yeni yaprak değeri (skaler, flow-liste ya da labels gibi nesne dizisi). */
+  value: YamlValue
+}
+
+export interface OrgUpdateArgs {
+  client: GitHubClient
+  /** Yalnızca gerçekten değişen yapraklar — çağıran diff'i hesaplar. */
+  changes: OrgConfigChange[]
+  /** "profil güncellendi" gibi tek satırlık özet. */
+  summary: string
+  details?: string[]
+}
+
+/** organization.yml'da bir dizi yaprağı güncelleyen PR açar (yorum-koruyan). */
+export function proposeOrgConfigUpdate({
+  client,
+  changes,
+  summary,
+  details = [],
+}: OrgUpdateArgs): Promise<ProposalResult> {
+  return proposeChange({
+    client,
+    path: PATHS.organization,
+    slug: 'org',
+    action: 'update',
+    commitMessage: `config(org): ${summary}`,
+    prTitle: `config(org): ${summary}`,
+    prBody:
+      ['**Organizasyon ayarları** güncellendi.', '', ...details.map((d) => `- ${d}`)].join('\n') +
+      PR_FOOTER,
+    build: (current) => {
+      if (!current) throw new Error('Dosya okunamadı')
+      let text = current.text
+      for (const { path, value } of changes) text = setYamlPath(text, path, value)
+      return text
     },
   })
 }

@@ -59,6 +59,9 @@ export function AppShell() {
                 </span>
               )}
             </NavLink>
+            <NavLink to="/org" className="nav-link">
+              {t('nav.org')}
+            </NavLink>
           </nav>
 
           <div className="header-spacer" />

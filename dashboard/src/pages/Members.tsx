@@ -8,13 +8,14 @@ import {
   membershipsFor,
 } from '../services/configRepo'
 
-type RoleKey = 'owner' | 'head-of-engineering' | 'mentor' | 'developer'
+type RoleKey = 'owner' | 'head-of-engineering' | 'mentor' | 'developer' | 'viewer'
 
 const ROLE_META: Record<RoleKey, { label: string; color: string }> = {
   owner: { label: 'Owner', color: '#dc2626' },
   'head-of-engineering': { label: 'Head of Eng', color: '#7c3aed' },
   mentor: { label: 'Mentör', color: '#d97706' },
   developer: { label: 'Developer', color: '#64748b' },
+  viewer: { label: 'Viewer', color: '#0891b2' },
 }
 
 const FILTERS: { value: '' | RoleKey; label: string }[] = [
@@ -23,6 +24,7 @@ const FILTERS: { value: '' | RoleKey; label: string }[] = [
   { value: 'head-of-engineering', label: 'Head of Eng' },
   { value: 'mentor', label: 'Mentör' },
   { value: 'developer', label: 'Developer' },
+  { value: 'viewer', label: 'Viewer' },
 ]
 
 interface MemberRow {
@@ -30,6 +32,7 @@ interface MemberRow {
   roles: RoleKey[]
   mentorCount: number
   devCount: number
+  viewerCount: number
 }
 
 export function Members() {
@@ -44,12 +47,14 @@ export function Members() {
         const ms = membershipsFor(login, projects)
         const mentorCount = ms.filter((m) => m.role === 'mentor').length
         const devCount = ms.filter((m) => m.role === 'developer').length
+        const viewerCount = ms.filter((m) => m.role === 'viewer').length
         const roles: RoleKey[] = []
         if (isOrgOwner(login, privileged)) roles.push('owner')
         if (isHeadOfEngineering(login, privileged)) roles.push('head-of-engineering')
         if (mentorCount) roles.push('mentor')
         if (devCount) roles.push('developer')
-        return { login, roles, mentorCount, devCount }
+        if (viewerCount) roles.push('viewer')
+        return { login, roles, mentorCount, devCount, viewerCount }
       })
       .sort((a, b) => a.login.localeCompare(b.login, 'tr'))
   }, [people, privileged, projects])
@@ -138,6 +143,7 @@ export function Members() {
                       {ROLE_META[rk].label}
                       {rk === 'mentor' && r.mentorCount > 1 ? ` ×${r.mentorCount}` : ''}
                       {rk === 'developer' && r.devCount > 1 ? ` ×${r.devCount}` : ''}
+                      {rk === 'viewer' && r.viewerCount > 1 ? ` ×${r.viewerCount}` : ''}
                     </span>
                   ))
                 )}

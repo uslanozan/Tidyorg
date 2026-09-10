@@ -12,6 +12,7 @@ import { Login } from './pages/Login'
 import { MemberDetail } from './pages/MemberDetail'
 import { Members } from './pages/Members'
 import { NewProject } from './pages/NewProject'
+import { OrgSettings } from './pages/OrgSettings'
 import { ProjectDetail } from './pages/ProjectDetail'
 import { Projects } from './pages/Projects'
 import { PullRequests } from './pages/PullRequests'
@@ -56,6 +57,7 @@ function AuthenticatedRoutes() {
         <Route path="uyeler/:login" element={<MemberDetail />} />
         <Route path="takimlar" element={<Teams />} />
         <Route path="pr" element={<PullRequests />} />
+        <Route path="org" element={<OrgSettings />} />
         <Route
           path="*"
           element={

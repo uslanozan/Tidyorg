@@ -148,6 +148,125 @@ export function applyEdits(
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   İÇ İÇE (NESTED) LEAF DÜZENLEME — insan-sahipli, yorum dolu dosyalar için
+   ═══════════════════════════════════════════════════════════════════════════
+
+   organization.yml repo config'lerinden farklı: İNSAN-SAHİPLİ ve her kararın
+   gerekçesi satır-içi/blok yorumlarında. Bir üst-seviye bloğu (`defaults`,
+   `roles`) komple yeniden yazmak (applyEdits'in nested yolu) bu yorumları YOK
+   EDER. Bu yüzden derin bir yol (`defaults.visibility`, `roles.mentor.scope`,
+   `defaults.protected_branches.main.required_reviews`) üzerindeki TEK yaprağı,
+   girinti takip ederek, dosyanın geri kalanına ve TÜM yorumlara dokunmadan
+   değiştiririz. Satır-içi yorumlar (`visibility: public # sebep...`) korunur —
+   PR'ı bir insan inceleyeceği için anlamsal tutarlılık ona bırakılır; araç
+   yalnızca hiçbir yorumu SİLMEZ.                                              */
+
+const indentWidth = (line: string): number => line.match(/^(\s*)/)![1].length
+
+/** Bir data satırının değer kısmındaki satır-içi yorumu (` # ...`) ayırır. */
+function splitTrailingComment(rest: string): { value: string; comment: string } {
+  const m = rest.match(/\s+#.*$/)
+  if (!m) return { value: rest, comment: '' }
+  return { value: rest.slice(0, m.index), comment: rest.slice(m.index!) }
+}
+
+/** [start, end) aralığında `indent` girintili `key:` satırını bulur. */
+function findKeyLine(
+  lines: string[],
+  key: string,
+  start: number,
+  end: number,
+): number {
+  const re = new RegExp(`^(\\s*)${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*:`)
+  for (let i = start; i < end; i++) {
+    const line = lines[i]
+    if (!line.trim() || line.trim().startsWith('#')) continue
+    if (re.test(line)) return i
+  }
+  return -1
+}
+
+/**
+ * `key:` satırının çocuk blok aralığını verir: [ilk çocuk, son anlamlı çocuk+1).
+ * Sonraki anahtara ait boş satır ve yorumlar dışarıda kalır (findBlock ile aynı
+ * özen — o yorumlar bir sonraki alana aittir, bu bloğa değil).
+ */
+function childRange(lines: string[], keyLine: number, end: number): [number, number] {
+  const keyIndent = indentWidth(lines[keyLine])
+  let e = keyLine + 1
+  while (e < end) {
+    const l = lines[e]
+    if (!l.trim() || l.trim().startsWith('#') || indentWidth(l) > keyIndent) {
+      e += 1
+      continue
+    }
+    break
+  }
+  let last = e - 1
+  while (last > keyLine && (lines[last].trim() === '' || lines[last].trim().startsWith('#'))) {
+    last -= 1
+  }
+  return [keyLine + 1, last + 1]
+}
+
+/**
+ * `path` (ör. ['defaults','visibility']) üzerindeki yaprağı `value` ile değiştirir;
+ * dosyanın geri kalanı ve tüm yorumlar aynen kalır. Yol bulunamazsa metin
+ * değişmeden döner. Skaler ve blok-liste (labels) değerleri desteklenir.
+ */
+export function setYamlPath(
+  text: string,
+  path: string[],
+  value: YamlValue,
+): string {
+  const lines = text.split('\n')
+  let lo = 0
+  let hi = lines.length
+
+  for (let d = 0; d < path.length; d++) {
+    const key = path[d]
+    const idx = findKeyLine(lines, key, lo, hi)
+    if (idx === -1) return text // yol yok — sessizce dokunma
+
+    if (d < path.length - 1) {
+      ;[lo, hi] = childRange(lines, idx, hi)
+      continue
+    }
+
+    // Son segment: yaprağı değiştir.
+    const indent = lines[idx].match(/^(\s*)/)![1]
+    const afterColon = lines[idx].slice(lines[idx].indexOf(':') + 1)
+    const { comment } = splitTrailingComment(afterColon)
+
+    // Bu anahtarın mevcut blok aralığı (varsa çocukları) sonuçta silinecek.
+    const [, blockEnd] = childRange(lines, idx, hi)
+
+    let rendered: string[]
+    if (isFlat(value)) {
+      if (Array.isArray(value)) {
+        rendered = [`${indent}${key}: [${value.map(renderScalar).join(', ')}]${comment}`]
+      } else {
+        rendered = [`${indent}${key}: ${renderScalar(value)}${comment}`]
+      }
+    } else {
+      // İç içe yapı/nesne dizisi (ör. labels): blok olarak, doğru girintiyle.
+      const empty = Array.isArray(value)
+        ? value.length === 0
+        : Object.keys(value).length === 0
+      rendered = empty
+        ? [`${indent}${key}: ${Array.isArray(value) ? '[]' : '{}'}`]
+        : [`${indent}${key}:`, dumpBlock(value, indent.length + 2)]
+    }
+
+    lines.splice(idx, blockEnd - idx, ...rendered)
+    const result = lines.join('\n')
+    return result.endsWith('\n') ? result : `${result}\n`
+  }
+
+  return text
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    SIFIRDAN YAZMA — yalnızca yeni dosyalar için
    ═══════════════════════════════════════════════════════════════════════ */
 
