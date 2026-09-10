@@ -421,6 +421,24 @@ pre {
   color: color-mix(in srgb, var(--label-color) 60%, #0d1117);
 }
 
+/* Org ayarları bölüm başlığının sağındaki ikon tile'ı. */
+.section-icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  color: var(--accent);
+}
+.section-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
 :root[data-theme='dark'] .label-chip,
 :root:not([data-theme='light']) .label-chip {
   background: color-mix(in srgb, var(--label-color) 20%, transparent);

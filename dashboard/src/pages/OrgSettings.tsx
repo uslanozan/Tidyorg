@@ -289,7 +289,7 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
       </div>
 
       {/* PROFİL */}
-      <Section title="Profil" hint="GitHub'da görünen org kimliği (kozmetik).">
+      <Section title="Profil" hint="GitHub'da görünen org kimliği (kozmetik)." icon={ICONS.profile}>
         <div className="field">
           <label className="label">Fotoğraf</label>
           <div className="row" style={{ gap: 'var(--sp-3)', alignItems: 'center' }}>
@@ -322,7 +322,7 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
       </Section>
 
       {/* DEFAULTS: GENEL */}
-      <Section title="Varsayılanlar — genel" hint="Her repo bunları miras alır, repo bazında ezilebilir.">
+      <Section title="Varsayılanlar — genel" hint="Her repo bunları miras alır, repo bazında ezilebilir." icon={ICONS.general}>
         <div className="field">
           <label className="label">Görünürlük</label>
           <select
@@ -343,13 +343,13 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
       </Section>
 
       {/* DEFAULTS: GÜVENLİK */}
-      <Section title="Varsayılanlar — güvenlik">
+      <Section title="Varsayılanlar — güvenlik" icon={ICONS.security}>
         <BoolField label="Dependabot uyarıları (vulnerability_alerts)" value={vulnAlerts} onChange={setVulnAlerts} disabled={!canManage} />
         <BoolField label="Secret scanning + push protection" value={secretScanning} onChange={setSecretScanning} disabled={!canManage} />
       </Section>
 
       {/* DEFAULTS: WORKFLOWS */}
-      <Section title="Varsayılanlar — workflow'lar" hint="terraform/templates/.github/workflows/<ad>.yml">
+      <Section title="Varsayılanlar — workflow'lar" hint="terraform/templates/.github/workflows/<ad>.yml" icon={ICONS.workflows}>
         {WORKFLOW_KEYS.map((wf) => (
           <label key={wf} className="row" style={{ gap: 'var(--sp-2)', fontSize: 'var(--text-sm)' }}>
             <input
@@ -369,7 +369,7 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
       </Section>
 
       {/* DEFAULTS: FILES */}
-      <Section title="Varsayılanlar — şablon dosyaları" hint="strict = TF sahiplenir · seed = ilk oluşturmada · none = yazılmaz">
+      <Section title="Varsayılanlar — şablon dosyaları" hint="strict = TF sahiplenir · seed = ilk oluşturmada · none = yazılmaz" icon={ICONS.files}>
         {FILE_KEYS.map((key) => (
           <div className="field" key={key}>
             <label className="label">{key}</label>
@@ -388,7 +388,7 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
       </Section>
 
       {/* DEFAULTS: SEED LABELS */}
-      <Section title="Varsayılanlar — seed etiketleri" hint="Repo kendi labels'ını tanımlamazsa bu set uygulanır.">
+      <Section title="Varsayılanlar — seed etiketleri" hint="Repo kendi labels'ını tanımlamazsa bu set uygulanır." icon={ICONS.labels}>
         {labels.length === 0 && <p className="hint">Etiket yok.</p>}
         {labels.map((row, i) => (
           <div key={i} className="row" style={{ gap: 'var(--sp-2)', alignItems: 'center' }}>
@@ -424,7 +424,7 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
       </Section>
 
       {/* DEFAULTS: PROTECTED BRANCHES */}
-      <Section title="Varsayılanlar — dal koruması" hint="Org geneli branch protection. Repo kendi dosyasında ezebilir.">
+      <Section title="Varsayılanlar — dal koruması" hint="Org geneli branch protection. Repo kendi dosyasında ezebilir." icon={ICONS.branches}>
         {Object.keys(branches).length === 0 && <p className="hint">Tanımlı dal koruması yok.</p>}
         {Object.entries(branches).map(([branch, rule]) => (
           <div key={branch} className="card card-pad stack" style={{ gap: 'var(--sp-2)' }}>
@@ -475,7 +475,7 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
       </Section>
 
       {/* ROLLER */}
-      <Section title="Roller" hint="Yetkinin ne anlama geldiği. Repo dosyaları bu rol adlarını kullanır.">
+      <Section title="Roller" hint="Yetkinin ne anlama geldiği. Repo dosyaları bu rol adlarını kullanır." icon={ICONS.roles}>
         <div className="card card-pad" style={{ background: 'var(--danger-soft)', border: '1px solid var(--danger)' }}>
           <p className="subtle" style={{ margin: 0 }}>
             ⚠️ <strong>bypass_branch_protection</strong> bir yükseltme yüzeyidir: açık bir rol, o rolü
@@ -510,7 +510,7 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
       </Section>
 
       {/* SALT-OKUNUR: kimlik + gerçek GitHub org ayarları */}
-      <Section title="Yapısal (salt-okunur)">
+      <Section title="Yapısal (salt-okunur)" icon={ICONS.structural}>
         <div className="meta-grid">
           <ReadOnly label="organization" value={org.organization} />
           <ReadOnly label="version" value={String(org.version)} />
@@ -539,17 +539,66 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
 
 /* ── küçük yardımcı bileşenler ─────────────────────────────────────────────── */
 
-function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
+function Section({
+  title,
+  hint,
+  icon,
+  children,
+}: {
+  title: string
+  hint?: string
+  icon?: ReactNode
+  children: ReactNode
+}) {
   return (
     <section className="card card-pad stack" style={{ gap: 'var(--sp-3)' }}>
-      <div>
-        <h2 style={{ fontSize: 'var(--text-lg)' }}>{title}</h2>
-        {hint && <p className="subtle" style={{ margin: '2px 0 0' }}>{hint}</p>}
+      <div className="row-between" style={{ alignItems: 'flex-start', gap: 'var(--sp-3)' }}>
+        <div>
+          <h2 style={{ fontSize: 'var(--text-lg)' }}>{title}</h2>
+          {hint && <p className="subtle" style={{ margin: '2px 0 0' }}>{hint}</p>}
+        </div>
+        {icon && (
+          <span className="section-icon" aria-hidden="true">
+            {icon}
+          </span>
+        )}
       </div>
       {children}
     </section>
   )
 }
+
+/* ── bölüm ikonları (çizgi stili, currentColor) ────────────────────────────── */
+
+const svg = (children: ReactNode) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+    {children}
+  </svg>
+)
+
+const ICONS = {
+  profile: svg(<><circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-6 8-6s8 2 8 6" /></>),
+  general: svg(
+    <>
+      <path d="M4 6h16M4 12h16M4 18h16" />
+      <circle cx="9" cy="6" r="2" fill="var(--surface-sunken)" />
+      <circle cx="15" cy="12" r="2" fill="var(--surface-sunken)" />
+      <circle cx="8" cy="18" r="2" fill="var(--surface-sunken)" />
+    </>,
+  ),
+  security: svg(<><path d="M12 3l7 3v5c0 4.5-3 7.6-7 9-4-1.4-7-4.5-7-9V6z" /><path d="M9 12l2 2 4-4" /></>),
+  workflows: svg(<><circle cx="12" cy="12" r="9" /><path d="M10 8.5l5 3.5-5 3.5z" /></>),
+  files: svg(<><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5" /></>),
+  labels: svg(
+    <>
+      <path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0l-7.2-7.2A2 2 0 0 1 3 12V5a2 2 0 0 1 2-2h7a2 2 0 0 1 1.4.6l7.2 7.2a2 2 0 0 1 0 2.6z" />
+      <circle cx="7.5" cy="7.5" r="1.2" />
+    </>,
+  ),
+  branches: svg(<><line x1="6" y1="4" x2="6" y2="14" /><circle cx="6" cy="18" r="2.5" /><circle cx="18" cy="6" r="2.5" /><path d="M18 8.5a9 9 0 0 1-9 9" /></>),
+  roles: svg(<><circle cx="8" cy="15" r="4" /><path d="M10.9 12.1L20 3M17 6l2 2M14.5 8.5l2 2" /></>),
+  structural: svg(<><circle cx="12" cy="12" r="9" /><path d="M12 16v-4M12 8h.01" /></>),
+} as const
 
 function TextField({
   label,
