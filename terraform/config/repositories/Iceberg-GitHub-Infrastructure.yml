@@ -23,7 +23,7 @@ mentors:
   # bypass eder. Bilinçli karar (Ozan).
   - Dogancan-Acar
 
-developers: []
+developers: [paitblack]
 
 default_branch: main
 
@@ -73,4 +73,4 @@ files:
 protected_branches:
   develop: null
 
-viewers: [paitblack]
+viewers: []
