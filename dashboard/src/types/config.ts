@@ -134,7 +134,8 @@ export interface OrgProfile {
 
 export interface OrgConfig {
   version: number
-  organization: string
+  /** Artık config'de yazılmaz; org adı TF_VAR_github_org_name'den gelir. Dashboard CONFIG_OWNER kullanır. */
+  organization?: string
   roles: Record<string, OrgRoleDefinition>
   org_admin_team: string
   defaults: OrgDefaults

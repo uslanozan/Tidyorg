@@ -12,7 +12,7 @@ import {
   proposeOrgConfigUpdate,
   type OrgConfigChange,
 } from '../services/configRepo'
-import { configFileUrl, PATHS } from '../services/env'
+import { CONFIG_OWNER, configFileUrl, PATHS } from '../services/env'
 import { setYamlPath } from '../services/yaml'
 import type { YamlValue } from '../services/yaml'
 import type {
@@ -269,7 +269,7 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
         <div className="row" style={{ gap: 'var(--sp-3)', alignItems: 'center' }}>
           <img
             className="avatar"
-            src={`https://github.com/${encodeURIComponent(org.organization)}.png?size=120`}
+            src={`https://github.com/${encodeURIComponent(CONFIG_OWNER)}.png?size=120`}
             alt=""
             width={56}
             height={56}
@@ -316,7 +316,7 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
           <div className="row" style={{ gap: 'var(--sp-3)', alignItems: 'center' }}>
             <img
               className="avatar"
-              src={`https://github.com/${encodeURIComponent(org.organization)}.png?size=160`}
+              src={`https://github.com/${encodeURIComponent(CONFIG_OWNER)}.png?size=160`}
               alt=""
               width={64}
               height={64}
@@ -324,7 +324,7 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
             />
             <a
               className="btn btn-sm"
-              href={`https://github.com/organizations/${encodeURIComponent(org.organization)}/settings/profile`}
+              href={`https://github.com/organizations/${encodeURIComponent(CONFIG_OWNER)}/settings/profile`}
               target="_blank"
               rel="noreferrer"
             >
@@ -531,7 +531,7 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
       {/* SALT-OKUNUR: kimlik + gerçek GitHub org ayarları */}
       <Section title={t('orgSettings.section.structuralTitle')} icon={ICONS.structural}>
         <div className="meta-grid">
-          <ReadOnly label="organization" value={org.organization} />
+          <ReadOnly label="organization" value={CONFIG_OWNER} />
           <ReadOnly label="version" value={String(org.version)} />
           <ReadOnly label="org_admin_team" value={org.org_admin_team} />
         </div>

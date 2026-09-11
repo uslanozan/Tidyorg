@@ -16,7 +16,8 @@
 # =============================================================================
 
 version: 1
-organization: your-org
+# Org adı TEK KAYNAKTAN gelir: TF_VAR_github_org_name (variables.tf). Burada
+# tekrar edilmez — iki yerde tutmak uyuşmazlıkta takım slug'larını bozardı.
 
 # -----------------------------------------------------------------------------
 # ROLLER — Yetkinin ne anlama geldiği tek yerde tanımlanır.

@@ -35,7 +35,7 @@ function readEnv(key: keyof RuntimeEnv): string {
 export const CLIENT_ID = readEnv('VITE_GITHUB_CLIENT_ID')
 
 export const CONFIG_OWNER = readEnv('VITE_CONFIG_OWNER') || 'your-org'
-export const CONFIG_REPO = readEnv('VITE_CONFIG_REPO') || 'Tidyorg'
+export const CONFIG_REPO = readEnv('VITE_CONFIG_REPO') || 'tidyorg'
 export const CONFIG_BRANCH = readEnv('VITE_CONFIG_BRANCH') || 'main'
 
 /** github.com'un OAuth uçlarına giden proxy yolu — CORS için gerekli. */

@@ -43,7 +43,7 @@ export function serializePeopleConfig(members: string[]): string {
 
    Mevcut bir config dosyasını "parse → dump" turundan geçirmek dosyadaki
    YORUMLARI SİLER. Bu repo'da yorumlar süs değil: gerekçe taşıyorlar
-   (örn. Tidyorg.yml içindeki mentör listesi uyarısı).
+   (örn. tidyorg.yml içindeki mentör listesi uyarısı).
    Bu yüzden güncellemede yalnızca ilgili anahtarın satır bloğu değiştirilir;
    dosyanın geri kalanı bayt bayt korunur.                                    */
 

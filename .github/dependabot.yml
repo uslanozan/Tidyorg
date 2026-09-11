@@ -18,7 +18,7 @@
 #   Yani şablonu olduğu gibi almak, döngüsü olmayan tek yerdeki çalışan otomasyonu
 #   kapatırdı. `github-actions` bu yüzden BURADA duruyor.
 #
-# Bkz. TODO.md → GIT-37 · config/repositories/Tidyorg.yml
+# Bkz. TODO.md → GIT-37 · config/repositories/tidyorg.yml
 # =============================================================================
 
 version: 2

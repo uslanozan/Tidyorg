@@ -79,7 +79,7 @@ module "repositories" {
   source   = "./modules/repository"
   for_each = local.repos
 
-  org_name = local.org_config.organization
+  org_name = var.github_org_name
 
   name        = each.key
   description = each.value.description

@@ -15,7 +15,7 @@
 # =============================================================================
 
 version: 1
-organization: your-org
+# Org adı buradan DEĞİL, TF_VAR_github_org_name'den gelir (tek kaynak).
 
 # -----------------------------------------------------------------------------
 # ROLLER — Yetkinin ne anlama geldiği burada tanımlanır, tek yerde.
