@@ -70,7 +70,7 @@ bir kez tanımlanır. Kişi değiştiğinde bu bölüme dokunulmaz — yalnızca
 
 ```yaml
 people:
-  uslanozan:
+  owner-a:
     org_role: admin
     roles: [head-of-engineering]
 
@@ -359,7 +359,7 @@ token'ı ~1 saatte bir otomatik yenilenir. Kurulum ve izin listesi:
 
 ### 7.2 GitHub Secrets Konfigürasyonu
 
-1. GitHub'da `Tidyorg` reposunun ayarlarına (**Settings**) gidin.
+1. GitHub'da `tidyorg` reposunun ayarlarına (**Settings**) gidin.
 2. Sol menüden **Secrets and variables** -> **Actions** yolunu izleyin.
 3. **"New repository secret"** butonuna tıklayın.
 4. İsim alanına **`TF_API_TOKEN`** yazın.

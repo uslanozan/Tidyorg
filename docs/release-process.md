@@ -17,7 +17,7 @@ Bu doküman o mekanizmanın nasıl çalıştığını ve süreci nasıl yürüte
 > yazılmıştır. Aktifleştirmek için ilgili repo'nun config dosyasına
 > `workflows: [ci, release]` yazmak yeterlidir.
 >
-> Karar takibi: [`../TODO.md`](../TODO.md) · [`../ROADMAP.md`](../ROADMAP.md) Faz 2.
+> Karar takibi: [`../ROADMAP.md`](../ROADMAP.md) Faz 2.
 
 ---
 

@@ -41,7 +41,7 @@ npm run dev             # http://localhost:5173
 
 | Değişken | Ne işe yarar |
 | :--- | :--- |
-| `VITE_GITHUB_CLIENT_ID` | tidyorg **GitHub App**'inin client_id'si (`Iv1.…`/`Iv23.…`). **Ozan sağlar.** `client_secret` gerekmez ve istenmez. |
+| `VITE_GITHUB_CLIENT_ID` | tidyorg **GitHub App**'inin client_id'si (`Iv1.…`/`Iv23.…`). **owner-a sağlar.** `client_secret` gerekmez ve istenmez. |
 | `VITE_CONFIG_OWNER` | Config repo'sunun sahibi (org adı) |
 | `VITE_CONFIG_REPO` | Config repo'sunun adı |
 | `VITE_CONFIG_BRANCH` | PR'ların hedef dalı (varsayılan `main`) |
@@ -103,7 +103,7 @@ verilir.
 
 Config dosyalarını `parse → dump` turundan geçirmek **yorumları siler**. Bu
 repo'da yorumlar süs değil, karar gerekçesi taşıyor (örn.
-`Tidyorg.yml` içindeki mentör listesi uyarısı). Bu yüzden
+`tidyorg.yml` içindeki mentör listesi uyarısı). Bu yüzden
 güncellemede yalnızca hedeflenen anahtarın satır bloğu yeniden yazılır
 (`src/services/yaml.ts` → `applyEdits`).
 
@@ -143,12 +143,12 @@ dashboard/
 "owner yap" gibi bir buton **yoktur** — yetki yükseltme yalnızca elle PR +
 CODEOWNERS onayıyla.
 
-## Ozan'a bağlı olan işler
+## owner-a'a bağlı olan işler
 
 | İhtiyaç | Şu anki durum |
 | :--- | :--- |
 | GitHub App `client_id` | Kod hazır; `client_id` gelince `.env` / `window.__ENV__`'e yazmak yeterli. Dev'de token ile giriş devrede |
-| GitHub App'in oluşturulması + config repo'ya kurulması | Ozan (org admin işi) |
+| GitHub App'in oluşturulması + config repo'ya kurulması | owner-a (org admin işi) |
 | GitOps plan yorumu (Faz 3) | Ekran hazır; yorum düşmeyen PR'da "Plan bekleniyor…" gösterilir, 30 sn'de bir yenilenir |
 | JSON Schema (Hafta 6) | `src/services/validation.ts` içinde elle kontroller var; şema gelince oraya bağlanır |
 

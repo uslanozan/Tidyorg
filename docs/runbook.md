@@ -243,7 +243,7 @@ otomatik onarım yoktur.
    Aksi halde bir sonraki apply geri alır ve "ayarım kayboldu" şikayeti gelir.
 3. Silinen şey yönetim dışıysa (dal, etiket, milestone) elle geri getirilmelidir.
 
-**Yaşanmış örnek (2026-08-17):** `Tidyorg` reposunda `develop` dalı
+**Yaşanmış örnek (2026-08-17):** `tidyorg` reposunda `develop` dalı
 ve koruma kuralı arayüzden silindi. Dal zaten yönetilmiyordu (bu repoda varsayılan `main`),
 o yüzden Terraform fark etmedi. Koruma kuralı ise yönetiliyordu — ve config'den aynı anda
 düşürülmeseydi bir sonraki `apply` **var olmayan bir dal için kuralı sessizce geri
@@ -277,8 +277,7 @@ gerektirir. Şu an public repo'larla çalışılıyor.
 **Otomasyonun kimliği: `tidyorg-infra-bot` GitHub App'i** _(2026-08-15'ten beri)_.
 Terraform'un yaptığı commit'ler artık bir kişinin değil bot'un adına düşüyor; audit
 log'da elle yapılan değişiklikten ayırt edilebiliyor. Kurulum:
-[`../integrations/github-app/README.md`](../integrations/github-app/README.md) ·
-Gerekçe: [`notes/github-auth-strategy.md`](notes/github-auth-strategy.md).
+[`../integrations/github-app/README.md`](../integrations/github-app/README.md).
 
 ---
 

@@ -16,7 +16,7 @@ Kişisel token (PAT) yerine organizasyona ait bir GitHub App kullanmanın avanta
 | **Installation ID** | `<YOUR_INSTALLATION_ID>` |
 | **Organizasyon** | `your-org` |
 | **Kuruldu** | 2026-08-15 |
-| **Kuran** | uslanozan |
+| **Kuran** | owner-a |
 
 ### İzinler
 

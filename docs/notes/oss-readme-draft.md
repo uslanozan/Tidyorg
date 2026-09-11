@@ -1,7 +1,6 @@
 <!--
-  DRAFT of the open-source root README (English, per language-convention.md).
-  Lives in docs/notes for now so it does not rebrand the live repo while Doğancan
-  works on comp-scope. At extraction (fresh tidyorg repo) this becomes /README.md.
+  DRAFT of the open-source root README (English). Lives in docs/notes for now.
+  At extraction (fresh tidyorg repo) this becomes /README.md.
   "tidyorg" is the working name. Polish before publishing.
 -->
 

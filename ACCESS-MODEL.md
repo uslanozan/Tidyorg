@@ -1,7 +1,7 @@
 # Erişim Modeli — Hedef Tasarım Notları
 
 > Bu dosya, projenin **nihai hedefini** ve yetkilendirme modelini kayıt altına alır.
-> `tasks-ozan.md` / `tasks-emre.md` haftalık görevleri anlatır; bu dosya **neden**ini anlatır.
+> Haftalık görev listeleri **ne** yapılacağını anlatır; bu dosya **neden**ini anlatır.
 > Yeni bir ortamda çalışmaya başlayan biri (veya kod asistanı) önce bunu okumalı.
 
 Son güncelleme: 2026-08-17
@@ -44,7 +44,7 @@ Pilot repo(lar) bu motorun çalıştığını göstermek içindir, hedefin kendi
 - **Bir repo'da tek mentör bulunur**, o repo'da başka mentör yoktur.
 
 > **Bu bir hedef tasarımdır, bugünkü tablo değil.** Şu an canlıda tek mentör var
-> (`uslanozan`) ve üç repo'nun da mentörü o. "4 kişi × 2 repo" ifadesi mentör başına
+> (`owner-a`) ve üç repo'nun da mentörü o. "4 kişi × 2 repo" ifadesi mentör başına
 > düşen repo sayısını anlatır; bir repo'daki mentör sayısını değil. Kimin nerede mentör
 > olduğu tek yerden okunur: `config/repositories/<repo>.yml` → `mentors`.
 
@@ -157,7 +157,7 @@ olmalıdır. Bu karar `docs/adr/` altında bir ADR ile kayda geçirilmeli.
 
 | Katman | İçerik | Kim değiştirir | Sıklık |
 |---|---|---|---|
-| Kod (HCL) | "Repo nasıl kurulur, kural nasıl uygulanır" tarifi | Ozan / Emre | Nadiren |
+| Kod (HCL) | "Repo nasıl kurulur, kural nasıl uygulanır" tarifi | owner-a / dev-1 | Nadiren |
 | Veri (config) | Hangi repo, kimde hangi yetki, hangi branch kimde | Mentör (dashboard) | Sık |
 
 Mentör "min onay 3 olsun" dediğinde bir config alanı değişir; HCL'e dokunulmaz.
@@ -191,7 +191,7 @@ Gerekçe: tek denetim izi, Terraform kodu ile verinin aynı PR'da görülmesi, `
 çıktısının doğrudan ilgili PR'a düşmesi. Ayrı repo yalnızca dashboard'u farklı bir ekip
 işletirse anlamlı olur; şimdilik gereksiz karmaşıklık.
 
-(İlgili: `tasks-emre.md` Hafta 4 — `terraform-plan.yml` / `terraform-apply.yml`)
+(İlgili: `terraform-plan.yml` / `terraform-apply.yml`)
 
 ---
 
@@ -318,7 +318,7 @@ Bilinçli olarak ertelenen, sistemin çalışması için gerekli olmayan konular
 |---|---|
 | **Dış danışman (`consultant` rolü)** | Şimdilik gerek yok. Gerekirse `pull` yetkisi verilir; öneri/geri bildirim Linear veya Slack üzerinden alınır. Şemada yorum satırı olarak hazır bekliyor. |
 | **Erişim süre sınırı (`expires_at`)** | Terraform'da otomatik süre dolumu yoktur; zamanlanmış ayrı bir iş gerekir. Şimdilik elle kaldırma yeterli. |
-| **GitHub App** | Kısa vadede kişisel PAT ile ilerlenecek. Kalıcı çözüm için bkz. `docs/notes/github-auth-strategy.md`. |
+| **GitHub App** | Kısa vadede kişisel PAT ile ilerlenecek. |
 | **Force delete akışı** | Arşivleme yeterli; gerçek silme ileride bilinçli bir adım olarak eklenebilir. |
 | **Audit / değişiklik geçmişi** | PR akışı bunu büyük ölçüde zaten sağlıyor (her değişiklik bir commit). Ek mekanizma gerekmeyebilir. |
 | **Dashboard'un teknik detayları** | Teknoloji seçimi, kimlik doğrulama, PR'ı hangi kimlikle açacağı. |

@@ -180,8 +180,7 @@ Sonuçları — üçü birlikte okunmalı:
   Aynı şey `allow_deletions: false` için de geçerli — mentör korumalı bir dalı silebilir
   (2026-08-17'de `develop` böyle silindi). Yani `enforce_admins = false`, "PR ve onay
   kurallarını atlama" değil, **dal korumasının tamamından muafiyet** anlamına geliyor.
-  Kanıt: [`pilot-verification.md`](pilot-verification.md) Bölüm 6.5. Operasyonel
-  sonuçları: [`runbook.md`](runbook.md) Bölüm 3.6.
+  Operasyonel sonuçları: [`runbook.md`](runbook.md) Bölüm 3.6.
 - **Terraform'un kendi yazma işlemleri güvendedir.** App, CODEOWNERS'ı default branch'e
   admin muafiyetiyle yazabiliyor. `true` seçilseydi App'in `push_allowances`'a eklenmesi
   gerekirdi, aksi halde GitOps döngüsü kendi kendini kilitlerdi.
@@ -296,9 +295,9 @@ Tam liste [`runbook.md`](runbook.md) §1.4'te. Yetki açısından kritik sıra:
 
 | Açık | Etkisi | Takip |
 | :--- | :--- | :--- |
-| `people` bölümü Terraform tarafından okunmuyor | Org düzlemi kısmen beyansız; `org-membership.tf` tek kişilik istisna dosyası | [`tasks-ozan.md`](../tasks-ozan.md) Hafta 6 |
-| `default_repository_permission` = **`Read`**, üstelik yönetilmiyor | Her org üyesi **her repo'yu okuyabiliyor**. Yazma deliği yok ama izolasyon da yok: yeni bir stajyer ilk günden tüm repo'ları görür. Kanıt: [`04-collaborators-teams.png`](images/pilot-verification/04-collaborators-teams.png) → *Base role: Read*. Karar gerekiyor: `None` mı olmalı? | [`tasks-ozan.md`](../tasks-ozan.md) Hafta 6 |
-| `ci/test` hiçbir repoda raporlanmıyor | Required check karşılıksız. `developer` rolündeki biri PR'ını onaylatsa bile merge edemez; mentör admin muafiyetiyle geçtiği için gündelik akışta görünmüyor | [`tasks-ozan.md`](../tasks-ozan.md) Faz 2 · *şimdilik dokunulmuyor (2026-08-15)* |
+| `people` bölümü Terraform tarafından okunmuyor | Org düzlemi kısmen beyansız; `org-membership.tf` tek kişilik istisna dosyası | Hafta 6 |
+| `default_repository_permission` = **`Read`**, üstelik yönetilmiyor | Her org üyesi **her repo'yu okuyabiliyor**. Yazma deliği yok ama izolasyon da yok: yeni bir stajyer ilk günden tüm repo'ları görür. Kanıt: [`04-collaborators-teams.png`](images/pilot-verification/04-collaborators-teams.png) → *Base role: Read*. Karar gerekiyor: `None` mı olmalı? | Hafta 6 |
+| `ci/test` hiçbir repoda raporlanmıyor | Required check karşılıksız. `developer` rolündeki biri PR'ını onaylatsa bile merge edemez; mentör admin muafiyetiyle geçtiği için gündelik akışta görünmüyor | Faz 2 · *şimdilik dokunulmuyor (2026-08-15)* |
 | `enforce_admins = false` | Mentör ve head-of-engineering tüm dal kurallarını atlar | **Kabul edilmiş taviz** — Bölüm 4'teki karar |
 | "Kim bypass edebiliyor?" hiçbir yerde listelenmiyor | Kalıcı muafiyet varken tek kontrol görünürlük; bugün rolü kimin taşıdığı ancak `.tf` okunarak anlaşılıyor | Karar bekliyor |
 
@@ -310,4 +309,3 @@ Tam liste [`runbook.md`](runbook.md) §1.4'te. Yetki açısından kritik sıra:
 - [`config-guide.md`](config-guide.md) — config'i kim nasıl değiştirir
 - [`runbook.md`](runbook.md) — operasyonel senaryolar
 - [`onboarding.md`](onboarding.md) — yeni katılanın ilk günü
-- [`pilot-verification.md`](pilot-verification.md) — uçtan uca doğrulama kanıtları

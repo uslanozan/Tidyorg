@@ -2,7 +2,7 @@
 
 **Durum:** Kabul edildi
 **Tarih:** 2026-08-08
-**Karar verenler:** Ozan, Emre
+**Karar verenler:** owner-a, dev-1
 **İlgili:** [`ACCESS-MODEL.md`](../../ACCESS-MODEL.md), [`config-guide.md`](../config-guide.md)
 
 ---

@@ -16,8 +16,8 @@ TR — Yayınlanmış sürümler repo'nun Releases sayfasında listelenir. Repo'
 EN — **DO NOT** create a public GitHub issue for security vulnerabilities. This exposes the organization to unnecessary risk.
 TR — Güvenlik açıkları için HERKESE AÇIK bir GitHub issue'su **OLUŞTURMAYIN**. Bu, organizasyonu gereksiz riske maruz bırakır.
 
-EN — 1. Email your findings directly to `security@tidyorg.digital`.
-TR — 1. Bulgularınızı doğrudan `security@tidyorg.digital` adresine e-posta ile gönderin.
+EN — 1. Email your findings directly to `security@example.com`.
+TR — 1. Bulgularınızı doğrudan `security@example.com` adresine e-posta ile gönderin.
 
 EN — 2. Include detailed steps to reproduce the vulnerability, environmental factors, and potential impact.
 TR — 2. Güvenlik açığını yeniden oluşturmak için ayrıntılı adımları, çevresel faktörleri ve olası etkileri dahil edin.
