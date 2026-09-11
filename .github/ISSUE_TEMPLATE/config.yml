@@ -13,7 +13,7 @@ contact_links:
     about: Not sure it is a bug or a feature yet? Open a discussion instead. · Henüz bug mı feature mı belli değil mi? Discussion aç — issue'lar aksiyona dönüşecek işler için.
 
   - name: 📖 Engineering handbook · Mühendislik el kitabı
-    url: https://github.com/your-org/Tidyorg/tree/main/docs
+    url: https://github.com/your-org/tidyorg/tree/main/docs
     about: Workflow, branching, commit convention, code review, and release process. · İş akışı, branching, commit convention, code review ve release süreci.
 
   - name: 🔐 Report a security vulnerability · Güvenlik açığı bildir
