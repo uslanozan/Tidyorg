@@ -73,7 +73,7 @@ people:
     org_role: admin
     roles: [head-of-engineering]
 
-  yeni-developer:
+  new-developer:
     org_role: member
 ```
 
@@ -201,7 +201,7 @@ Merging is done per branch — overriding one branch does not delete that branch
 
 ### Adding a new repo
 
-Create a new file named `config/repositories/yeni-servis.yml` and write the following into it:
+Create a new file named `config/repositories/new-service.yml` and write the following into it:
 
 ```yaml
 description: "Short description"
@@ -243,7 +243,7 @@ Into `config/repositories/rapid-prototype.yml`:
 protected_branches:
   develop:
     required_reviews: 0        # Merge allowed without review
-    require_status_checks: []  # CI beklemeden merge
+    require_status_checks: []  # Merge without waiting for CI
 ```
 
 As long as `push_allowed_roles` is not overridden, developers still cannot push directly;
@@ -274,11 +274,11 @@ config/repositories/*.yml or organization.yml changes
         ↓
     Pull Request
         ↓
-CI: terraform plan  →  plan çıktısı PR'a yorum olarak düşer
+CI: terraform plan  →  the plan output is posted as a comment on the PR
         ↓
     Review + Merge
         ↓
-   terraform apply  →  GitHub'da yetkiler güncellenir
+   terraform apply  →  permissions are updated on GitHub
 ```
 
 **Do not approve without reading the `plan` output.** Look especially at this line:
@@ -293,7 +293,7 @@ If the `destroy` count is greater than 0, be sure to check what will be deleted.
 
 ```powershell
 terraform -chdir=terraform plan     # Show the diff, change nothing
-terraform -chdir=terraform apply    # Uygula (onay ister)
+terraform -chdir=terraform apply    # Apply (asks for confirmation)
 ```
 
 To verify the system is stable:
@@ -333,34 +333,46 @@ be needed when moving to private.
 
 ## 7. CI/CD Automation and Identity Configuration
 
-There are **two separate identities** in the system; they must not be confused:
+There are **two independent concerns** here; keep them separate:
+
+1. **Who writes to GitHub** — always the GitHub App (`tidyorg-infra-bot`). Its private key never
+   lands on a developer's machine and the installation token is renewed automatically about once an
+   hour. Setup and permission list: [`../integrations/github-app/README.md`](../integrations/github-app/README.md).
+2. **Where the Terraform state lives** — chosen with the `TF_STATE` variable on the engine image.
+
+### 7.1 Choosing a state backend
+
+| `TF_STATE` | State lives in | When to use |
+| :--- | :--- | :--- |
+| `local` (default) | the mounted `/state` volume | quick trials, a single operator; zero setup |
+| `hcp` | HCP Terraform / Terraform Cloud | **recommended for teams and CI** — shared, locked, audited state |
+| `custom` | your own backend (S3, GCS, azurerm, …) | you already run remote state elsewhere |
+
+For a team CI pipeline **HCP is the recommended default**: concurrent runs are locked so two merges
+can't corrupt state, and every run is recorded. Local state is perfect for a first look but is a
+single file on one host — no locking, no sharing. See the README's *Backend (state)* section for the
+exact `docker run` invocations.
+
+### 7.2 Two identities in CI (HCP path)
+
+When CI applies through HCP, two credentials are in play — do not confuse them:
 
 | Identity | What it accesses | Where it lives |
 | :--- | :--- | :--- |
-| **`TF_API_TOKEN`** (HCP Team API Token) | GitHub Actions → HCP Terraform Cloud (state + run) | GitHub repository secret |
-| **`tidyorg-infra-bot`** (GitHub App) | Terraform provider → GitHub organization | Sensitive environment variable in HCP Terraform |
+| **`TF_TOKEN_app_terraform_io`** (HCP token) | GitHub Actions → HCP Terraform (state + runs) | GitHub Actions secret |
+| **`tidyorg-infra-bot`** (GitHub App) | Terraform provider → GitHub organization | Sensitive variable in the CI/HCP environment |
 
-The side that writes to GitHub is the **App**; `TF_API_TOKEN` only lets CI connect to HCP. The App's
-private key never lands on any developer's machine and the installation token is renewed automatically
-about once an hour. Setup and permission list:
-[`../integrations/github-app/README.md`](../integrations/github-app/README.md).
+The App is what mutates GitHub; the HCP token only lets CI reach the remote state. With `TF_STATE=hcp`
+the engine also needs `TF_CLOUD_ORGANIZATION` and `TF_WORKSPACE`.
 
-### 7.1 Creating a Team API Token (HCP Terraform)
+**Creating the HCP token:** in HCP Terraform → organization settings → **Team Tokens**, pick a team
+with `Admin`/`Write` on the workspace (e.g. `owners`), **Generate a team token**, and copy it.
 
-1. In HCP Terraform, go to the organization settings:
-   `https://app.terraform.io/app/tidyorg-infra/settings/organization-tokens`
-2. Select the **Team Tokens** tab.
-3. Select a team that has `Admin` or `Write` permission on the workspace (e.g. the `owners` team).
-4. Click the **"Generate a team token"** button, write a description, and create it.
-5. Copy the generated token.
+**Storing it in GitHub:** in the config repo → **Settings → Secrets and variables → Actions → New
+repository secret**, name it `TF_TOKEN_app_terraform_io`, paste the token, and save.
 
-### 7.2 GitHub Secrets Configuration
-
-1. In GitHub, go to the settings (**Settings**) of the `tidyorg` repo.
-2. From the left menu, follow **Secrets and variables** -> **Actions**.
-3. Click the **"New repository secret"** button.
-4. In the name field, enter **`TF_API_TOKEN`**.
-5. In the value field, paste the Team API Token you copied and save.
+> With `TF_STATE=local` there is no HCP token and none of this section applies — state is just the
+> file on the mounted `/state` volume.
 
 ---
 
