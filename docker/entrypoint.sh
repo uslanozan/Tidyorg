@@ -2,6 +2,7 @@
 # =============================================================================
 # tidyorg engine entrypoint
 # =============================================================================
+#   tidyorg scaffold                           → copy starter YAML into /config
 #   tidyorg plan|apply|validate|output|version  → run the Terraform engine
 #
 # The image ships the engine (modules, templates, root .tf). Config and state are
@@ -22,6 +23,21 @@ CONFIG_DIR="${CONFIG_PATH:-/config}"
 STATE_DIR="${STATE_PATH:-/state}"
 
 cd "$ENGINE_DIR"
+
+# --- First-run config -------------------------------------------------------
+# Keep scaffolding credential-free and refuse to overwrite an existing config.
+if [ "$CMD" = "scaffold" ]; then
+  mkdir -p "$CONFIG_DIR"
+
+  if find "$CONFIG_DIR" -mindepth 1 -maxdepth 1 -print -quit | grep -q .; then
+    echo "error: $CONFIG_DIR is not empty; refusing to overwrite it" >&2
+    exit 2
+  fi
+
+  cp -R /opt/tidyorg/config.example/. "$CONFIG_DIR/"
+  echo "Starter config copied to $CONFIG_DIR"
+  exit 0
+fi
 
 # --- Backend selection ------------------------------------------------------
 # TF_STATE controls where Terraform keeps its state:

@@ -45,10 +45,17 @@ device flow and can batch many edits into a single PR.
 ## Quick start (Docker)
 
 You need: a GitHub organization you own, and a **GitHub App** installed on it (below).
+The published image includes the engine and a starter config, so cloning this repository is
+not required.
 
 ```bash
-# 1. Scaffold your config from the bundled example set
-cp -r config.example config
+# 1. Pull the image and scaffold a local config directory
+docker pull ghcr.io/uslanozan/tidyorg:latest
+mkdir -p config state
+docker run --rm \
+  -v "$PWD/config:/config" \
+  ghcr.io/uslanozan/tidyorg:latest scaffold
+
 # edit config/ to describe your org (organization.yml, people.yml,
 # privileged.yml, repositories/*.yml)
 
@@ -64,7 +71,7 @@ docker run --rm \
   -e TF_VAR_github_org_name=your-org \
   -e TF_VAR_github_app_id=123456 \
   -e TF_VAR_github_app_installation_id=12345678 \
-  ghcr.io/OWNER/tidyorg:latest plan
+  ghcr.io/uslanozan/tidyorg:latest plan
 
 # swap `plan` for `apply` once the plan looks right
 ```
@@ -72,8 +79,16 @@ docker run --rm \
 State is kept in `./state` on your host — no HCP / Terraform Cloud required. Point at your
 own remote backend if you prefer (see **Backend** below).
 
-`docker compose` users: copy `docker-compose.yml`, fill in the three variables, then
-`docker compose run --rm engine plan`.
+`docker compose` users can download [`docker-compose.ghcr.yml`](docker-compose.ghcr.yml),
+fill in its variables, then run:
+
+```bash
+docker compose -f docker-compose.ghcr.yml run --rm engine scaffold # first run only
+docker compose -f docker-compose.ghcr.yml run --rm engine plan
+```
+
+The regular [`docker-compose.yml`](docker-compose.yml) remains the source-build setup for
+contributors.
 
 ## GitHub Apps
 
@@ -164,7 +179,7 @@ docker run --rm \
   -e TF_VAR_github_org_name=your-org \
   -e TF_VAR_github_app_id=123456 \
   -e TF_VAR_github_app_installation_id=12345678 \
-  ghcr.io/OWNER/tidyorg:latest plan
+  ghcr.io/uslanozan/tidyorg:latest plan
 ```
 
 The image is built with a local backend, so switching to `hcp`/`custom` re-runs `terraform init

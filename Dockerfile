@@ -19,6 +19,7 @@ WORKDIR /engine
 # Engine only: config/, backend.tf, imports.tf, state, .terraform are excluded by
 # .dockerignore. The provider lock file IS copied for reproducible versions.
 COPY terraform/ /engine/
+COPY config.example/ /opt/tidyorg/config.example/
 COPY docker/entrypoint.sh /usr/local/bin/tidyorg-entrypoint
 
 # Initialize with the SAME local backend the entrypoint uses by default, so a

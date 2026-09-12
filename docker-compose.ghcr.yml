@@ -1,0 +1,34 @@
+# Run the published Tidyorg images without cloning or building the source.
+#
+# 1. Fill in the values below (or replace them with your own Compose env setup).
+# 2. Create config/state directories and place the App key at ./app.pem.
+# 3. Run `docker compose -f docker-compose.ghcr.yml run --rm engine scaffold` once.
+# 4. Edit config/, then run the engine with `plan` or `apply`.
+
+services:
+  engine:
+    image: ghcr.io/uslanozan/tidyorg:latest
+    pull_policy: always
+    volumes:
+      - ./config:/config
+      - ./state:/state
+      - ./app.pem:/secrets/app.pem:ro
+    environment:
+      TF_VAR_github_org_name: your-org
+      TF_VAR_github_app_id: "000000"
+      TF_VAR_github_app_installation_id: "00000000"
+      # Set this explicitly before apply, or stop managing billing_email in
+      # terraform/org-settings.tf. An empty value can overwrite the real email.
+      # TF_VAR_billing_email: billing@your-org.example
+    command: ["plan"]
+
+  dashboard:
+    image: ghcr.io/uslanozan/tidyorg-dashboard:latest
+    pull_policy: always
+    ports:
+      - "8080:8080"
+    environment:
+      GITHUB_CLIENT_ID: Iv23...
+      CONFIG_OWNER: your-org
+      CONFIG_REPO: your-config-repo
+      CONFIG_BRANCH: main
