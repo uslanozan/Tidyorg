@@ -130,7 +130,7 @@ info "$LOGIN is an owner of $ORG ✓"
 step "Checking repository state…"
 REPO_JSON="$(api_get "/repos/$ORG/$REPO" 2>/dev/null)" || die "repo '$ORG/$REPO' not found (or no access)"
 ARCHIVED="$(echo "$REPO_JSON" | jq -r '.archived')"
-[ "$ARCHIVED" = "true" ] || die "'$REPO' is NOT archived. Archive it first (dashboard → Arşivle, or archived: true in config), then re-run."
+[ "$ARCHIVED" = "true" ] || die "'$REPO' is NOT archived. Archive it first (dashboard → Archive, or archived: true in config), then re-run."
 info "$ORG/$REPO exists and is archived ✓"
 
 # Team slugs GitHub derives from the module's team names (<repo>-mentors/-devs).

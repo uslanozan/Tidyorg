@@ -125,7 +125,7 @@ Info "$login is an owner of $org (ok)"
 # ---- guardrail 2: repo must exist and be archived ---------------------------
 Step "Checking repository state..."
 try { $repoJson = GhGet "/repos/$org/$Repo" } catch { Die "repo '$org/$Repo' not found (or no access)" }
-if (-not $repoJson.archived) { Die "'$Repo' is NOT archived. Archive it first (dashboard -> Arsivle, or archived: true in config), then re-run." }
+if (-not $repoJson.archived) { Die "'$Repo' is NOT archived. Archive it first (dashboard -> Archive, or archived: true in config), then re-run." }
 Info "$org/$Repo exists and is archived (ok)"
 
 # Team slugs GitHub derives from the module's team names (<repo>-mentors/-devs).
