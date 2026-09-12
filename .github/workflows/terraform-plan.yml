@@ -17,25 +17,26 @@ jobs:
   plan:
     name: "Terraform Plan"
 
-    # Dependabot PR'larında atlanıyor.
+    # Skipped on Dependabot PRs.
     #
-    # Sebep teknik: GitHub, Dependabot'un açtığı PR'lara normal Actions secret'larını
-    # VERMEZ — ayrı bir kasa kullanır (Settings → Secrets → Dependabot). Yani
-    # `secrets.TF_API_TOKEN` boş gelir ve `terraform init` HCP'ye bağlanamadan patlar.
-    # 2026-08-19'da PR #18'de tam olarak bu görüldü: job 9 saniyede kırmızı yandı.
+    # The reason is technical: GitHub does NOT give Dependabot-opened PRs the normal
+    # Actions secrets — it uses a separate vault (Settings → Secrets → Dependabot). So
+    # `secrets.TF_API_TOKEN` comes through empty and `terraform init` blows up before it
+    # can connect to HCP. This is exactly what was seen on 2026-08-19 in PR #18: the job
+    # went red in 9 seconds.
     #
-    # Token'ı ikinci bir kasaya koymak yerine job'ı atlıyoruz, çünkü Dependabot bu
-    # repoda yalnızca action sürümlerini yükseltiyor — `terraform/` altına hiç
-    # dokunmuyor. Plan çalışsa `No changes` derdi. HCP token'ını fazladan bir yere
-    # yaymak, karşılığı olmayan bir saldırı yüzeyi olurdu.
+    # Rather than put the token in a second vault, we skip the job, because in this repo
+    # Dependabot only bumps action versions — it never touches anything under
+    # `terraform/`. If the plan ran, it would say `No changes`. Spreading the HCP token
+    # to an extra place would be an attack surface with no upside.
     #
-    # ⚠️ Bu job zorunlu status check DEĞİL (`require_status_checks: [ci/test]`),
-    # dolayısıyla atlanması PR'ı bloklamaz.
+    # ⚠️ This job is NOT a required status check (`require_status_checks: [ci/test]`), so
+    # skipping it does not block the PR.
     #
-    # ⚠️ `github.actor` DEĞİL, PR'ın SAHİBİ kontrol ediliyor. `github.actor` işi
-    # tetikleyen kişidir: bir insan "Re-run jobs" derse değeri o insan olur, koşul
-    # geçer ve job yine patlar — çünkü GitHub secret kısıtını tetikleyene değil,
-    # PR'ı AÇANA göre uyguluyor. İlk yazımda bu hata vardı.
+    # ⚠️ It checks the PR's OWNER, NOT `github.actor`. `github.actor` is whoever triggered
+    # the run: if a human clicks "Re-run jobs" the value becomes that human, the condition
+    # passes and the job blows up again — because GitHub applies the secret restriction
+    # based on who OPENED the PR, not who triggered it. The first version had this bug.
     if: github.event.pull_request.user.login != 'dependabot[bot]'
 
     runs-on: ubuntu-latest
@@ -85,38 +86,38 @@ jobs:
               planOutput = 'Plan output could not be read.';
             }
 
-            // Terraform iki farklı özet üretir:
-            //   değişiklik varsa → "Plan: X to add, Y to change, Z to destroy."
-            //   plan temizse     → "No changes. Your infrastructure matches the configuration."
-            // İkinci durumda özet satırı HİÇ yazılmaz. Yalnızca ilkini aramak, sistemin en
-            // sağlıklı olduğu anda "özet bulunamadı" uyarısı vermesine yol açıyordu —
-            // 2026-08-16'daki ilk canlı çalıştırmada görüldü.
+            // Terraform produces two different summaries:
+            //   when there are changes → "Plan: X to add, Y to change, Z to destroy."
+            //   when the plan is clean → "No changes. Your infrastructure matches the configuration."
+            // In the second case the summary line is NEVER written. Searching only for the
+            // first one caused the system to warn "summary not found" exactly when it was
+            // healthiest — seen on the first live run on 2026-08-16.
             const summaryRegex = /Plan:\s+(\d+)\s+to\s+add,\s+(\d+)\s+to\s+change,\s+(\d+)\s+to\s+destroy/;
             const noChangesRegex = /No changes\.\s+Your infrastructure matches the configuration\./;
             const match = planOutput.match(summaryRegex);
 
-            // Kozmetik drift: GitHub API bazı alanları provider'ın gönderdiğinden farklı
-            // formatta geri döndürüyor, bu yüzden her plan'da onlarca "Drift detected"
-            // satırı çıkıyor ve gerçek değişiklikleri gölgeliyor. Sayıyı özete koymak
-            // log'daki duvarı açıklıyor (bkz. docs/daily-logs/OZAN_CREW_NOTES.md).
+            // Cosmetic drift: the GitHub API returns some fields in a different format than
+            // the provider sent them, so every plan produces dozens of "Drift detected"
+            // lines that overshadow the real changes. Putting the count in the summary
+            // explains the wall of lines in the log (see docs/daily-logs/OZAN_CREW_NOTES.md).
             const driftCount = (planOutput.match(/Drift detected/g) || []).length;
             const driftNote = driftCount > 0
               ? `\n\n_${driftCount} × \`Drift detected\` - cosmetic, no apply required._`
               : '';
 
-            // Uyarılar plan ÖZETİNİ etkilemiyor: "No changes" diyen bir plan da uyarı
-            // taşıyabilir. 2026-08-18'de `vulnerability_alerts` alanının deprecate
-            // edildiği uyarısı tam olarak böyle gözden kaçtı — ancak apply çıktısına
-            // `grep` atıldığında fark edildi. Provider yükseltmesi geldiğinde o alan
-            // kaldırılacak ve apply hiç sinyal vermeden patlayacaktı.
+            // Warnings do NOT affect the plan SUMMARY: a plan that says "No changes" can
+            // still carry warnings. On 2026-08-18 the warning that the `vulnerability_alerts`
+            // field had been deprecated was missed in exactly this way — it was only noticed
+            // when the apply output was `grep`-ed. When the provider upgrade lands that field
+            // would be removed and apply would blow up without any signal.
             //
-            // Uyarıları ayrıca çıkarmanın ikinci sebebi: tam log aşağıda MAX_LOG ile
-            // kısaltılıyor ve uyarılar çıktının SONUNDA duruyor — uzun bir planda
-            // yorumdan tamamen düşerler.
+            // The second reason to extract warnings separately: the full log below is
+            // truncated with MAX_LOG, and warnings sit at the END of the output — in a long
+            // plan they drop out of the comment entirely.
             //
-            // Biçim (`-no-color`):  │ Warning: Argument is deprecated
-            // Aynı uyarı her kaynak örneği için tekrar eder, o yüzden tekilleştirilip
-            // kaç kez geçtiği yazılıyor.
+            // Format (`-no-color`):  │ Warning: Argument is deprecated
+            // The same warning repeats for every resource instance, so it is deduplicated
+            // and the number of occurrences is recorded.
             const warningTitles = [...planOutput.matchAll(/^│\s*Warning:\s*(.+?)\s*$/gm)].map(m => m[1]);
             const warningCounts = warningTitles.reduce((acc, title) => {
               acc[title] = (acc[title] || 0) + 1;
@@ -153,17 +154,18 @@ jobs:
             const validateOutcome = '${{ steps.validate.outcome }}' === 'success' ? '✅' : '❌';
             const planOutcome = '${{ steps.plan.outcome }}' === 'success' ? '✅' : '❌';
 
-            // GitHub yorumları 65536 karakterle sınırlı. Uzun plan çıktısı sona doğru
-            // kesilir; özet ve tablo yorumun başında olduğu için okunabilirliği bozmaz.
+            // GitHub comments are limited to 65536 characters. A long plan output gets
+            // truncated toward the end; since the summary and table are at the top of the
+            // comment, readability is not affected.
             const MAX_LOG = 55000;
             const planLog = planOutput.length > MAX_LOG
               ? planOutput.slice(0, MAX_LOG) + '\n\n... (output truncated - see the Actions log for the full plan)'
               : planOutput;
 
-            // DİKKAT: Bu blok bir YAML block scalar'ın (`script: |`) içindedir; her satır
-            // girintili olmak ZORUNDA. Çok satırlı template literal kullanılırsa girinti
-            // string'e dahil olup markdown tablosunu kod bloğuna çevirir. Bu yüzden
-            // satırlar dizi olarak kurulup join ediliyor.
+            // CAUTION: This block is inside a YAML block scalar (`script: |`); every line
+            // MUST be indented. If a multi-line template literal is used, the indentation
+            // becomes part of the string and turns the markdown table into a code block.
+            // That is why the lines are built as an array and joined.
             const output = [
               '## 📖 Terraform Pull Request Report',
               '',

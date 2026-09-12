@@ -1,4 +1,4 @@
-description: "Pilot proje — repository modülünün uçtan uca doğrulanması"
+description: "Pilot project — end-to-end verification of the repository module"
 language: typescript
 mentors: [uslanozan, medine2906]
 developers: []

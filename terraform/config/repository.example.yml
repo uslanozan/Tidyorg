@@ -1,96 +1,98 @@
 # =============================================================================
-# Tekil Repository Konfigürasyon Şeması — TÜM ALANLAR
+# Individual Repository Configuration Schema — ALL FIELDS
 # =============================================================================
-# config/repositories/ altındaki her .yml dosyası bir repo'yu tanımlar.
-# Dosya adı = repo adı (GitHub'da oluşacak isim).
+# Each .yml file under config/repositories/ defines one repo.
+# The file name = the repo name (the name that will be created on GitHub).
 #
-# Yalnızca VARSAYILANDAN FARKLI alanları yazın. Boş bırakılanlar
-# config/organization.yml → defaults bölümünden miras alınır.
+# Write ONLY the fields that DIFFER FROM THE DEFAULTS. Fields left blank are
+# inherited from config/organization.yml → defaults.
 # =============================================================================
 
-# --- Zorunlu ----------------------------------------------------------------
+# --- Required ---------------------------------------------------------------
 
-# Repo açıklaması.
-description: "Ödeme geçidi entegrasyon servisi"
+# Repo description.
+description: "Payment gateway integration service"
 
-# Ana programlama dili. Yalnızca görsel etiket içindir; CI dili repo dosyalarından
-# otomatik algılar. Serbest metin (dashboard bilinen diller için logo, diğerleri
-# için tek harf gösterir).
+# Main programming language. For the visual label only; CI detects the language
+# automatically from the repo files. Free text (the dashboard shows a logo for
+# known languages, a single letter for the rest).
 language: go
 
-# En az bir mentör zorunlu. Mentörler repo'da `admin` yetkisi alır.
+# At least one mentor is required. Mentors get `admin` permission on the repo.
 mentors:
   - mentor-a
 
-# --- Kişiler (opsiyonel) ----------------------------------------------------
+# --- People (optional) ------------------------------------------------------
 
-# Geliştiriciler `push` yetkisi alır, branch protection'a tabidir.
+# Developers get `push` permission and are subject to branch protection.
 developers:
   - dev-1
   - dev-2
 
-# Salt-okunur (pull) erişim — repoyu görür ve klonlar, push atamaz.
+# Read-only (pull) access — sees and clones the repo, cannot push.
 viewers:
   - observer-a
 
-# --- Repo ayarları (opsiyonel — belirtilmezse defaults) ---------------------
+# --- Repo settings (optional — defaults apply if unspecified) ---------------
 
 visibility: private # public | private
-archived: false # true → repo dondurulur (silmek yerine bunu kullanın)
+archived: false # true → the repo is frozen (use this instead of deleting)
 
 has_issues: true
 has_projects: false
 has_wiki: false
-auto_init: true # ilk commit ile oluştur (varsayılan dalın var olması için)
+auto_init: true # create with an initial commit (so the default branch exists)
 default_branch: develop
 
-# --- Güvenlik (opsiyonel — defaults: ikisi de açık) -------------------------
+# --- Security (optional — defaults: both on) --------------------------------
 
-vulnerability_alerts: true # Dependabot güvenlik uyarıları (her planda çalışır)
-secret_scanning: true # secret scanning + push protection (yalnızca public'te ücretsiz)
+vulnerability_alerts: true # Dependabot security alerts (works on every plan)
+secret_scanning: true # secret scanning + push protection (free only on public)
 
-# --- Dal koruması (opsiyonel — yalnızca varsayılandan farklı alanlar) --------
-# `<dal>: null` özel anlam taşır: o dal için org varsayılan koruması KALDIRILIR.
+# --- Branch protection (optional — only fields that differ from the default) -
+# `<branch>: null` has a special meaning: the org default protection is REMOVED
+# for that branch.
 protected_branches:
   main:
-    required_reviews: 2 # merge öncesi gereken onay sayısı
-    require_code_owner_review: true # CODEOWNERS sahibinden ayrıca onay
-    dismiss_stale_reviews: true # yeni commit eski onayları düşürür
-    require_status_checks: [ci/test] # yeşil olması gereken CI kontrolleri
-    require_conversation_resolution: true # tüm yorumlar çözülmeli
+    required_reviews: 2 # number of approvals required before merge
+    require_code_owner_review: true # additional approval from a CODEOWNERS owner
+    dismiss_stale_reviews: true # a new commit dismisses old approvals
+    require_status_checks: [ci/test] # CI checks that must be green
+    require_conversation_resolution: true # all comments must be resolved
     allow_force_push: false
     allow_deletions: false
-    push_allowed_roles: [mentor, head-of-engineering] # doğrudan push edebilen roller
+    push_allowed_roles: [mentor, head-of-engineering] # roles that can push directly
   develop:
-    required_reviews: 0 # hızlı deneme için onaysız merge
-    require_status_checks: [] # CI beklemeden merge
+    required_reviews: 0 # approval-free merge for quick experimentation
+    require_status_checks: [] # merge without waiting for CI
 
-# --- CODEOWNERS (opsiyonel) -------------------------------------------------
-# Yol → o yol değişince onayı gereken kişiler. Yalnızca
-# require_code_owner_review: true iken zorlayıcıdır; merge YETKİSİNİ kısıtlamaz.
+# --- CODEOWNERS (optional) --------------------------------------------------
+# Path → the people whose approval is required when that path changes. Enforcing
+# only when require_code_owner_review: true; it does NOT restrict merge PERMISSION.
 code_owners:
   "/backend/": [dev-1]
   "/frontend/": [dev-2]
 
-# --- Şablon dosyaları (opsiyonel — defaults'un üstüne sığ merge) ------------
-# strict = TF içeriği sahiplenir (elle değişiklik apply'da geri alınır)
-# seed   = yalnızca ilk oluşturmada yazılır, repo sonradan değiştirebilir
-# none   = hiç yazılmaz
+# --- Template files (optional — shallow-merged on top of the defaults) -------
+# strict = TF owns the content (a manual change is reverted on apply)
+# seed   = written only on first creation, the repo may change it afterward
+# none   = never written
 files:
   contributing: seed
   security: seed
   pr_template: strict
 
-# --- Workflow'lar (opsiyonel) -----------------------------------------------
-# Kaynak: terraform/templates/.github/workflows/<ad>.yml — daima strict.
-# ⚠️ `ci` yoksa `ci/test` status check'i hiç raporlanmaz → onu bekleyen dal
-# koruması PR'ları sonsuza kadar bekletir (modül bunu precondition ile yakalar).
+# --- Workflows (optional) ---------------------------------------------------
+# Source: terraform/templates/.github/workflows/<name>.yml — always strict.
+# ⚠️ Without `ci`, the `ci/test` status check is never reported → branch
+# protection waiting on it keeps PRs waiting forever (the module catches this
+# with a precondition).
 workflows:
   - ci
   - release
 
-# --- Etiketler (opsiyonel) --------------------------------------------------
-# Verilirse org varsayılan seed etiketlerinin YERİNE geçer (miras yerine ezme).
+# --- Labels (optional) ------------------------------------------------------
+# If provided, it REPLACES the org default seed labels (override, not inherit).
 labels:
-  - { name: "bug", color: "d73a4a", description: "Hatalı davranış" }
-  - { name: "enhancement", color: "0e8a16", description: "Yeni özellik" }
+  - { name: "bug", color: "d73a4a", description: "Faulty behavior" }
+  - { name: "enhancement", color: "0e8a16", description: "New feature" }

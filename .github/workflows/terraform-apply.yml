@@ -40,15 +40,15 @@ jobs:
           terraform apply -auto-approve -no-color -input=false | tee apply_output.txt
           exit "${PIPESTATUS[0]}"
 
-      # `main`'e push'ta çalıştığımız için yorum yazacak bir PR yok; uyarılar yalnızca
-      # Actions log'unda kalıyor ve yeşil yanan bir job'un log'unu kimse açmıyor.
+      # Since we run on push to `main`, there is no PR to comment on; warnings stay only
+      # in the Actions log, and nobody opens the log of a job that went green.
       #
-      # 2026-08-18'de `vulnerability_alerts` alanının deprecate edildiği uyarısı tam
-      # olarak böyle gözden kaçtı. Buradaki adım uyarıları iki yere taşıyor:
-      #   - `::warning::` → run sayfasının EN ÜSTÜNDE annotation olarak görünür
-      #   - step summary  → kalıcı, okunabilir bir liste
+      # On 2026-08-18 the warning that the `vulnerability_alerts` field had been deprecated
+      # was missed in exactly this way. This step carries warnings to two places:
+      #   - `::warning::` → appears as an annotation at the VERY TOP of the run page
+      #   - step summary  → a permanent, readable list
       #
-      # `if: always()` bilinçli: apply BAŞARISIZ olduğunda uyarılar daha da değerli.
+      # `if: always()` is deliberate: warnings are even more valuable when the apply FAILS.
       - name: Surface Terraform Warnings
         if: always()
         run: |
@@ -57,12 +57,12 @@ jobs:
             exit 0
           fi
 
-          # Biçim (`-no-color`):  │ Warning: Argument is deprecated
-          # Aynı uyarı her kaynak örneği için tekrar eder → tekilleştirip sayıyoruz.
+          # Format (`-no-color`):  │ Warning: Argument is deprecated
+          # The same warning repeats for every resource instance → we deduplicate and count.
           #
-          # ⚠️ `grep -P` BİLEREK kullanılmıyor: `│` çok baytlı bir karakter ve PCRE modu
-          # bazı locale'lerde "supports only unibyte and UTF-8 locales" ile reddediyor.
-          # Yerelde tam olarak bu hatayla karşılaşıldı. `awk` locale'den bağımsız çalışır.
+          # ⚠️ `grep -P` is DELIBERATELY not used: `│` is a multi-byte character and PCRE
+          # mode is rejected in some locales with "supports only unibyte and UTF-8 locales".
+          # This exact error was hit locally. `awk` works independently of the locale.
           extract() {
             awk -F'Warning:' '/^│[[:space:]]*Warning:/ {
               t = $2

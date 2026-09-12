@@ -1,27 +1,27 @@
 # =============================================================================
-# privileged.yml — İNSAN-SAHİPLİ · CODEOWNERS KORUMALI
+# privileged.yml — HUMAN-OWNED · CODEOWNERS PROTECTED
 # =============================================================================
-# terraform/people.tf tarafından okunur. Org owner'ları ve org kapsamlı rolleri
-# tanımlar.
+# Read by terraform/people.tf. Defines org owners and org-wide roles.
 #
-# 🔒 DASHBOARD BU DOSYAYA ASLA YAZMAZ. Yetki yükseltmenin (birini owner ya da
-#    head-of-engineering yapmak) tek meşru yolu budur: CODEOWNERS korumalı bir
-#    değişiklik + mevcut bir yöneticinin onayı. people.yml sık değişir ve makine
-#    yazar; bu dosya nadir değişir ve insan yazar.
+# 🔒 THE DASHBOARD NEVER WRITES TO THIS FILE. This is the only legitimate way to
+#    escalate privilege (making someone an owner or head-of-engineering): a
+#    CODEOWNERS-protected change + approval from an existing administrator.
+#    people.yml changes often and is written by a machine; this file changes
+#    rarely and is written by a human.
 #
-# ⚠️ Buradaki her isim ayrıca people.yml → members içinde de olmalı (ayrıcalık
-#    üyelikten önce gelemez — plan aşamasında doğrulanır).
+# ⚠️ Every name here must also be in people.yml → members (privilege cannot come
+#    before membership — this is verified during the plan phase).
 #
 # -----------------------------------------------------------------------------
-# ALANLAR
+# FIELDS
 # -----------------------------------------------------------------------------
-# org_owners  Org owner olacak kişiler (GitHub API karşılığı `admin`). Org owner
-#             HER ŞEYE yetkilidir: her repoda admin, her korumalı dalda muaf,
-#             üye ekle/çıkar, org ayarları, repo silme.
+# org_owners  People who will be org owners (the GitHub API equivalent is `admin`).
+#             An org owner is authorized for EVERYTHING: admin on every repo, exempt
+#             on every protected branch, add/remove members, org settings, repo deletion.
 #
-# roles       Org kapsamlı rol adı → o rolü taşıyan kişiler. Tek org kapsamlı rol
-#             head-of-engineering (organization.yml → roles.*.scope). Repo kapsamlı
-#             roller (mentor/developer) BURAYA yazılmaz; repositories/*.yml.
+# roles       Org-wide role name → the people who carry that role. The only org-wide
+#             role is head-of-engineering (organization.yml → roles.*.scope). Repo-scoped
+#             roles (mentor/developer) are NOT written HERE; use repositories/*.yml.
 # =============================================================================
 
 version: 1

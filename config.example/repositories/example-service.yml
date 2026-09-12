@@ -1,60 +1,60 @@
 # =============================================================================
-# repositories/<repo-adı>.yml — Tekil repo konfigürasyonu (ÖRNEK)
+# repositories/<repo-name>.yml — Individual repo configuration (EXAMPLE)
 # =============================================================================
-# Dosyanın adı = GitHub'da oluşacak repo ismi. Bu örnek dosya "example-service"
-# adında bir repo tanımlar; kendi repolarını eklemek için kopyala/yeniden adlandır.
+# The file name = the repo name that will be created on GitHub. This example file
+# defines a repo named "example-service"; copy/rename it to add your own repos.
 #
-# Yalnızca varsayılandan FARKLI olan alanlar yazılır. Boş bırakılan alanlar
-# organization.yml içindeki "defaults" bölümünden miras alınır.
+# Only fields that DIFFER from the defaults are written. Fields left empty are
+# inherited from the "defaults" section in organization.yml.
 #
-# Bkz. ACCESS-MODEL.md & docs/config-guide.md
+# See ACCESS-MODEL.md & docs/config-guide.md
 # =============================================================================
 
-# Repo'nun açıklaması (Zorunlu)
-description: "Ödeme geçidi entegrasyon servisi"
+# The repo's description (Required)
+description: "Payment gateway integration service"
 
-# Projenin yazıldığı ana programlama dili (görsel etiket; CI gerçek dili algılar)
+# The main programming language the project is written in (visual label; CI detects the actual language)
 language: go
 
-# Projeden sorumlu mentörlerin GitHub kullanıcı adları (Liste)
-# En az 1 mentör atanmalıdır. Mentörler repo'da 'admin' yetkisine sahip olur.
+# GitHub usernames of the mentors responsible for the project (List)
+# At least 1 mentor must be assigned. Mentors get 'admin' permission on the repo.
 mentors:
   - mentor-a
 
-# Geliştiriciler (Liste) — repo'da 'push' yetkisi alır, branch protection'a tabidir.
+# Developers (List) — get 'push' permission on the repo, subject to branch protection.
 developers:
   - dev-1
   - dev-2
 
-# Repo görünürlüğü (Opsiyonel) — public | private. Belirtilmezse defaults.visibility.
+# Repo visibility (Optional) — public | private. If unspecified, defaults.visibility.
 visibility: private
 
-# Arşivlenme (Opsiyonel) — true = repo dondurulur (read-only). Silmek yerine bunu kullan.
+# Archiving (Optional) — true = the repo is frozen (read-only). Use this instead of deleting.
 archived: false
 
-# GitHub özellik ayarları (Opsiyonel, belirtilmezse defaults kullanılır)
+# GitHub feature settings (Optional; if unspecified, the defaults are used)
 has_issues: true
 has_projects: false
 has_wiki: false
 auto_init: true
 default_branch: develop
 
-# Dal koruması ezmeleri (Opsiyonel) — yalnızca varsayılandan farklı alanlar yazılır.
+# Branch protection overrides (Optional) — only fields that differ from the defaults are written.
 protected_branches:
   main:
-    required_reviews: 3 # Varsayılan 2 yerine 3 onay
+    required_reviews: 3 # 3 approvals instead of the default 2
   develop:
-    required_reviews: 0 # Hızlı deneme için onaysız merge
-    require_status_checks: [] # CI beklemeden merge
+    required_reviews: 0 # Merge without approval for quick experimentation
+    require_status_checks: [] # Merge without waiting for CI
 
-# Yol bazlı review yönlendirmesi (CODEOWNERS) (Opsiyonel)
-# DİKKAT: merge YETKİSİNİ kısıtlamaz, sadece PR'da onay zorunluluğu ekler
-# (require_code_owner_review: true iken zorlayıcıdır).
+# Path-based review routing (CODEOWNERS) (Optional)
+# NOTE: does not restrict merge PERMISSION, it only adds an approval requirement on the PR
+# (enforced when require_code_owner_review: true).
 code_owners:
   "/backend/": [dev-1]
   "/frontend/": [dev-2]
 
-# Harici dağıtılacak workflow'lar (Opsiyonel) — ci | release | dependabot
+# Workflows to be distributed externally (Optional) — ci | release | dependabot
 workflows:
   - ci
   - release

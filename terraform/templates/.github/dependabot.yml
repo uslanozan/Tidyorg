@@ -7,7 +7,7 @@
 #
 # Reviewed by the repository mentor — see docs/security-policy.md.
 #
-# GROUPING · GRUPLAMA
+# GROUPING
 # Package ecosystems (gomod, npm, pip, composer) group their updates:
 #     minor + patch  -> one PR      (routine, low risk)
 #     major          -> its own PR  (may break the build; deserves its own review)
@@ -15,7 +15,7 @@
 # Ungrouped updates still open individual PRs; grouping only batches what the
 # rules below match.
 #
-# NO `github-actions` ECOSYSTEM — DELIBERATE · BİLEREK YOK
+# NO `github-actions` ECOSYSTEM — DELIBERATE
 # Workflow files in repositories managed by this control plane are delivered in
 # `strict` mode: Terraform owns their content and rewrites them on every apply.
 # A Dependabot pull request bumping an action version could therefore be merged

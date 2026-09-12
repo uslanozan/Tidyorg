@@ -1,22 +1,19 @@
-# EN — Forces every issue through one of the forms in this directory.
-# TR — Her issue'nun bu klasördeki formlardan biriyle açılmasını zorunlu kılar.
+# Forces every issue through one of the forms in this directory.
 #
-# Rationale · Gerekçe: a structured issue is triageable on arrival — no round-trip
+# Rationale: a structured issue is triageable on arrival — no round-trip
 # asking the reporter for a version number or reproduction steps.
-# Yapılandırılmış bir issue geldiği an triage edilebilir — sürüm numarası ya da
-# tekrar adımları için rapor edene geri dönmek gerekmez.
 blank_issues_enabled: false
 
 contact_links:
-  - name: 💬 Question or idea · Soru veya fikir
+  - name: 💬 Question or idea
     url: https://github.com/orgs/your-org/discussions
-    about: Not sure it is a bug or a feature yet? Open a discussion instead. · Henüz bug mı feature mı belli değil mi? Discussion aç — issue'lar aksiyona dönüşecek işler için.
+    about: Not sure it is a bug or a feature yet? Open a discussion instead — issues are for actionable work.
 
-  - name: 📖 Engineering handbook · Mühendislik el kitabı
+  - name: 📖 Engineering handbook
     url: https://github.com/your-org/tidyorg/tree/main/docs
-    about: Workflow, branching, commit convention, code review, and release process. · İş akışı, branching, commit convention, code review ve release süreci.
+    about: Workflow, branching, commit convention, code review, and release process.
 
-  - name: 🔐 Report a security vulnerability · Güvenlik açığı bildir
-    # Requires the org-level .github repository with a SECURITY.md (Emre / Week 2).
+  - name: 🔐 Report a security vulnerability
+    # Requires the org-level .github repository with a SECURITY.md.
     url: https://github.com/your-org/.github/security/policy
-    about: Never report security issues in public issues, follow the policy here. · Güvenlik açıklarını asla public issue olarak bildirme, buradaki politikayı izle.
+    about: Never report security issues in public issues, follow the policy here.

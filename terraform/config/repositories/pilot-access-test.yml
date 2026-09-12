@@ -1,43 +1,46 @@
 # =============================================================================
-# GEÇİCİ — erişim izolasyonu testi (2026-08-18)
+# TEMPORARY — access isolation test (2026-08-18)
 # =============================================================================
-# Amaç: `default_repository_permission = none` gerçekten çalışıyor mu?
+# Goal: does `default_repository_permission = none` actually work?
 #
-# Kurulum bilerek "kimseye yetki verilmemiş" halde:
-#   mentors    → yalnızca uslanozan (repo'nun bir sahibi olmak zorunda)
-#   developers → BOŞ
+# The setup is deliberately in a "no permission granted to anyone" state:
+#   mentors    → only uslanozan (must be an owner of the repo)
+#   developers → EMPTY
 #
-# Beklenen sonuç: `paitblack` ve `medine2906` bu repo'yu HİÇ göremez. İkisi de
-# org üyesi ama hiçbir takımında değil; `none` öncesinde org varsayılanı onlara
-# `read` verirdi.
+# Expected result: `paitblack` and `medine2906` can NEVER see this repo. Both are
+# org members but on none of its teams; before `none`, the org default would give
+# them `read`.
 #
-# ⚠️ `visibility: private` ZORUNLU — bu satır olmadan test geçersizdir.
-# `defaults.visibility` = `public` ve public repo'yu internetteki herkes görür;
-# görebilmeleri base permission'dan değil public olmasından gelirdi.
+# ⚠️ `visibility: private` is MANDATORY — without this line the test is invalid.
+# `defaults.visibility` = `public` and a public repo is visible to everyone on
+# the internet; their ability to see it would come from it being public, not from
+# the base permission.
 #
-# ⚠️ Bedeli: free plan'de private repo'da branch protection çalışmıyor. Bu yüzden
-# `protected_branches` aşağıda kaldırıldı. Korumalı dallar zaten diğer üç repoda
-# doğrulandı (pilot-verification.md Bölüm 6), burada kayıp yok.
+# ⚠️ The cost: on the free plan, branch protection does not work on a private
+# repo. That is why `protected_branches` is removed below. Protected branches
+# were already validated on the other three repos (pilot-verification.md
+# Section 6), so nothing is lost here.
 #
-# 🗑️ TEMİZLİK — bu dosyayı silmek repo'yu SİLMEZ.
-# Modülde `prevent_destroy = true` var (main.tf): config'den bir repo satırının
-# yanlışlıkla düşmesi repo'yu yok etmesin diye. Yani sadece bu YAML'ı silersen
-# apply hata verir. Doğru sıra:
-#   1. GitHub arayüzünden repo'yu sil (Settings → Danger Zone)
+# 🗑️ CLEANUP — deleting this file does NOT delete the repo.
+# The module has `prevent_destroy = true` (main.tf): so that a repo row
+# accidentally dropping from the config does not destroy the repo. So if you just
+# delete this YAML, apply errors out. The correct order:
+#   1. Delete the repo from the GitHub UI (Settings → Danger Zone)
 #   2. `terraform state rm 'module.repositories["pilot-access-test"]'`
-#   3. Bu dosyayı sil
-# Alternatif: `archived: true` yaz ve dursun — silmeden etkisizleştirir.
+#   3. Delete this file
+# Alternative: write `archived: true` and leave it — it neutralizes without
+# deleting.
 # =============================================================================
 
-description: SELAM SELAM BEN OZAN
+description: HELLO HELLO IT'S OZAN
 language: typescript
 visibility: private
 
 mentors: [uslanozan]
 developers: []
 
-# Free plan private repo'da branch protection API'si yok; `null` ile defaults'tan
-# kaldırılıyorlar (kaldırma escape hatch'i — bkz. repositories.tf).
+# The free plan has no branch protection API on a private repo; they are removed
+# from defaults via `null` (the removal escape hatch — see repositories.tf).
 protected_branches:
   main: null
   develop: null

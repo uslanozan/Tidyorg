@@ -1,72 +1,80 @@
 description: "Infrastructure as Code for managing the Tidyorg organization"
 language: hcl
 
-# ⚠️ BU LİSTE BUGÜNKÜ EN ÖNEMLİ GÜVENLİK SINIRIDIR — kilitlerden daha önemli.
+# ⚠️ THIS LIST IS THE MOST IMPORTANT SECURITY BOUNDARY TODAY — more important
+# than the locks.
 #
-# `mentor` ORG GENELİ BİR ROL DEĞİL, repo kapsamlıdır. Yani `pilot-intern-api`'ye
-# mentör olan biri BU repo'da hiçbir yetkiye sahip değil. Buradaki mentör ise
-# kontrol düzleminin tamamında admin: Terraform kodunu, config'i ve branch
-# protection'ı değiştirebilir.
+# `mentor` is NOT an org-wide role, it is repo-scoped. That is, someone who is a
+# mentor on `pilot-intern-api` has NO permission on THIS repo. A mentor here,
+# however, is admin over the entire control plane: they can change the Terraform
+# code, the config, and branch protection.
 #
-# Ve Karar E gereği `enforce_admins = false` olduğu için bu kişi CODEOWNERS'ı da
-# branch protection'ı da ATLAYABİLİR. Aşağıdaki `code_owners` kuralları ona karşı
-# bilgilendiricidir, zorlayıcı değil.
+# And because `enforce_admins = false` per Decision E, this person can BYPASS
+# both CODEOWNERS and branch protection. The `code_owners` rules below are
+# informational against them, not enforcing.
 #
-# Yani projedeki tüm yetki kontrollerinin kapsamı bu listenin uzunluğuna bağlı.
-# Buraya ikinci bir isim eklemek, o kişiye organizasyonun motoru üzerinde sınırsız
-# yetki verir — sessizce. Gerçek yapısal sınır Faz 8'de gelir (motor / durum ayrımı).
+# So the scope of every permission control in the project depends on the length
+# of this list. Adding a second name here gives that person unlimited authority
+# over the engine of the organization — silently. The real structural boundary
+# arrives in Phase 8 (engine / state separation).
 mentors:
   - uslanozan
-  # 2026-09-07 — şirket kapsamı (comp-scope) işinin eş-sahibi olarak eklendi.
-  # ⚠️ Yukarıdaki uyarı geçerli: bu kişi artık kontrol düzleminde admin, Terraform
-  # kodunu/config'i değiştirebilir ve Karar E gereği CODEOWNERS/branch protection'ı
-  # bypass eder. Bilinçli karar (Ozan).
+  # 2026-09-07 — added as co-owner of the company-scope (comp-scope) work.
+  # ⚠️ The warning above applies: this person is now admin on the control plane,
+  # can change the Terraform code/config, and per Decision E bypasses
+  # CODEOWNERS/branch protection. A deliberate decision.
   - Dogancan-Acar
 
 developers: []
 
 default_branch: main
 
-# Yol bazlı sahiplik — ACCESS-MODEL Karar 13.
+# Path-based ownership — ACCESS-MODEL Decision 13.
 #
-# Varsayılan sahiplik `*` → bu repo'nun mentörleri (modül otomatik ekler).
-# Aşağıdaki yollar ondan daha dar bir gruba, org geneli yönetici takımına bağlı.
+# The default ownership `*` → this repo's mentors (the module adds it
+# automatically). The paths below are bound to a narrower group, the org-wide
+# admin team.
 #
-# Neden bu iki yol:
-#   terraform/        → organizasyonun tamamını üreten kod. Dashboard'un (ve
-#                       ileride agent'ların) HCL'e dokunmasına karşı ikinci önlem.
-#   .github/workflows → apply'ı çalıştıran iş akışları. Buraya yazabilen biri,
-#                       Terraform'un yetkisini dolaylı olarak ele geçirir.
+# Why these two paths:
+#   terraform/        → the code that generates the entire organization. A second
+#                       safeguard against the dashboard (and, later, agents)
+#                       touching the HCL.
+#   .github/workflows → the workflows that run apply. Whoever can write here
+#                       indirectly seizes Terraform's authority.
 #
-# ⚠️ `config/people.yml` bilerek BURADA DEĞİL. Onu da bağlamak her stajyer eklemeyi
-# org yönetici onayına takardı — sık işlemi nadir işlemin hızına düşürürdü.
-# Yetki yükseltme (`org_role: admin`) için ayrı bir kapı tasarımı TODO.md'de.
+# ⚠️ `config/people.yml` is intentionally NOT HERE. Binding it too would gate
+# every intern addition on org admin approval — dropping a frequent operation to
+# the speed of a rare one. A separate gate design for privilege escalation
+# (`org_role: admin`) is in TODO.md.
 code_owners:
   "/terraform/": [your-org/platform-admins]
   "/.github/workflows/": [your-org/platform-admins]
 
 # -----------------------------------------------------------------------------
-# ŞABLON İSTİSNASI — dependabot: none  (2026-08-20)
+# TEMPLATE EXCEPTION — dependabot: none  (2026-08-20)
 # -----------------------------------------------------------------------------
-# Bu repo şablon `dependabot.yml`'ını almıyor; kendi dosyasını elle yönetiyor.
+# This repo does not take the template `dependabot.yml`; it manages its own file
+# by hand.
 #
-# Sebep: şablondan `github-actions` ekosistemi çıkarıldı (GIT-37). Yönetilen
-# repo'larda doğru karar — oradaki workflow'lar `strict`, yani Terraform'un;
-# Dependabot'un açtığı sürüm PR'ı merge edilse bile bir sonraki apply geri alıyor
-# ve Dependabot aynı PR'ı yeniden açıyor. Sonsuz döngü (2026-08-19, PR #18/#19).
+# Reason: the `github-actions` ecosystem was removed from the template (GIT-37).
+# The right call for managed repos — the workflows there are `strict`, i.e.
+# Terraform's; even if a version PR opened by Dependabot is merged, the next
+# apply reverts it and Dependabot reopens the same PR. An infinite loop
+# (2026-08-19, PR #18/#19).
 #
-# Ama BU repo'nun `terraform-plan.yml` ve `terraform-apply.yml` dosyaları
-# Terraform'un DEĞİL — elle yazıldılar, şablonda yoklar. Onlarda döngü yok,
-# Dependabot orada sorunsuz çalışıyor ve PR #19 ile gerçekten sürüm yükseltti.
-# Şablonu olduğu gibi almak, döngüsü olmayan tek yerdeki çalışan otomasyonu da
-# kapatırdı.
+# But THIS repo's `terraform-plan.yml` and `terraform-apply.yml` files are NOT
+# Terraform's — they were written by hand and are not in the template. There is
+# no loop in them, Dependabot works there without issue, and it genuinely bumped
+# a version via PR #19. Taking the template as-is would also turn off the working
+# automation in the one place that has no loop.
 #
-# ⚠️ Bedeli dogfooding'de bilinçli bir delik: bu repo bir dosyada kendi
-# şablonunu tüketmiyor. Alternatifi (ikinci bir şablon varyantı) iki dosya
-# arasında drift üretirdi.
+# ⚠️ The cost is a deliberate hole in dogfooding: this repo does not consume its
+# own template in one file. The alternative (a second template variant) would
+# produce drift between the two files.
 #
-# ⚠️ Şablondaki action sürümlerini (templates/.github/workflows/) artık hiçbir
-# şey izlemiyor — Dependabot o yolu göremiyor. Yerine ne konacağı TODO.md'de.
+# ⚠️ The action versions in the template (templates/.github/workflows/) are no
+# longer watched by anything — Dependabot cannot see that path. What to put in
+# its place is in TODO.md.
 files:
   dependabot: none
 

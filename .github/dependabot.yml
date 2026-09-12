@@ -1,24 +1,25 @@
 # =============================================================================
-# Dependabot — BU DOSYA ELLE YÖNETİLİYOR (şablondan GELMİYOR)
+# Dependabot — THIS FILE IS MANAGED BY HAND (it does NOT come from the template)
 # =============================================================================
-# ⚠️ terraform/templates/.github/dependabot.yml ile BİLEREK FARKLI.
+# ⚠️ DELIBERATELY DIFFERENT from terraform/templates/.github/dependabot.yml.
 #
-# Bu repo config'de `files: { dependabot: none }` ile işaretli, yani Terraform bu
-# dosyaya dokunmuyor. Sebep:
+# This repo is marked with `files: { dependabot: none }` in the config, so Terraform
+# does not touch this file. The reason:
 #
-#   Şablondan `github-actions` ekosistemi çıkarıldı (GIT-37), çünkü yönetilen
-#   repo'lardaki workflow'lar `strict` modda Terraform'un — Dependabot'un açtığı
-#   sürüm PR'ı merge edilse bile bir sonraki apply geri alıyor ve PR yeniden
-#   açılıyor. Sonsuz döngü (2026-08-19, PR #18/#19).
+#   The `github-actions` ecosystem was removed from the template (GIT-37), because in
+#   managed repos the workflows are Terraform's in `strict` mode — even if the version
+#   PR that Dependabot opens is merged, the next apply reverts it and the PR is
+#   reopened. An endless loop (2026-08-19, PR #18/#19).
 #
-#   AMA bu repo'nun `.github/workflows/terraform-plan.yml` ve `terraform-apply.yml`
-#   dosyaları Terraform'un DEĞİL — elle yazıldılar, şablonda yoklar. Orada döngü yok
-#   ve Dependabot fiilen çalışıyor (PR #19 gerçekten sürüm yükseltti).
+#   BUT this repo's `.github/workflows/terraform-plan.yml` and `terraform-apply.yml`
+#   files are NOT Terraform's — they were written by hand and are not in the template.
+#   There is no loop there and Dependabot actually works (PR #19 really did bump a
+#   version).
 #
-#   Yani şablonu olduğu gibi almak, döngüsü olmayan tek yerdeki çalışan otomasyonu
-#   kapatırdı. `github-actions` bu yüzden BURADA duruyor.
+#   So taking the template as-is would disable the one place where the automation works
+#   without a loop. That is why `github-actions` stays HERE.
 #
-# Bkz. TODO.md → GIT-37 · config/repositories/tidyorg.yml
+# See TODO.md → GIT-37 · config/repositories/tidyorg.yml
 # =============================================================================
 
 version: 2

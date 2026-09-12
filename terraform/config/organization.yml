@@ -1,26 +1,27 @@
 # =============================================================================
-# Organizasyon Konfigürasyonu — CANLI DOSYA
+# Organization Configuration — LIVE FILE
 # =============================================================================
-# Bu dosya Terraform tarafından okunur (terraform/repositories.tf).
-# Burada yapılan her değişiklik, apply sonrası GitHub'a yansır.
+# This file is read by Terraform (terraform/repositories.tf).
+# Every change made here is reflected to GitHub after apply.
 #
-# Bu dosya YALNIZCA organizasyon düzeyindeki ayarları içerir:
-# roller, varsayılanlar, kişiler, org_admin_team.
+# This file contains ONLY organization-level settings:
+# roles, defaults, people, org_admin_team.
 #
-# Repo tanımları ayrı dosyalardadır: config/repositories/<repo-adı>.yml
-# Yeni repo eklemek için bu dosyaya dokunulmaz; config/repositories/ altına
-# yeni bir .yml dosyası eklenir.
+# Repo definitions live in separate files: config/repositories/<repo-name>.yml
+# To add a new repo you do not touch this file; you add a new .yml file under
+# config/repositories/.
 #
-# Şemanın tüm alanları ve örnekleri için: config/organization.example.yml
-# Modelin gerekçeleri için: ACCESS-MODEL.md
+# For all schema fields and examples see: config/organization.example.yml
+# For the rationale of the model see: ACCESS-MODEL.md
 # =============================================================================
 
 version: 1
-# Org adı TEK KAYNAKTAN gelir: TF_VAR_github_org_name (variables.tf). Burada
-# tekrar edilmez — iki yerde tutmak uyuşmazlıkta takım slug'larını bozardı.
+# The org name comes from a SINGLE SOURCE: TF_VAR_github_org_name (variables.tf).
+# It is not repeated here — keeping it in two places would break team slugs on a
+# mismatch.
 
 # -----------------------------------------------------------------------------
-# ROLLER — Yetkinin ne anlama geldiği tek yerde tanımlanır.
+# ROLES — What a permission means is defined in one place.
 # -----------------------------------------------------------------------------
 roles:
   head-of-engineering:
@@ -38,18 +39,18 @@ roles:
     repo_permission: push
     bypass_branch_protection: false
 
-  # Salt-okunur repo rolü. `viewers:` listesindeki kişiler repo'yu görür ve
-  # klonlar ama push atamaz. Örn. başka takımdan bir gözlemci / danışman.
+  # Read-only repo role. People in the `viewers:` list see and clone the repo
+  # but cannot push. E.g. an observer / advisor from another team.
   viewer:
     scope: repository
     repo_permission: pull
     bypass_branch_protection: false
 
-# head-of-engineering rolünü taşıyan organizasyon seviyesi takım
+# The organization-level team that carries the head-of-engineering role
 org_admin_team: platform-admins
 
-# Organizasyon profili (GitHub UI'da görünen). Config yönetir ki her apply bu
-# alanları silmeye çalışmasın. Rebrand'de burada değişecek.
+# Organization profile (as shown in the GitHub UI). Config manages it so that
+# each apply does not try to wipe these fields. Will change here on a rebrand.
 profile:
   name: "Tidyorg"
   description: "Desc created by Ozan"
@@ -57,24 +58,25 @@ profile:
   location: "United Kingdom"
 
 # -----------------------------------------------------------------------------
-# KİŞİLER — ayrı dosyada
+# PEOPLE — in a separate file
 # -----------------------------------------------------------------------------
-# `people` bölümü 2026-08-18'de config/people.yml dosyasına taşındı.
+# The `people` section was moved to config/people.yml on 2026-08-18.
 #
-# Sebep: bu dosya ROLLERİN NE ANLAMA GELDİĞİNİ tanımlıyor (roles, defaults,
-# protected_branches) — nadiren değişen, yüksek riskli bir alan. Kişi listesi ise
-# sık değişen, düşük riskli bir alan. İkisini aynı dosyada tutmak, bir stajyer
-# eklemek için yetki tanımlarının bulunduğu dosyayı açmayı gerektiriyordu.
+# Reason: this file defines WHAT ROLES MEAN (roles, defaults,
+# protected_branches) — a rarely changing, high-risk area. The list of people
+# is a frequently changing, low-risk area. Keeping both in the same file meant
+# opening the file that holds the permission definitions just to add an intern.
 #
-# Dashboard yazma moduna geçtiğinde de bu ayrım gerekli olacak (ACCESS-MODEL
-# Karar 16): makine kişi listesini yeniden üretebilir, rol tanımlarına dokunamaz.
+# This separation will also be needed once the dashboard moves to write mode
+# (ACCESS-MODEL Decision 16): the machine can regenerate the people list but
+# must not touch the role definitions.
 # -----------------------------------------------------------------------------
 
 # -----------------------------------------------------------------------------
-# VARSAYILANLAR — Her repo bunları miras alır, repo bazında ezilebilir.
+# DEFAULTS — Every repo inherits these; they can be overridden per repo.
 # -----------------------------------------------------------------------------
 defaults:
-  visibility: public # FREE PLAN: private repo'da branch protection çalışmıyor
+  visibility: public # FREE PLAN: branch protection does not work on a private repo
   has_issues: true
   has_projects: false
   has_wiki: false
@@ -82,36 +84,39 @@ defaults:
   default_branch: develop
 
   # ---------------------------------------------------------------------------
-  # GÜVENLİK
+  # SECURITY
   # ---------------------------------------------------------------------------
-  # vulnerability_alerts → Dependabot güvenlik uyarıları. Her planda, her
-  #   görünürlükte çalışır. Kapatmak bilinçli bir karar olmalı.
+  # vulnerability_alerts → Dependabot security alerts. Works on every plan, at
+  #   every visibility. Turning it off should be a deliberate decision.
   #
-  # secret_scanning → Secret scanning + push protection. Asıl değerli olan
-  #   ikincisi: sızdırılmış anahtar repo'ya GİRMEDEN push reddedilir.
-  #   ⚠️ Yalnızca PUBLIC repo'da ücretsiz; private repo GitHub Advanced Security
-  #   (Enterprise) ister. Modül private repo'da bu ayarı sessizce atlar — burada
-  #   `true` bırakmak private repo'nun apply'ını patlatmaz.
+  # secret_scanning → Secret scanning + push protection. The truly valuable part
+  #   is the second one: a leaked key is rejected on push BEFORE it enters the
+  #   repo.
+  #   ⚠️ Free only on a PUBLIC repo; a private repo requires GitHub Advanced
+  #   Security (Enterprise). The module silently skips this setting on a private
+  #   repo — leaving it `true` here does not blow up a private repo's apply.
   #
-  # `advanced_security` bilerek yönetilmiyor: public'te örtük açık, private'ta
-  # lisans gerektiriyor. İkisinde de yönetmeye çalışmak hata üretir.
+  # `advanced_security` is intentionally not managed: implicitly on for public,
+  # requires a license for private. Trying to manage it in both cases produces
+  # errors.
   vulnerability_alerts: true
   secret_scanning: true
 
   # ---------------------------------------------------------------------------
-  # ŞABLON DAĞITIMI
+  # TEMPLATE DISTRIBUTION
   # ---------------------------------------------------------------------------
-  # Kaynak dosyalar: terraform/templates/ — ağaç yapısı repo içindeki hedef yolu
-  # birebir yansıtır, yani ayrı bir hedef yolu tanımlamaya gerek yoktur.
+  # Source files: terraform/templates/ — the tree structure mirrors the target
+  # path inside the repo exactly, so there is no need to define a separate
+  # target path.
   #
-  # Modlar:
-  #   strict → Terraform içeriği sahiplenir. Elle yapılan değişiklik bir sonraki
-  #            apply'da geri alınır. Yönetişim dosyaları için.
-  #   seed   → Yalnızca ilk oluşturmada yazılır (`ignore_changes = [content]`);
-  #            repo sonradan kendine göre değiştirebilir. İçerik dosyaları için.
-  #   none   → Hiç yazılmaz.
+  # Modes:
+  #   strict → Terraform owns the content. A manual change is reverted on the
+  #            next apply. For governance files.
+  #   seed   → Written only on first creation (`ignore_changes = [content]`);
+  #            the repo may modify it afterward. For content files.
+  #   none   → Never written.
   #
-  # Mod tablosunun gerekçesi: ROADMAP.md → K1
+  # Rationale for the mode table: ROADMAP.md → K1
   files:
     contributing: seed
     security: seed
@@ -120,33 +125,37 @@ defaults:
     issue_templates: strict
     dependabot: strict
 
-  # Dağıtılacak workflow'lar. Kaynak: terraform/templates/.github/workflows/<ad>.yml
-  # Workflow'lar daima `strict` — yönetişim dosyasıdır, elle değiştirilemez.
+  # Workflows to distribute. Source: terraform/templates/.github/workflows/<name>.yml
+  # Workflows are always `strict` — they are governance files and cannot be
+  # changed by hand.
   #
-  # DİKKAT: `ci` buradan çıkarılırsa o repo'da `ci/test` status check'i hiç
-  # raporlanmaz. `protected_branches.*.require_status_checks` içinde `ci/test`
-  # duruyorsa PR'lar sonsuza kadar bekler. Modül bu tutarsızlığı `precondition`
-  # ile hata olarak verir — sessizce geçmez.
+  # CAUTION: if `ci` is removed from here, the `ci/test` status check is never
+  # reported in that repo. If `ci/test` remains in
+  # `protected_branches.*.require_status_checks`, PRs wait forever. The module
+  # surfaces this inconsistency as an error via a `precondition` — it does not
+  # pass silently.
   workflows: [ci]
 
   protected_branches:
     main:
-      # 2026-08-20: 2 → 1 düşürüldü (GIT-37 tartışmasından doğdu).
+      # 2026-08-20: lowered 2 → 1 (arose from the GIT-37 discussion).
       #
-      # Sebep davranışsal, teknik değil. Ekip üç kişi ve `main`'e giden PR'ların
-      # çoğu rutin: Dependabot sürüm yükseltmesi, doküman düzeltmesi. İki onay
-      # istemek bunları bekletiyordu ve bekleyen PR'lar bypass ile merge edilmeye
-      # başlandı (PR #19). Bir kuralın en kötü hali, düzenli olarak atlanan hali:
-      # kâğıtta duruyor, fiilen yok, ve atlamak alışkanlığa dönüşüyor.
+      # The reason is behavioral, not technical. The team is three people and
+      # most PRs to `main` are routine: a Dependabot version bump, a docs fix.
+      # Requiring two approvals kept them waiting, and waiting PRs started being
+      # merged via bypass (PR #19). The worst state for a rule is one that is
+      # regularly skipped: it stands on paper, does not exist in practice, and
+      # skipping it turns into a habit.
       #
-      # 1 onay dört göz ilkesini (four-eyes) KORUYOR — yazan + onaylayan. Kaybedilen
-      # şey üçüncü çift göz; üç kişilik bir ekipte onun bedeli faydasından fazla.
+      # 1 approval PRESERVES the four-eyes principle — author + approver. What is
+      # lost is the third pair of eyes; in a three-person team its cost exceeds
+      # its benefit.
       #
-      # ⚠️ Bu bir ORG VARSAYILANI. Daha yüksek risk taşıyan bir repo kendi
-      # dosyasında `required_reviews`'ü yükseltebilir — repodan repoya değişir.
-      # `require_code_owner_review` burada `true` kaldığı için, bu repo'da
-      # `/terraform/` ve `/.github/workflows/` değişiklikleri hâlâ platform-admins
-      # onayı istiyor; düşen sayı o kapıyı açmıyor.
+      # ⚠️ This is an ORG DEFAULT. A higher-risk repo can raise
+      # `required_reviews` in its own file — it varies from repo to repo. Because
+      # `require_code_owner_review` stays `true` here, changes to `/terraform/`
+      # and `/.github/workflows/` in this repo still require platform-admins
+      # approval; the lowered count does not open that door.
       required_reviews: 1
       require_code_owner_review: true
       dismiss_stale_reviews: true
@@ -167,16 +176,16 @@ defaults:
       push_allowed_roles: [mentor, head-of-engineering]
 
   labels:
-    - { name: "type: bug", color: "d73a4a", description: "Hatalı davranış" }
-    - { name: "type: feature", color: "0e8a16", description: "Yeni özellik" }
-    - { name: "type: chore", color: "cfd3d7", description: "Bakım işi" }
-    - { name: "type: docs", color: "0075ca", description: "Dokümantasyon" }
-    - { name: "priority: critical", color: "b60205", description: "Acil müdahale" }
-    - { name: "priority: high", color: "d93f0b", description: "Yüksek öncelik" }
-    - { name: "priority: medium", color: "fbca04", description: "Orta öncelik" }
-    - { name: "priority: low", color: "c2e0c6", description: "Düşük öncelik" }
-    - { name: "status: in-review", color: "5319e7", description: "İnceleme bekliyor" }
-    - { name: "status: blocked", color: "e99695", description: "Engellenmiş" }
-    - { name: "status: ready", color: "0e8a16", description: "Başlanabilir" }
-    - { name: "good first issue", color: "7057ff", description: "Yeni katılanlar için" }
-    - { name: "help wanted", color: "008672", description: "Yardım aranıyor" }
+    - { name: "type: bug", color: "d73a4a", description: "Faulty behavior" }
+    - { name: "type: feature", color: "0e8a16", description: "New feature" }
+    - { name: "type: chore", color: "cfd3d7", description: "Maintenance work" }
+    - { name: "type: docs", color: "0075ca", description: "Documentation" }
+    - { name: "priority: critical", color: "b60205", description: "Urgent response" }
+    - { name: "priority: high", color: "d93f0b", description: "High priority" }
+    - { name: "priority: medium", color: "fbca04", description: "Medium priority" }
+    - { name: "priority: low", color: "c2e0c6", description: "Low priority" }
+    - { name: "status: in-review", color: "5319e7", description: "Awaiting review" }
+    - { name: "status: blocked", color: "e99695", description: "Blocked" }
+    - { name: "status: ready", color: "0e8a16", description: "Ready to start" }
+    - { name: "good first issue", color: "7057ff", description: "For newcomers" }
+    - { name: "help wanted", color: "008672", description: "Help wanted" }
