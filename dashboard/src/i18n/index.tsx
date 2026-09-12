@@ -25,7 +25,7 @@ function detectLang(): Lang {
   return nav.startsWith('tr') ? 'tr' : 'en'
 }
 
-/** Dot-path translation; falls back to tr if missing, then to key. */
+/** Dot-path translation; falls back to en if missing, then to the key. */
 function resolve(lang: Lang, key: string, vars?: Vars): string {
   const read = (dict: unknown): string | undefined => {
     let node: unknown = dict
@@ -36,7 +36,7 @@ function resolve(lang: Lang, key: string, vars?: Vars): string {
     return typeof node === 'string' ? node : undefined
   }
 
-  let text = read(messages[lang]) ?? read(messages.tr) ?? key
+  let text = read(messages[lang]) ?? read(messages.en) ?? key
   if (vars) {
     for (const [k, v] of Object.entries(vars)) text = text.replaceAll(`{${k}}`, String(v))
   }
