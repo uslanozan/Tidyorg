@@ -1,0 +1,87 @@
+# =============================================================================
+# Terraform Plan — runs on every PR that touches config/, comments the plan
+# =============================================================================
+# Template for YOUR config repo. It runs the published tidyorg engine image
+# against your config/ directory and posts the plan as a PR comment, so review
+# happens on the same diff the dashboard opened.
+#
+# Replace `ghcr.io/OWNER/tidyorg` with the image you publish (or the upstream one).
+# Configure these in the config repo (Settings → Secrets and variables → Actions):
+#   Variables: TIDYORG_GITHUB_ORG, TIDYORG_APP_ID, TIDYORG_APP_INSTALLATION_ID,
+#              TF_CLOUD_ORGANIZATION, TF_WORKSPACE
+#   Secrets:   TIDYORG_APP_PEM (the engine GitHub App private key),
+#              TF_TOKEN_APP_TERRAFORM_IO (HCP token)
+# For local state instead of HCP, drop the TF_STATE/TF_CLOUD_*/TF_TOKEN_* lines
+# (state then lives only in the runner and is lost between runs — HCP is advised).
+# =============================================================================
+name: "Terraform Plan"
+
+on:
+  pull_request:
+    paths: ["config/**"]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  plan:
+    name: "Terraform Plan"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Write GitHub App key
+        env:
+          PEM: ${{ secrets.TIDYORG_APP_PEM }}
+        run: printf '%s' "$PEM" > "$RUNNER_TEMP/app.pem"
+
+      - name: Terraform Plan
+        env:
+          TF_CLOUD_ORGANIZATION: ${{ vars.TF_CLOUD_ORGANIZATION }}
+          TF_WORKSPACE: ${{ vars.TF_WORKSPACE }}
+          TF_TOKEN_APP_TERRAFORM_IO: ${{ secrets.TF_TOKEN_APP_TERRAFORM_IO }}
+          GITHUB_ORG: ${{ vars.TIDYORG_GITHUB_ORG }}
+          APP_ID: ${{ vars.TIDYORG_APP_ID }}
+          APP_INSTALLATION_ID: ${{ vars.TIDYORG_APP_INSTALLATION_ID }}
+        run: |
+          docker run --rm \
+            -v "$PWD/config:/config:ro" \
+            -v "$RUNNER_TEMP/app.pem:/secrets/app.pem:ro" \
+            -e TF_STATE=hcp \
+            -e TF_CLOUD_ORGANIZATION="$TF_CLOUD_ORGANIZATION" \
+            -e TF_WORKSPACE="$TF_WORKSPACE" \
+            -e TF_TOKEN_app_terraform_io="$TF_TOKEN_APP_TERRAFORM_IO" \
+            -e TF_VAR_github_org_name="$GITHUB_ORG" \
+            -e TF_VAR_github_app_id="$APP_ID" \
+            -e TF_VAR_github_app_installation_id="$APP_INSTALLATION_ID" \
+            ghcr.io/OWNER/tidyorg:latest plan 2>&1 | tee plan.txt
+        continue-on-error: true
+
+      - name: Comment plan on PR
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let out = '_plan produced no output_';
+            try { out = fs.readFileSync('plan.txt', 'utf8'); } catch {}
+            // GitHub comments cap at 65536 chars — keep the tail (the summary line).
+            const clipped = out.length > 60000 ? out.slice(-60000) : out;
+            const body = [
+              '### Terraform plan',
+              '```',
+              clipped,
+              '```',
+            ].join('\n');
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const marker = '### Terraform plan';
+            const { data: comments } = await github.rest.issues.listComments({ owner, repo, issue_number });
+            const mine = comments.find((c) => c.body && c.body.startsWith(marker));
+            if (mine) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: mine.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }

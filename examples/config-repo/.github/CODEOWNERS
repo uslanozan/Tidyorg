@@ -1,0 +1,7 @@
+# The escalation gate: only org owners may change privileged.yml (org owners +
+# org-scoped roles) or the CI wiring. Everything else (people.yml, repositories/*)
+# stays reviewable by anyone with write — that is what the dashboard opens PRs against.
+#
+# Replace @your-org/platform-admins with your own owners team.
+/config/privileged.yml   @your-org/platform-admins
+/.github/                @your-org/platform-admins
