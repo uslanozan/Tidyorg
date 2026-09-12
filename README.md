@@ -135,9 +135,31 @@ protected_branches:
 
 ## Backend (state)
 
-By default the container keeps state locally on the mounted `/state` volume. To use a remote
-backend (S3, GCS, Terraform Cloud, …), edit [`terraform/backend.tf`](terraform/backend.tf)
-or run the engine with `-backend-config`.
+The `TF_STATE` environment variable selects where Terraform keeps its state:
+
+| `TF_STATE` | State lives in | Extra variables |
+| :--- | :--- | :--- |
+| `local` (default) | the mounted `/state` volume — zero setup | — |
+| `hcp` | HCP Terraform / Terraform Cloud (recommended for teams) | `TF_CLOUD_ORGANIZATION`, `TF_WORKSPACE`, `TF_TOKEN_app_terraform_io` |
+| `custom` | your own backend (S3, GCS, azurerm, …) | mount your backend config at `/engine/backend.tf` |
+
+```bash
+# HCP / Terraform Cloud instead of local state:
+docker run --rm \
+  -v "$PWD/config:/config" \
+  -v "$PWD/app.pem:/secrets/app.pem:ro" \
+  -e TF_STATE=hcp \
+  -e TF_CLOUD_ORGANIZATION=your-tf-org \
+  -e TF_WORKSPACE=tidyorg \
+  -e TF_TOKEN_app_terraform_io=... \
+  -e TF_VAR_github_org_name=your-org \
+  -e TF_VAR_github_app_id=123456 \
+  -e TF_VAR_github_app_installation_id=12345678 \
+  ghcr.io/OWNER/tidyorg:latest plan
+```
+
+The image is built with a local backend, so switching to `hcp`/`custom` re-runs `terraform init
+-reconfigure` at startup (cached providers are reused).
 
 ## Known limitations
 
@@ -154,6 +176,6 @@ or run the engine with `-backend-config`.
 
 ## Status
 
-Working name; pre-1.0. The engine, the web dashboard (full write mode via PRs), and the
-single combined Docker image (engine + dashboard) are functional. A fresh-org first-apply
-still needs live verification before a 1.0 tag.
+Working name; pre-1.0. The engine, the web dashboard (full write mode via PRs), and their
+Docker images (a Terraform engine image and a separate dashboard image) are functional. A
+fresh-org first-apply still needs live verification before a 1.0 tag.
