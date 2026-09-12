@@ -9,10 +9,10 @@ terraform {
   }
 }
 
-# NOT: Backend/state ayrı dosyada (backend.tf) — bilinçli.
-# Canlı sistem HCP cloud backend'i kullanır; Docker image'ı entrypoint'te bu dosyayı
-# lokal backend'le DEĞİŞTİRİR (state mount volume'de). Böylece aynı motor hem HCP'ye
-# hem izole bir konteynere kurulabilir. Bkz. backend.tf ve docker/entrypoint.
+# NOTE: Backend/state is in a separate file (backend.tf) — deliberate.
+# The live system uses the HCP cloud backend; the Docker image REPLACES this file with a
+# local backend at entrypoint (state on a mount volume). This way the same engine can be
+# deployed both to HCP and into an isolated container. See backend.tf and docker/entrypoint.
 
 provider "github" {
   owner = var.github_org_name

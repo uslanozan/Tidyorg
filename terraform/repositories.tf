@@ -1,33 +1,33 @@
 # =============================================================================
-# Repo'lar — konfigürasyondan üretilir (repo başına ayrı dosya)
+# Repositories — generated from configuration (one file per repo)
 # =============================================================================
-# Bu dosyada hiçbir repo adı, kişi adı veya kural değeri yazmaz.
-# Yeni bir repo eklemek için: config/repositories/<repo-adı>.yml oluştur.
-# Dosya adı = repo adı. Benzersizlik doğal olarak garanti edilir.
+# No repo name, person name, or rule value is written in this file.
+# To add a new repo: create config/repositories/<repo-name>.yml.
+# File name = repo name. Uniqueness is naturally guaranteed.
 #
-# Bkz. ACCESS-MODEL.md — "Kod katmanı / veri katmanı ayrımı"
-# Bkz. ROADMAP.md — Faz 1 (config yapısını böl)
+# See ACCESS-MODEL.md — "Code layer / data layer separation"
+# See ROADMAP.md — Phase 1 (split the config structure)
 # =============================================================================
 
 locals {
-  # Config dizininin yeri. Boş `var.config_path` = repo içi yerleşim
-  # (${path.module}/config). Container kullanıcının config'ini başka yere mount
-  # eder (örn. /config) ve TF_VAR_config_path ile buraya yönlendirir.
+  # Location of the config directory. An empty `var.config_path` = in-repo layout
+  # (${path.module}/config). A container mounts the user's config elsewhere
+  # (e.g. /config) and points here with TF_VAR_config_path.
   config_dir = var.config_path != "" ? var.config_path : "${path.module}/config"
 
   org_config = yamldecode(file("${local.config_dir}/organization.yml"))
 
-  # Her .yml dosyasını oku; dosya adının .yml uzantısını at → repo adı olur.
-  # config/repositories/pilot-intern-web.yml → "pilot-intern-web"
+  # Read every .yml file; drop the .yml extension of the file name → it becomes the
+  # repo name. config/repositories/pilot-intern-web.yml → "pilot-intern-web"
   #
-  # ⚠️ `.example.yml` BİLEREK dışlanıyor. Bu klasördeki her dosya gerçek bir repo
-  # yaratır; şema örneği niyetine buraya konan bir dosya `repository.example` adında
-  # canlı bir repo açardı.
+  # ⚠️ `.example.yml` is DELIBERATELY excluded. Every file in this folder creates a
+  # real repo; a file placed here as a schema example would open a live repo named
+  # `repository.example`.
   #
-  # Bu teorik bir kaygı değil: 2026-08-15'te `organization.example.yml` içindeki
-  # `dev-1` / `dev-2` takma adlarına GERÇEK org daveti gitti — o kullanıcı adları
-  # GitHub'da gerçekten var. Örnek dosyaların "zararsız" olduğu varsayımı orada
-  # kırıldı; aynı varsayımın repo tarafındaki karşılığı burada kapatılıyor.
+  # This is not a theoretical concern: on 2026-08-15 a REAL org invite went to the
+  # `dev-1` / `dev-2` aliases inside `organization.example.yml` — those usernames
+  # really exist on GitHub. The assumption that example files are "harmless" broke
+  # there; the repo-side equivalent of that same assumption is closed here.
   repos = {
     for f in fileset("${local.config_dir}/repositories", "*.yml") :
     trimsuffix(f, ".yml") => yamldecode(
@@ -38,25 +38,26 @@ locals {
 
   repo_defaults = local.org_config.defaults
 
-  # Rol adı → GitHub repo yetkisi. Yetkinin anlamı config'de tanımlıdır.
+  # Role name → GitHub repo permission. The meaning of the permission is defined in
+  # config.
   role_permissions = {
     for role, cfg in local.org_config.roles : role => cfg.repo_permission
   }
 
-  # Dal koruması iki katmanlıdır: defaults tabanı verir, repo yalnızca farklı
-  # olan alanı yazarak ezer. merge() sığ birleştirdiği için dal bazında tek tek
-  # birleştirmek gerekir; aksi halde repo bir dalı ezdiğinde o dalın diğer tüm
-  # alanları kaybolurdu.
+  # Branch protection is two-layered: defaults provide the base, the repo overrides
+  # only the field that differs by writing it. Because merge() is a shallow merge,
+  # branches must be merged one by one; otherwise when a repo overrode one branch,
+  # all the other fields of that branch would be lost.
   #
-  # KALDIRMA KAÇIŞI — repo, bir dalı `null` yazarak varsayılandan düşürebilir:
+  # REMOVAL ESCAPE — a repo can drop a branch below the default by writing `null`:
   #
   #   protected_branches:
-  #     develop:            # ya da açıkça `develop: null`
+  #     develop:            # or explicitly `develop: null`
   #
-  # Buna ihtiyaç var çünkü anahtarlar birleştiriliyor: kaldırma kaçışı olmasa bir
-  # repo `defaults` içindeki bir dal kuralından asla kurtulamazdı. Kontrol düzlemi
-  # repolarında `develop` dalı hiç yok (Karar F) — kural kalsaydı var olmayan bir
-  # dala işaret eden ölü bir koruma olurdu.
+  # This is needed because keys are merged: without the removal escape a repo could
+  # never escape a branch rule inside `defaults`. Control-plane repos have no
+  # `develop` branch at all (Decision F) — if the rule stayed, it would be dead
+  # protection pointing at a branch that does not exist.
   protected_branches = {
     for repo_name, repo in local.repos :
     repo_name => {
@@ -68,8 +69,9 @@ locals {
         try(local.repo_defaults.protected_branches[branch], {}),
         try(repo.protected_branches[branch], {}),
       )
-      # `try(...) == null` yalnızca repo o dalı AÇIKÇA null yazdığında doğrudur;
-      # hiç yazmadığında sentinel döner ve dal korunmaya devam eder.
+      # `try(...) == null` is true only when the repo EXPLICITLY writes that branch
+      # as null; when it writes nothing, the sentinel is returned and the branch
+      # stays protected.
       if try(repo.protected_branches[branch], "inherit") != null
     }
   }
@@ -107,15 +109,16 @@ module "repositories" {
   protected_branches = local.protected_branches[each.key]
   labels             = try(each.value.labels, local.repo_defaults.labels)
 
-  # `files` düz bir harita (mantıksal ad → mod), o yüzden sığ merge doğru:
-  # repo yalnızca değiştirmek istediği anahtarı yazar, gerisi defaults'tan gelir.
-  # protected_branches'teki dal bazında birleştirme derdi burada yok.
+  # `files` is a flat map (logical name → mode), so a shallow merge is correct:
+  # the repo writes only the key it wants to change, the rest comes from defaults.
+  # The per-branch merge concern in protected_branches does not exist here.
   files = merge(
     try(local.repo_defaults.files, {}),
     try(each.value.files, {}),
   )
 
-  # `workflows` bir liste — repo yazarsa tamamen ezer, kısmi birleştirme yok.
-  # "ci'yi çıkar ama release'i ekle" gibi bir ara durum anlamsız olurdu.
+  # `workflows` is a list — if the repo writes it, it fully overrides, no partial
+  # merge. An in-between state like "remove ci but add release" would be
+  # meaningless.
   workflows = try(each.value.workflows, local.repo_defaults.workflows, [])
 }

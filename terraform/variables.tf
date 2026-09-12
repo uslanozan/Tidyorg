@@ -2,9 +2,9 @@ variable "github_org_name" {
   type        = string
   description = "GitHub organization name to manage (required)."
 
-  # Bilinçli olarak DEFAULT YOK: değer TF_VAR_github_org_name (HCP/ortam değişkeni
-  # ya da terraform.tfvars) ile açıkça verilir. Böylece config sağlanmadan
-  # plan/apply çalışmaz (fail-fast) ve bir fork ASLA başkasının org'unu hedef alamaz.
+  # Deliberately NO DEFAULT: the value is given explicitly via TF_VAR_github_org_name
+  # (HCP/environment variable or terraform.tfvars). This way plan/apply does not run
+  # without config provided (fail-fast) and a fork can NEVER target someone else's org.
 }
 
 variable "github_app_id" {

@@ -1,15 +1,15 @@
 # =============================================================================
-# Backend / State — DEĞİŞTİRİLEBİLİR DOSYA
+# Backend / State — REPLACEABLE FILE
 # =============================================================================
-# Motorun state'i nerede tutulduğunu belirleyen TEK yer.
+# The SINGLE place that determines where the engine's state is kept.
 #
-# Varsayılan: LOCAL state — hiçbir dış servis gerektirmez, kutudan çıkar çıkmaz
-# çalışır. Docker'da entrypoint her durumda state'i /state (mount volume) altında
-# LOCAL backend'e zorlar; bu yüzden dosya image'a alınmaz (.dockerignore) ve
-# container'ı etkilemez.
+# Default: LOCAL state — requires no external service, works out of the box.
+# In Docker the entrypoint always forces state to a LOCAL backend under /state
+# (mount volume); that is why this file is excluded from the image (.dockerignore)
+# and does not affect the container.
 #
-# UZAK backend (ekipler için önerilir) kullanmak için aşağıdaki bloğu kendi
-# backend'inle değiştir ya da `terraform init -backend-config=...` ver. Örnekler:
+# To use a REMOTE backend (recommended for teams), replace the block below with
+# your own backend or pass `terraform init -backend-config=...`. Examples:
 #
 #   # Terraform Cloud / HCP
 #   cloud {
@@ -24,8 +24,8 @@
 #     region = "eu-west-1"
 #   }
 #
-# `terraform {}` blokları dosyalar arası birleşir; required_providers/version
-# main.tf'te. `backend`/`cloud` yalnızca BİR kez görünebilir.
+# `terraform {}` blocks are merged across files; required_providers/version are in
+# main.tf. `backend`/`cloud` may appear only ONCE.
 # =============================================================================
 
 terraform {

@@ -1,12 +1,13 @@
 # =============================================================================
-# Repository Modülü — Girdiler
+# Repository Module — Inputs
 # =============================================================================
-# Bu modülün girdileri config/organization.yml şemasını birebir yansıtır.
-# Amaç: dashboard'un ürettiği veri, dönüşüm gerektirmeden modüle akabilsin.
-# Bkz. ACCESS-MODEL.md
+# This module's inputs mirror the config/organization.yml schema exactly.
+# Goal: the data the dashboard produces can flow into the module without any
+# transformation.
+# See ACCESS-MODEL.md
 # =============================================================================
 
-# --- Kimlik ---------------------------------------------------------------
+# --- Identity -------------------------------------------------------------
 
 variable "org_name" {
   type        = string
@@ -33,7 +34,7 @@ variable "language" {
   description = "Primary programming language (display metadata; CI auto-detects)"
 }
 
-# --- Repo ayarları --------------------------------------------------------
+# --- Repo settings --------------------------------------------------------
 
 variable "visibility" {
   type        = string
@@ -128,7 +129,7 @@ variable "template_repo" {
   default     = null
 }
 
-# --- Kişiler ve roller ----------------------------------------------------
+# --- People and roles -----------------------------------------------------
 
 variable "mentors" {
   type        = list(string)
@@ -173,7 +174,7 @@ variable "org_admin_team_slug" {
   default     = "platform-admins"
 }
 
-# --- Dal koruma -----------------------------------------------------------
+# --- Branch protection ----------------------------------------------------
 
 variable "protected_branches" {
   type = map(object({
@@ -200,7 +201,7 @@ variable "protected_branches" {
   default     = {}
 }
 
-# --- Etiketler ve sahiplik ------------------------------------------------
+# --- Labels and ownership -------------------------------------------------
 
 variable "labels" {
   type = list(object({
@@ -237,7 +238,7 @@ variable "manage_codeowners_file" {
   default     = true
 }
 
-# --- Şablon dağıtımı -------------------------------------------------------
+# --- Template distribution -------------------------------------------------
 
 variable "files" {
   type        = map(string)

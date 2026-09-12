@@ -1,29 +1,29 @@
 # =============================================================================
-# Organizasyon Ayarları
+# Organization Settings
 # =============================================================================
-# ⚠️ DİKKAT — `github_organization_settings` TEK BİR ALANI değil, organizasyonun
-# AYAR NESNESİNİN TAMAMINI yönetir (~25 alan: fatura e-postası, üye izinleri,
-# proje ayarları, güvenlik varsayılanları...).
+# ⚠️ CAUTION — `github_organization_settings` does not manage A SINGLE FIELD, but
+# the organization's ENTIRE SETTINGS OBJECT (~25 fields: billing email, member
+# permissions, project settings, security defaults...).
 #
-# Bu yüzden "sadece default_repository_permission'ı yönetelim" diye eklenemez.
-# İzlenen sıra:
-#   1. `import` bloğu ile mevcut ayarlar state'e alınır
-#   2. `plan` çalıştırılır — provider varsayılanı ile gerçek arasındaki HER fark görünür
-#   3. Config gerçeğe göre doldurulur; yalnızca bilerek değiştirdiğimiz alan farklı kalır
-#   4. Ancak o zaman apply edilir
+# For this reason it cannot be added just to "manage only default_repository_permission".
+# The sequence followed:
+#   1. Existing settings are pulled into state with an `import` block
+#   2. `plan` is run — EVERY difference between the provider default and reality is shown
+#   3. Config is filled in to match reality; only the field we intentionally change stays different
+#   4. Only then is it applied
 #
-# 1–2. adımlar 2026-08-18'de yapıldı. Sonuçlar aşağıda. 3. adım TEK BİR ALAN
-# yüzünden bloklu; bu yüzden blok şimdilik yorumda (bkz. "Neden bloklu").
+# Steps 1–2 were done on 2026-08-18. The results are below. Step 3 is blocked
+# because of A SINGLE FIELD; that is why the block is commented out for now (see "Why blocked").
 #
 # -----------------------------------------------------------------------------
-# Plan'ın ortaya çıkardığı gerçek durum (import id = 313128349)
+# The real state that plan revealed (import id = 313128349)
 # -----------------------------------------------------------------------------
-# Sadece iki alan değişiklik olarak göründü; geri kalan ~23 alan provider
-# tarafından GitHub'dan okundu ve config'de yazılmadıkları için OLDUĞU GİBİ kalıyor
-# (Terraform'da optional+computed alanların davranışı budur). Yani korkulan
-# "hepsi varsayılana döner" senaryosu gerçekleşmiyor — tek istisna aşağıdaki.
+# Only two fields showed up as changes; the remaining ~23 fields were read from
+# GitHub by the provider and, because they are not written in the config, stay AS THEY ARE
+# (this is the behavior of optional+computed fields in Terraform). So the feared
+# "everything reverts to defaults" scenario does not happen — the only exception is below.
 #
-# Yan ürün: import, daha önce hiç görmediğimiz org güvenlik duruşunu gösterdi.
+# Side effect: the import revealed the org security posture we had never seen before.
 #
 #   advanced_security_enabled_for_new_repositories               = false
 #   dependabot_alerts_enabled_for_new_repositories               = false
@@ -32,56 +32,57 @@
 #   secret_scanning_enabled_for_new_repositories                 = false
 #   secret_scanning_push_protection_enabled_for_new_repositories = false
 #
-#   → Org düzeyinde HİÇBİR güvenlik varsayılanı açık değil. Yeni açılan her repo
-#     sıfır güvenlik özelliğiyle doğuyor. Faz 6'nın "repo güvenlik ayarları"
-#     maddesi bunları repo bazında açacak; org varsayılanı olarak açmak ise
-#     buradan tek satırla yapılabilir hale geldi.
+#   → NO security default is enabled at the org level. Every newly created repo is
+#     born with zero security features. Phase 6's "repo security settings" item
+#     will enable these on a per-repo basis; enabling them as the org default has
+#     now become possible from here with a single line.
 #
 #   members_can_create_public_repositories = true
 #   members_can_create_repositories        = true
 #
-#   → Herhangi bir org üyesi PUBLIC repo açabiliyor. Kod sızıntısı için en kısa yol
-#     bu; `default_repository_permission = none` bunu KAPATMAZ (farklı eksen).
-#     Ayrı bir karar gerekiyor — ROADMAP Faz 6'ya madde olarak eklendi.
+#   → Any org member can create a PUBLIC repo. This is the shortest path to a code
+#     leak; `default_repository_permission = none` does NOT close this (a different axis).
+#     A separate decision is needed — added as an item to ROADMAP Phase 6.
 #
-#   members_can_fork_private_repositories  = false   ✅ (istenen durum)
+#   members_can_fork_private_repositories  = false   ✅ (desired state)
 #   web_commit_signoff_required            = false
 #
 # -----------------------------------------------------------------------------
-# `billing_email` — neden elle yazıldı
+# `billing_email` — why it was written by hand
 # -----------------------------------------------------------------------------
-# Provider şemasında REQUIRED, atlanamıyor (denendi: "The argument billing_email
+# It is REQUIRED in the provider schema, cannot be omitted (tried: "The argument billing_email
 # is required, but no definition was found").
 #
-# Ama import sonrası plan onu `+` (yeni ekleniyor) olarak gösterdi — yani Terraform
-# mevcut değeri BOŞ okudu; GitHub App token'ı bu alanı okuyamıyor. Yazma yetkisi
-# ise var. Yanlış bir değerle apply edilseydi org'un fatura e-postası sessizce
-# değişirdi. Bu yüzden değer TAHMİN EDİLMEDİ, arayüzden okunup buraya yazıldı.
+# But after the import, plan showed it as `+` (being newly added) — meaning Terraform
+# read the existing value as EMPTY; the GitHub App token cannot read this field. It
+# does have write permission, however. Had it been applied with a wrong value, the
+# org's billing email would have silently changed. That is why the value was NOT GUESSED,
+# but read from the UI and written here.
 #
-# ⚠️ Provider bu alanı okuyamadığı için Terraform onun DRIFT'İNİ DE GÖREMEZ.
-# Arayüzden değiştirilirse plan sessiz kalır ve bir sonraki apply buradaki değeri
-# geri yazar. Yani bu satır bir "kayıt" değil, tek doğruluk kaynağıdır — arayüzden
-# değiştirilecekse önce burası güncellenmeli.
+# ⚠️ Because the provider cannot read this field, Terraform CANNOT SEE ITS DRIFT either.
+# If it is changed via the UI, plan stays silent and the next apply writes back the value
+# here. So this line is not a "record" but the single source of truth — if it is going to
+# be changed via the UI, here must be updated first.
 #
 # -----------------------------------------------------------------------------
-# Gereken App izni — `Organization → Administration: Read and write`
+# Required App permission — `Organization → Administration: Read and write`
 # -----------------------------------------------------------------------------
-# İlk apply denemesi (2026-08-18) şununla patladı:
+# The first apply attempt (2026-08-18) blew up with:
 #
 #   Error: PATCH https://api.github.com/orgs/your-org:
 #          403 Resource not accessible by integration
 #
-# Sebep: App'te `Repository → Administration: write` VARDI ama org ayarları için
-# gereken izin O DEĞİL. GitHub bunları ayrı tutuyor:
+# Reason: the App HAD `Repository → Administration: write` but that is NOT the permission
+# needed for org settings. GitHub keeps these separate:
 #
-#   administration               → repo ayarları, branch protection    (vardı)
-#   organization_administration  → org ayarları, base permission       (yoktu)
+#   administration               → repo settings, branch protection    (had it)
+#   organization_administration  → org settings, base permission       (did not)
 #
-# Bu, `Issues` ve `Workflows` 403'lerinin ÜÇÜNCÜSÜ — üçünde de sebep aynı: geniş
-# sanılan bir izin GitHub tarafında daha dar tanımlanmış. Yeni bir kaynak türüne
-# ilk kez dokunulurken bu 403 beklenmeli.
+# This is the THIRD of the `Issues` and `Workflows` 403s — the cause is the same in all
+# three: a permission assumed to be broad is defined more narrowly on GitHub's side. Expect
+# this 403 when touching a new resource type for the first time.
 #
-# İzin verildi, ikinci apply geçti. Durum: `plan` temiz.
+# Permission was granted, the second apply passed. Status: `plan` is clean.
 # =============================================================================
 
 data "github_organization" "this" {
@@ -94,98 +95,99 @@ import {
 }
 
 resource "github_organization_settings" "this" {
-  # Fatura e-postası artık koddan değil, dışarıdan (HCP değişkeni
-  # TF_VAR_billing_email) geliyor — kişisel bir adres repoya yazılmaz.
-  # ⚠️ Provider'da bu alan ZORUNLU (null olamaz). Değer HCP'de set edilmezse boş
-  # string apply edilir; apply öncesi TF_VAR_billing_email HCP'de ayarlanmalı.
-  # Geçmiş kayıt: 2026-08-18'e kadar bu adres ayrılan ekip üyesineydi; offboarding'de
-  # üç gün gözden kaçtı. O yüzden yönetime alındı — ama değeri artık HCP'de yaşıyor.
+  # The billing email now comes not from the code but from the outside (HCP variable
+  # TF_VAR_billing_email) — a personal address is not written into the repo.
+  # ⚠️ This field is REQUIRED in the provider (cannot be null). If the value is not set
+  # in HCP, an empty string is applied; TF_VAR_billing_email must be set in HCP before apply.
+  # Historical note: until 2026-08-18 this address belonged to a departed team member; during
+  # offboarding it was overlooked for three days. That is why it was brought under management —
+  # but its value now lives in HCP.
   billing_email = var.billing_email
 
-  # billing_email boşsa (TF_VAR_billing_email set edilmemişse) org'un GERÇEK
-  # e-postasını EZMESİN. Alan provider'da zorunlu (atlanamıyor), ama ignore_changes
-  # ile Terraform bu alandaki farkı yok sayar → GitHub UI'daki değer korunur.
-  # "Empty = leave unmanaged" niyeti ancak böyle GERÇEKTEN sağlanır.
-  # Not: değeri yönetmek istersen var'ı doldur + bu bloğu kaldır. Eğer daha önce
-  # boş apply ile silinmişse, önce UI'dan bir kez doğru değeri gir; sonrası korunur.
+  # If billing_email is empty (TF_VAR_billing_email not set), do NOT OVERWRITE the org's REAL
+  # email. The field is required in the provider (cannot be omitted), but with ignore_changes
+  # Terraform disregards the diff on this field → the value in the GitHub UI is preserved.
+  # The "empty = leave unmanaged" intent is only TRULY achieved this way.
+  # Note: if you want to manage the value, fill in the var + remove this block. If it was
+  # previously deleted by an empty apply, first enter the correct value once in the UI; after
+  # that it is preserved.
   lifecycle {
     ignore_changes = [billing_email]
   }
 
-  # --- Org profili (GitHub UI'da görünen) -----------------------------------
-  # Bu alanlar UI'dan elle girilmişti; config yönetmediği sürece Terraform her
-  # apply'da onları SİLMEYE çalışıyordu. Config'e alarak yönetime sokuyoruz —
-  # artık config ne derse o. (Rebrand'de değerler burada değişir.)
-  # `try(..., null)`: profile bölümü yoksa alan yönetilmez gibi null kalır.
+  # --- Org profile (visible in the GitHub UI) --------------------------------
+  # These fields had been entered by hand in the UI; as long as the config did not manage them,
+  # Terraform tried to DELETE them on every apply. By bringing them into the config we put them
+  # under management — now whatever the config says goes. (During a rebrand the values change here.)
+  # `try(..., null)`: if there is no profile section, the field stays null as if unmanaged.
   name        = try(local.org_config.profile.name, null)
   description = try(local.org_config.profile.description, null)
   blog        = try(local.org_config.profile.blog, null)
   location    = try(local.org_config.profile.location, null)
 
-  # Bugüne kadar `read` — yani org'a eklenen herkes, hiçbir takımda olmasa bile
-  # bütün repo'ları okuyabiliyordu. `none` ile erişimin tek kaynağı takım
-  # üyeliği olur (ROADMAP Faz 6 / ACCESS-MODEL en az yetki ilkesi).
+  # Until now `read` — meaning everyone added to the org, even if on no team, could read all
+  # repos. With `none` the only source of access becomes team membership (ROADMAP Phase 6 /
+  # ACCESS-MODEL least-privilege principle).
   #
-  # ⚠️ Bunu daraltmak SESSİZ bir işlem değil, bir ERİŞİM KALDIRMA işlemidir.
-  # 2026-08-18'de uygulandığında `medine2906` iki pilot repo'yu görmeyi kaybetti —
-  # oralara erişimi org varsayılanından geliyordu. Beklenen davranış, ama bedeli
-  # bir insana düşüyor. Bu değer bir daha daraltılacaksa önce "bu varsayılana kim
-  # bağımlı?" sorusu cevaplanmalı; apply'dan sonra değil, önce.
+  # ⚠️ Narrowing this is not a SILENT operation, it is an ACCESS REMOVAL operation.
+  # When applied on 2026-08-18, `medine2906` lost visibility of two pilot repos — their access
+  # there came from the org default. Expected behavior, but the cost falls on a person. If this
+  # value is going to be narrowed again, the question "who depends on this default?" must be
+  # answered first; before the apply, not after.
   default_repository_permission = "none"
 
-  # --- Repo açma yetkisi ----------------------------------------------------
-  # 2026-08-18 import'unda `members_can_create_public_repositories = true` çıktı:
-  # herhangi bir org üyesi PUBLIC repo açabiliyordu. Kod sızıntısı için en kısa yol.
+  # --- Repo creation permission ---------------------------------------------
+  # The 2026-08-18 import showed `members_can_create_public_repositories = true`:
+  # any org member could create a PUBLIC repo. The shortest path to a code leak.
   #
-  # ⚠️ GitHub "sadece mentörler açabilsin" DİYEMİYOR. Org düzeyinde repo açma yetkisi
-  # ikili: ya tüm üyeler, ya yalnızca ORG OWNER'lar. Takım bazlı ara kademe yok.
+  # ⚠️ GitHub CANNOT say "only mentors may create". At the org level, repo creation permission
+  # is binary: either all members, or only ORG OWNERs. There is no team-based middle tier.
   #   → https://docs.github.com/en/organizations/managing-organization-settings/restricting-repository-creation-in-your-organization
   #   → https://docs.github.com/en/organizations/managing-peoples-access-to-your-organization-with-roles/roles-in-an-organization
   #
-  # `false` = yalnızca org owner. Bugün tek owner `uslanozan` olduğu için "sadece
-  # mentör" ile aynı sonucu veriyor, ama owner OLMAYAN bir mentör gelirse repo
-  # açamayacak — bu kabul edilen bir sınırlama, çünkü asıl kural şu:
+  # `false` = only org owners. Since today the only owner is `uslanozan`, this gives the same
+  # result as "only mentors", but if a mentor who is NOT an owner joins, they will not be able
+  # to create a repo — this is an accepted limitation, because the real rule is this:
   #
-  #   Repo'lar config'den doğar, insan elinden değil. `config/repositories/*.yml`
-  #   içine bir dosya eklenir, PR açılır, apply repo'yu yaratır. Elle repo açmak
-  #   zaten kaçak bir yol; kapatılması modeli bozmuyor, tersine zorluyor.
+  #   Repos are born from config, not from a human's hand. A file is added into
+  #   `config/repositories/*.yml`, a PR is opened, apply creates the repo. Creating a repo by
+  #   hand is a rogue path anyway; closing it does not break the model, it enforces it.
   #
-  # 🚨 "Mentörü org owner yapalım" ÇÖZÜMÜNÜN BEDELİ — küçük değil:
-  # Org owner olmak repo açma yetkisi vermez, ORG'DAKİ HER ŞEYE tam yetki verir:
-  # her repo'da admin, her korumalı dalda muaf (Karar E ile `enforce_admins = false`),
-  # üye ekleme/çıkarma, org ayarlarını değiştirme, repo silme.
-  # 2026-08-15'te yaşadığımız olayın kökü tam olarak buydu.
+  # 🚨 THE COST OF THE "let's make the mentor an org owner" SOLUTION — not small:
+  # Being an org owner does not grant repo creation permission, it grants full authority over
+  # EVERYTHING IN THE ORG: admin on every repo, exempt on every protected branch (with Decision E,
+  # `enforce_admins = false`), adding/removing members, changing org settings, deleting repos.
+  # The root of the incident we had on 2026-08-15 was exactly this.
   #
-  # Yani "repo açabilsin diye owner yapmak", bir kapıyı açmak için duvarı yıkmaktır.
-  # Owner sayısı bilinçli tutulmalı (ACCESS-MODEL: azami 3 civarı) ve owner'lık
-  # repo açma ihtiyacından DEĞİL, org yönetimi ihtiyacından verilmelidir.
-  # Kim owner'sa `terraform output branch_protection_bypass` içinde görünür.
+  # So "making someone an owner just so they can create a repo" is tearing down the wall to open
+  # a door. The number of owners must be kept deliberate (ACCESS-MODEL: at most around 3) and
+  # ownership must be granted NOT from the need to create repos, but from the need to administer
+  # the org. Whoever is an owner shows up in `terraform output branch_protection_bypass`.
   #
-  # ⚠️ DOĞRULANMADI: Bu ayar GitHub App'i etkilemiyor olmalı — App org ÜYESİ değil,
-  # kurulu bir entegrasyon. Ama canlı test edilmedi. Eğer Terraform'un yeni repo
-  # yaratması bundan sonra `403` verirse sebebi budur; o durumda bu üç satır geri
-  # alınır. Bir sonraki repo yaratımı bu yüzden dikkatle izlenmeli.
+  # ⚠️ NOT VERIFIED: This setting should not affect the GitHub App — the App is not an org MEMBER,
+  # but an installed integration. But it has not been tested live. If Terraform creating a new repo
+  # returns `403` after this, that is the reason; in that case these three lines are reverted. The
+  # next repo creation should therefore be watched carefully.
   members_can_create_repositories         = false
   members_can_create_public_repositories  = false
   members_can_create_private_repositories = false
 
-  # --- Yeni repo'lar için güvenlik varsayılanları --------------------------
-  # 2026-08-18 import'unda ALTISI DA `false` çıktı — yani config'den açılan her
-  # yeni repo sıfır güvenlik özelliğiyle doğuyordu. Modüldeki repo bazlı ayarlar
-  # (`vulnerability_alerts`, `secret_scanning`) mevcut repo'ları kapsıyor; buradaki
-  # değerler ise HENÜZ VAR OLMAYAN repo'ları. İkisi farklı zaman dilimini koruyor,
-  # biri diğerinin yerine geçmez.
+  # --- Security defaults for new repos --------------------------------------
+  # In the 2026-08-18 import ALL SIX came out `false` — meaning every new repo created from config
+  # was born with zero security features. The per-repo settings in the module
+  # (`vulnerability_alerts`, `secret_scanning`) cover EXISTING repos; the values here cover repos
+  # that DO NOT YET EXIST. The two protect different time windows, one does not replace the other.
   dependabot_alerts_enabled_for_new_repositories           = true
   dependabot_security_updates_enabled_for_new_repositories = true
   dependency_graph_enabled_for_new_repositories            = true
 
-  # ⚠️ Secret scanning org varsayılanı yalnızca PUBLIC repo'lara uygulanır;
-  # private repo'lar GHAS ister. Org ayarı olarak açmak private repo yaratmayı
-  # engellemez, o repo'da özellik açılmaz.
+  # ⚠️ The secret scanning org default applies only to PUBLIC repos; private repos require GHAS.
+  # Enabling it as an org setting does not prevent creating a private repo, the feature just is not
+  # enabled on that repo.
   secret_scanning_enabled_for_new_repositories                 = true
   secret_scanning_push_protection_enabled_for_new_repositories = true
 
-  # advanced_security → GHAS (Enterprise) lisansı gerektirir. Bilerek `false`.
-  # Team planına geçilirse (ROADMAP Faz 7) yeniden değerlendirilecek.
+  # advanced_security → requires a GHAS (Enterprise) license. Deliberately `false`.
+  # To be reconsidered if we move to the Team plan (ROADMAP Phase 7).
   advanced_security_enabled_for_new_repositories = false
 }

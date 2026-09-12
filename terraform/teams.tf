@@ -1,40 +1,42 @@
 # =============================================================================
-# Organizasyon Seviyesi Takımlar
+# Organization-Level Teams
 # =============================================================================
-# Rol tabanlı modelde yetki, repo başına üretilen `<repo>-mentors` ve `<repo>-devs`
-# takımlarından gelir (bkz. terraform/modules/repository). Organizasyon seviyesinde
-# yalnızca tek bir takım gereklidir.
+# In the role-based model, permission comes from the per-repo `<repo>-mentors` and
+# `<repo>-devs` teams (see terraform/modules/repository). At the organization level
+# only a single team is needed.
 #
-# Disiplin takımları (backend/frontend/devops), tech-leads, interns-* ve
-# external-collaborators kaldırıldı — bkz. ACCESS-MODEL.md, Karar 12.
+# Discipline teams (backend/frontend/devops), tech-leads, interns-* and
+# external-collaborators were removed — see ACCESS-MODEL.md, Decision 12.
 #
-# İleride disiplin takımları geri istenirse ETİKET olarak eklenebilir, ancak repo
-# yetkisi VERİLMEDEN. GitHub bir kişiye birden fazla takım üzerinden erişim
-# verildiğinde en yüksek yetkiyi uygular; yetki verilirse en az yetki ilkesi
-# sessizce delinir.
+# If discipline teams are wanted back in the future, they can be added as LABELS, but
+# WITHOUT granting repo permission. When a person is given access through more than
+# one team, GitHub applies the highest permission; if permission is granted, the
+# least-privilege principle is silently pierced.
 # =============================================================================
 
-# head-of-engineering rolünün teknik karşılığı.
+# The technical counterpart of the head-of-engineering role.
 #
-# TAŞIYICI KAYNAK — silinemez. Modül bu takımı `data "github_team"` ile arıyor ve
-# her repo'ya admin erişimi veriyor (`github_team_repository.org_admins`). Ayrıca
-# branch protection'daki `push_allowed_roles: [head-of-engineering]` bu takıma
-# çözümleniyor. Silinirse apply hata verir ve mentörlerin push izni de çöker.
+# CARRIER RESOURCE — cannot be deleted. The module looks this team up with
+# `data "github_team"` and grants it admin access to every repo
+# (`github_team_repository.org_admins`). Also, `push_allowed_roles: [head-of-engineering]`
+# in branch protection resolves to this team. If it is deleted, apply fails and the
+# mentors' push permission collapses too.
 resource "github_team" "platform_admins" {
   name        = "platform-admins"
   description = "Platform Administrators - carries the head-of-engineering role"
   privacy     = "closed"
 
-  # --- `people` bölümünün doğrulaması ---------------------------------------
-  # Kurallar people.tf'e ait ama precondition burada duruyor, çünkü bu kaynak
-  # TEKİL ve her zaman var: `github_membership.people` bir `for_each` ve config
-  # boşsa hiç örneği olmaz — o zaman doğrulama da hiç çalışmazdı. Tekil bir
-  # kaynağa bağlamak, kuralın her plan'da işlemesini garanti ediyor.
+  # --- Validation of the `people` section -----------------------------------
+  # The rules belong to people.tf, but the precondition sits here because this
+  # resource is SINGULAR and always exists: `github_membership.people` is a `for_each`
+  # and has no instance if config is empty — in which case the validation would never
+  # run either. Attaching it to a singular resource guarantees the rule runs on every
+  # plan.
   #
-  # Ayrıca anlamlı: bu takım head-of-engineering rolünün taşıyıcısı, yani org
-  # kapsamlı rollerin doğru yere yazıldığını denetlemek tam olarak onun işi.
+  # It is also meaningful: this team is the carrier of the head-of-engineering role,
+  # so auditing that org-scoped roles are written in the right place is exactly its job.
   lifecycle {
-    precondition { #! plan aşamasında çalışıp hatalı config'i durduruyor.
+    precondition { #! runs at the plan stage and stops a bad config.
       condition = length(local.privileged_invalid_roles) == 0
       error_message = join(" ", [
         "config/privileged.yml -> `roles` may only carry ORGANIZATION-SCOPED roles",

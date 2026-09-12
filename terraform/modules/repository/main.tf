@@ -1,24 +1,24 @@
 # =============================================================================
-# Repository Modülü — Ana tanım
+# Repository Module — Main definition
 # =============================================================================
-# Tek bir repo'nun tüm yaşam döngüsünü kurar:
-#   repo → dallar → takımlar → üyelikler → label'lar → CODEOWNERS → dal koruması
+# Sets up the entire lifecycle of a single repo:
+#   repo → branches → teams → memberships → labels → CODEOWNERS → branch protection
 #
-# Kaynaklar arasındaki sıralamayı Terraform bağımlılık grafiğinden kendi çıkarır;
-# burada elle bir sıra tanımlanmaz.
+# Terraform derives the ordering between resources from its dependency graph;
+# no manual order is defined here.
 # =============================================================================
 
 locals {
-  # Rol adı → branch protection'ın anladığı aktör biçimi.
-  # Kullanıcılar "/kullanici", takımlar "org/takim-slug" biçiminde yazılır.
+  # Role name → the actor form that branch protection understands.
+  # Users are written as "/user", teams as "org/team-slug".
   role_actors = {
     "mentor"              = "${var.org_name}/${github_team.mentors.slug}"
     "developer"           = "${var.org_name}/${github_team.developers.slug}"
     "head-of-engineering" = "${var.org_name}/${var.org_admin_team_slug}"
   }
 
-  # Arşivlenmiş repo'da GitHub yazma işlemlerine izin vermez; koruma, label ve
-  # dosya senkronizasyonu bu durumda devre dışı bırakılır.
+  # GitHub does not allow write operations on an archived repo; protection, label
+  # and file synchronization are disabled in that case.
   active = !var.archived
 
   codeowners_content = join("\n", concat(
@@ -37,15 +37,15 @@ locals {
     [""],
   ))
 
-  # --- Şablon dağıtımı -----------------------------------------------------
+  # --- Template distribution -----------------------------------------------
 
-  # Şablon ağacı hedef ağacı birebir yansıtır: templates/CONTRIBUTING.md dosyası
-  # repo'da CONTRIBUTING.md olur. Bu yüzden ayrı bir "kaynak → hedef" eşlemesi
-  # yok; anahtar hem şablondaki hem repo'daki yoldur.
+  # The template tree mirrors the target tree exactly: the templates/CONTRIBUTING.md
+  # file becomes CONTRIBUTING.md in the repo. That is why there is no separate
+  # "source → target" mapping; the key is the path in both the template and the repo.
   #
-  # Katalog config'de değil burada: config'de dosya yolu yazmak, şablon ağacı her
-  # değiştiğinde config'e dokunmayı gerektirirdi. Config yalnızca "hangi grup,
-  # hangi modda" der.
+  # The catalog lives here, not in config: writing file paths in config would
+  # require touching config every time the template tree changes. Config only says
+  # "which group, in which mode".
   templates_root = "${path.module}/../../templates"
 
   file_catalog = {
@@ -59,7 +59,7 @@ locals {
     ".github/ISSUE_TEMPLATE/config.yml"          = "issue_templates"
   }
 
-  # Repo yolu → mod. "none" olanlar ve arşiv repo'lar elenir.
+  # Repo path → mode. Those set to "none" and archived repos are filtered out.
   managed_files = local.active ? {
     for repo_path, group in local.file_catalog :
     repo_path => lookup(var.files, group, "none")
@@ -68,7 +68,7 @@ locals {
 
   seed_paths = toset([for p, mode in local.managed_files : p if mode == "seed"])
 
-  # Workflow'lar daima strict — yönetişim dosyası (ROADMAP.md K1).
+  # Workflows are always strict — governance files (ROADMAP.md K1).
   workflow_paths = local.active ? toset([
     for name in var.workflows : ".github/workflows/${name}.yml"
   ]) : toset([])
@@ -91,10 +91,10 @@ resource "github_repository" "this" {
   has_projects = var.has_projects
   has_wiki     = var.has_wiki
 
-  # Default branch'in var olabilmesi için repo'nun ilk commit ile doğması gerekir.
+  # For the default branch to exist, the repo must be born with an initial commit.
   auto_init = var.auto_init
 
-  # Merge stratejisi docs/branching-strategy.md ile hizalıdır:
+  # The merge strategy is aligned with docs/branching-strategy.md:
   # feature → develop squash, release/hotfix → main merge commit.
   allow_squash_merge     = true
   allow_merge_commit     = true
@@ -109,20 +109,22 @@ resource "github_repository" "this" {
     }
   }
 
-  # --- Güvenlik ---
-  # NOT: `vulnerability_alerts` alanı burada DEĞİL — provider onu deprecate etti
-  # ("Use the github_repository_vulnerability_alerts resource instead"). Ayrı kaynak
-  # olarak aşağıda tanımlı.
+  # --- Security ---
+  # NOTE: the `vulnerability_alerts` field is NOT here — the provider deprecated it
+  # ("Use the github_repository_vulnerability_alerts resource instead"). It is defined
+  # as a separate resource below.
   #
-  # Secret scanning YALNIZCA public repo'da ücretsiz; private repo GHAS (Enterprise)
-  # ister ve API `422` döner. Bu yüzden koşul `visibility`'yi de içeriyor —
-  # config'de `true` yazan bir private repo apply'ı patlatmasın, sessizce atlansın.
+  # Secret scanning is free ONLY on public repos; a private repo requires GHAS
+  # (Enterprise) and the API returns `422`. That is why the condition also includes
+  # `visibility` — so a private repo with `true` in config does not blow up the apply
+  # but is skipped silently.
   #
-  # Sessiz atlama normalde kötü bir kalıptır; burada kabul edilebilir olmasının
-  # sebebi kararın config'e değil PLANA bağlı olması — kullanıcı yanlış bir şey
-  # yazmıyor, GitHub o repo türünde bu özelliği vermiyor.
+  # Silent skipping is normally a bad pattern; the reason it is acceptable here is
+  # that the decision depends on the PLAN, not on config — the user is not writing
+  # anything wrong, GitHub simply does not offer this feature on that repo type.
   #
-  # `advanced_security` bilerek yok: public'te örtük açık, private'ta lisans ister.
+  # `advanced_security` is deliberately absent: implicitly on for public, requires a
+  # license for private.
   dynamic "security_and_analysis" {
     for_each = (var.secret_scanning && var.visibility == "public" && !var.archived) ? [1] : []
 
@@ -137,24 +139,25 @@ resource "github_repository" "this" {
   }
 
   lifecycle {
-    # Config'den bir repo satırının yanlışlıkla silinmesi repo'yu yok etmemeli.
-    # Gerçekten silmek gerekirse bu bloğun bilinçli olarak kaldırılması gerekir.
-    # Normal kullanımda silme yerine `archived: true` tercih edilir.
+    # Accidentally deleting a repo line from config must not destroy the repo.
+    # If it really needs to be deleted, this block must be removed deliberately.
+    # In normal use, `archived: true` is preferred over deletion.
     prevent_destroy = true
   }
 }
 
-# --- Dependabot zafiyet uyarıları -------------------------------------------
-# `github_repository` üzerindeki `vulnerability_alerts` alanı provider tarafından
-# deprecate edildi ve ileride kaldırılacak. Bu kaynak onun yerini alıyor.
+# --- Dependabot vulnerability alerts ----------------------------------------
+# The `vulnerability_alerts` field on `github_repository` was deprecated by the
+# provider and will be removed in the future. This resource takes its place.
 #
-# 2026-08-18'de config'e alındığında bu repo'da KAPALI çıktı — kontrol düzleminin
-# kendisi aylardır zafiyet uyarısı almıyormuş. Sebep: bu repo Terraform'dan önce
-# elle açılmıştı, pilot repo'lar modülden doğdu. Elle kurulan hiçbir şeyin
-# denetlenmediğinin somut kanıtı.
+# When it was brought into config on 2026-08-18, it turned out to be OFF on this
+# repo — the control plane itself had not been receiving vulnerability alerts for
+# months. The reason: this repo was created by hand before Terraform, while the
+# pilot repos were born from the module. Concrete proof that nothing set up by hand
+# gets audited.
 #
-# Arşiv repo hariç tutuluyor: GitHub arşivlenmiş repo'nun ayarlarını salt okunur
-# yapar, apply hata verir.
+# Archived repos are excluded: GitHub makes an archived repo's settings read-only,
+# and apply would fail.
 resource "github_repository_vulnerability_alerts" "this" {
   count = local.active ? 1 : 0
 
@@ -162,9 +165,9 @@ resource "github_repository_vulnerability_alerts" "this" {
   enabled    = var.vulnerability_alerts
 }
 
-# --- Dallar ----------------------------------------------------------------
+# --- Branches --------------------------------------------------------------
 
-# auto_init "main" dalını oluşturur; varsayılan dal farklıysa onu ayrıca açarız.
+# auto_init creates the "main" branch; if the default branch differs, we create it separately.
 resource "github_branch" "default" {
   count = var.default_branch == "main" ? 0 : 1
 
@@ -180,9 +183,9 @@ resource "github_branch_default" "this" {
   branch     = github_branch.default[0].branch
 }
 
-# --- Takımlar --------------------------------------------------------------
-# Yetki kişiye değil takıma verilir. Kişi projeden ayrıldığında tek üyelik
-# silinir ve tüm erişimi sona erer.
+# --- Teams -----------------------------------------------------------------
+# Permission is granted to a team, not to a person. When a person leaves the
+# project, a single membership is removed and all their access ends.
 
 resource "github_team" "mentors" {
   name        = "${var.name}-mentors"
@@ -202,25 +205,26 @@ resource "github_team" "viewers" {
   privacy     = "closed"
 }
 
-# head-of-engineering rolü organizasyon geneli kapsama sahiptir: her repo'da
-# admin yetkisi bulunur. Bu erişim aynı zamanda teknik bir zorunluluktur:
-# GitHub, bir takımı branch protection'ın push izin listesine ancak takımın
-# repo'ya erişimi varsa kabul eder. Aşağıdaki collaborators kaynağı bu erişimi de
-# sağlar (org_admins team bloğu).
+# The head-of-engineering role has organization-wide scope: it holds admin
+# permission on every repo. This access is also a technical necessity: GitHub only
+# accepts a team into branch protection's push allow-list if the team has access to
+# the repo. The collaborators resource below provides that access too (the org_admins
+# team block).
 data "github_team" "org_admins" {
   slug = var.org_admin_team_slug
 }
 
-# --- Erişim: OTORİTER collaborator seti ------------------------------------
-# Repo erişimi YALNIZCA takımlardan gelir; bu kaynak repo'nun collaborator + team
-# listesinin TEK ve TAM kaynağıdır (authoritative). Config'te (yani bu takımlarda)
-# olmayan HER doğrudan (direct) kullanıcı grant'i apply'da SİLİNİR — "config'ten
-# çıkar = erişim gerçekten gider" vaadini sağlayan budur. Doğrudan collaborator
-# eklemek modeli delen bir arka kapıydı (bkz. 2026-09-09 erişim testi); kapatıldı.
+# --- Access: AUTHORITATIVE collaborator set --------------------------------
+# Repo access comes ONLY from teams; this resource is the SINGLE and COMPLETE
+# (authoritative) source of the repo's collaborator + team list. EVERY direct user
+# grant not in config (i.e. not in these teams) is REMOVED on apply — this is what
+# delivers the promise "remove from config = access truly goes away". Adding a direct
+# collaborator was a back door that pierced the model (see the 2026-09-09 access test);
+# it was closed.
 #
-# ⚠️ Arşivlenmiş repo GitHub'da read-only olur; collaborator değiştirilemez. Bu
-# yüzden yalnızca AKTİF repolarda yönetilir (count). Arşivli repo zaten kimsenin
-# yazamadığı dondurulmuş bir durumdur.
+# ⚠️ An archived repo becomes read-only on GitHub; collaborators cannot be changed.
+# That is why this is managed only on ACTIVE repos (count). An archived repo is
+# already a frozen state that nobody can write to.
 resource "github_repository_collaborators" "this" {
   count      = local.active ? 1 : 0
   repository = github_repository.this.name
@@ -270,16 +274,16 @@ resource "github_team_membership" "viewers" {
   role     = "member"
 }
 
-# --- Label'lar -------------------------------------------------------------
-# Tekil `github_issue_label` yerine çoğul `github_issue_labels` kullanılır.
+# --- Labels ----------------------------------------------------------------
+# The plural `github_issue_labels` is used instead of the singular `github_issue_label`.
 #
-# Sebep: GitHub yeni bir repo açarken kendi varsayılan label'larını da oluşturur
+# Reason: when GitHub creates a new repo it also creates its own default labels
 # (bug, documentation, enhancement, good first issue, help wanted, question...).
-# Tekil kaynak her label için "oluştur" çağrısı yaptığından bu isimlerle çakışıp
-# 422 already_exists hatası verir. Çoğul kaynak ise repo'nun label setinin
-# tamamını yönetir: mevcutları günceller, eksikleri ekler, listede olmayanları
-# siler. Böylece her repo aynı standart sete sahip olur ve GitHub'ın varsayılan
-# label'ları temizlenir.
+# Since the singular resource issues a "create" call for each label, it collides with
+# those names and returns a 422 already_exists error. The plural resource, on the
+# other hand, manages the repo's entire label set: it updates existing ones, adds
+# missing ones, and deletes those not in the list. This way every repo has the same
+# standard set and GitHub's default labels are cleaned up.
 
 resource "github_issue_labels" "this" {
   count = local.active ? 1 : 0
@@ -296,10 +300,11 @@ resource "github_issue_labels" "this" {
   }
 }
 
-# Tekil kaynaktan çoğul kaynağa geçişte, ilk apply'da oluşmuş olan label'lar
-# state'ten çıkarılır ancak GitHub'dan SİLİNMEZ (destroy = false). Silinselerdi
-# çoğul kaynak onları yeniden oluşturmak zorunda kalır, gereksiz bir sil-yarat
-# turu yaşanırdı. Çoğul kaynak mevcut label'ları olduğu gibi devralır.
+# When migrating from the singular resource to the plural one, the labels created on
+# the first apply are removed from state but are NOT DELETED from GitHub (destroy =
+# false). Were they deleted, the plural resource would have to recreate them, causing
+# an unnecessary delete-create round. The plural resource takes over the existing
+# labels as they are.
 removed {
   from = github_issue_label.this
 
@@ -309,8 +314,8 @@ removed {
 }
 
 # --- CODEOWNERS ------------------------------------------------------------
-# require_code_owner_review ayarı, repo'da bir CODEOWNERS dosyası yoksa hiçbir
-# şey zorlamaz. Bu nedenle dosya konfigürasyondan üretilir.
+# The require_code_owner_review setting enforces nothing if there is no CODEOWNERS
+# file in the repo. For that reason the file is generated from configuration.
 
 resource "github_repository_file" "codeowners" {
   count = local.active && var.manage_codeowners_file ? 1 : 0
@@ -325,28 +330,29 @@ resource "github_repository_file" "codeowners" {
   depends_on = [github_branch.default]
 }
 
-# --- Şablon dağıtımı -------------------------------------------------------
-# İki ayrı kaynak, çünkü `lifecycle` bloğu DİNAMİK OLAMAZ: `ignore_changes`
-# değişkenden gelemez, `for_each` ile moda göre seçilemez. strict/seed ayrımını
-# tek kaynakta yapmanın yolu yok — bu, Terraform'un bilinen bir kısıtıdır.
+# --- Template distribution -------------------------------------------------
+# Two separate resources, because the `lifecycle` block CANNOT BE DYNAMIC:
+# `ignore_changes` cannot come from a variable, nor be selected by mode via
+# `for_each`. There is no way to make the strict/seed distinction in a single
+# resource — this is a known limitation of Terraform.
 #
-# `file()` kullanılıyor, `templatefile()` DEĞİL. Sebep: workflow şablonlarında
-# GitHub Actions ifadeleri var (`${{ matrix.go-version }}` gibi) ve Terraform
-# bunları kendi template sözdizimi sanıp ayrıştırma hatası verir. Şablonlar
-# birebir kopyalanır; değişken enjekte edilmez.
+# `file()` is used, NOT `templatefile()`. Reason: the workflow templates contain
+# GitHub Actions expressions (like `${{ matrix.go-version }}`), and Terraform would
+# mistake these for its own template syntax and raise a parse error. The templates
+# are copied verbatim; no variables are injected.
 #
-# SATIR SONU NORMALİZASYONU — `replace(..., "\r\n", "\n")`
-# Windows'ta `core.autocrlf=true` ile checkout, şablonları CRLF'e çevirir; Linux
-# ve macOS'ta LF kalır. Normalize edilmezse `file()` okuduğu içerik platforma
-# göre değişir ve **apply'ı kimin çalıştırdığına bağlı olarak** her seferinde
-# tüm strict dosyalar "değişti" görünür.
+# LINE-ENDING NORMALIZATION — `replace(..., "\r\n", "\n")`
+# On Windows, a checkout with `core.autocrlf=true` converts the templates to CRLF;
+# on Linux and macOS they stay LF. Without normalization, the content `file()` reads
+# varies by platform, and **depending on who runs the apply** all strict files appear
+# "changed" every time.
 #
-# 2026-08-16'da canlı yaşandı: yalnızca dependabot.yml düzenlenmişken plan
-# 18 dosyada değişiklik gösterdi; diff'in iki tarafı da birebir aynıydı.
-# Bir kontrol düzlemi, çalıştıran makineye göre farklı sonuç üretmemeli.
+# It happened live on 2026-08-16: with only dependabot.yml edited, the plan showed
+# changes in 18 files; both sides of the diff were byte-for-byte identical.
+# A control plane must not produce different results depending on the machine running it.
 
-# strict — Terraform içeriği sahiplenir. Elle yapılan değişiklik bir sonraki
-# apply'da geri alınır. Yönetişim dosyaları ve tüm workflow'lar buradan geçer.
+# strict — Terraform owns the content. A manual change is reverted on the next apply.
+# Governance files and all workflows go through here.
 resource "github_repository_file" "strict" {
   for_each = local.strict_paths
 
@@ -360,8 +366,8 @@ resource "github_repository_file" "strict" {
   depends_on = [github_branch.default]
 }
 
-# seed — yalnızca ilk oluşturmada yazılır. Repo sonrasında içeriği kendine göre
-# değiştirebilir; Terraform bir daha dokunmaz. İçerik dosyaları için.
+# seed — written only on first creation. The repo may then change the content to
+# suit itself; Terraform never touches it again. For content files.
 resource "github_repository_file" "seed" {
   for_each = local.seed_paths
 
@@ -373,14 +379,14 @@ resource "github_repository_file" "seed" {
   overwrite_on_create = true
 
   lifecycle {
-    # Dosya repo'ya devredildi. İçerik sürüklenmesi drift sayılmaz.
+    # The file has been handed over to the repo. Content drift does not count as drift.
     ignore_changes = [content]
   }
 
   depends_on = [github_branch.default]
 }
 
-# --- Dal koruması ----------------------------------------------------------
+# --- Branch protection -----------------------------------------------------
 
 resource "github_branch_protection" "this" {
   for_each = local.active ? var.protected_branches : {}
@@ -388,7 +394,7 @@ resource "github_branch_protection" "this" {
   repository_id = github_repository.this.node_id
   pattern       = each.key
 
-  # false: mentörler (admin) korumalı dala push atabilmelidir.
+  # false: mentors (admin) must be able to push to a protected branch.
   enforce_admins = each.value.enforce_admins
 
   allows_deletions    = each.value.allow_deletions
@@ -421,14 +427,14 @@ resource "github_branch_protection" "this" {
   }
 
   lifecycle {
-    # Tutarlılık kilidi. `ci/test` check'ini üreten şey templates/.github/workflows/ci.yml
-    # içindeki toplayıcı job'dır; o workflow repo'ya dağıtılmazsa check HİÇ raporlanmaz
-    # ve PR'lar sonsuza kadar bekler.
+    # Consistency lock. What produces the `ci/test` check is the aggregator job inside
+    # templates/.github/workflows/ci.yml; if that workflow is not delivered to the repo,
+    # the check is NEVER reported and PRs wait forever.
     #
-    # Bu teorik bir uyarı değil: 2026-08-15'te erişim düzeltmesinden sonra normal
-    # developer akışı devreye girdiğinde tam olarak bu yaşandı — onaylanmış PR bile
-    # merge edilemedi (bkz. docs/pilot-verification.md Bölüm 6.4). Sessizce geçmemesi
-    # için plan aşamasında hata veriyor.
+    # This is not a theoretical warning: on 2026-08-15, after the access fix, when the
+    # normal developer flow came into play, exactly this happened — even an approved PR
+    # could not be merged (see docs/pilot-verification.md Section 6.4). To keep it from
+    # passing silently, it errors at the plan stage.
     precondition {
       condition = (
         !contains(each.value.require_status_checks, "ci/test")

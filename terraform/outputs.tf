@@ -1,8 +1,9 @@
 # =============================================================================
-# Kök Çıktılar
+# Root Outputs
 # =============================================================================
-# Konfigürasyondan üretilen kaynakların özeti. `terraform output` ile okunabilir;
-# ileride dashboard bu değerleri HCP API üzerinden çekebilir.
+# A summary of the resources generated from configuration. Readable via
+# `terraform output`; in the future the dashboard may pull these values through
+# the HCP API.
 # =============================================================================
 
 output "repositories" {
@@ -31,39 +32,41 @@ output "org_admin_team" {
 }
 
 # =============================================================================
-# Bypass görünürlüğü
+# Bypass visibility
 # =============================================================================
-# `enforce_admins` kalıcı olarak `false` (ROADMAP Karar E). Muafiyet teknik olarak
-# kapatılmadığına göre geriye tek kontrol olarak GÖRÜNÜRLÜK kalıyor: "şu an kim,
-# hangi repoda, hangi dalda kuralları atlayabiliyor?"
+# `enforce_admins` is permanently `false` (ROADMAP Decision E). Since the
+# exemption is not technically closed, the only remaining control is VISIBILITY:
+# "right now, who can skip the rules, on which repo, on which branch?"
 #
-# Bu output o sorunun cevabını üretiyor. 2026-08-15'te bir kişinin her repoda admin
-# olduğu ancak `.tf` dosyaları okunarak anlaşılabiliyordu; olayın aylarca fark
-# edilmeme sebebi buydu.
+# This output produces the answer to that question. On 2026-08-15 the fact that a
+# person was admin on every repo could only be understood by reading the `.tf`
+# files; that is why the incident went unnoticed for months.
 # =============================================================================
 
 locals {
-  # `org_owners` ve `head_of_engineering` listeleri people.tf'te tanımlı ve artık
-  # Terraform tarafından ZORLANIYOR (`github_membership.people`) — 2026-08-18'e
-  # kadar yalnızca beyandılar.
+  # The `org_owners` and `head_of_engineering` lists are defined in people.tf and
+  # are now ENFORCED by Terraform (`github_membership.people`) — until 2026-08-18
+  # they were only declarations.
   #
-  # Tek istisna `local.unmanaged_people`: break-glass gereği yönetim dışında
-  # bırakılan kişiler. Onların org rolü hâlâ beyandır ve arayüzden değiştirilirse
-  # plan sessiz kalır. Rapor bunu `_warning` alanında ismen söylüyor.
+  # The one exception is `local.unmanaged_people`: people left outside management
+  # as break-glass. Their org role is still a declaration, and if it is changed
+  # through the UI the plan stays silent. The report names them in the `_warning`
+  # field.
   unenforced_owners = sort([
     for user in local.org_owners : user
     if contains(local.unmanaged_people, user)
   ])
 
-  # Hiç korumalı dalı olmayan repo'lar.
+  # Repositories with no protected branch at all.
   #
-  # Bu liste raporun bir zayıflığını kapatıyor: `repositories` haritasında böyle bir repo
-  # `{}` olarak görünüyordu ve `{}` iki farklı şeyi aynı biçimde söylüyordu —
-  # "burada atlanacak kural yok" ile "endişelenecek bir şey yok". İlki bir ALARM,
-  # ikincisi sessizlik. 2026-08-18'de `pilot-access-test` eklenince fark edildi.
+  # This list closes a weakness of the report: in the `repositories` map such a
+  # repo showed up as `{}`, and `{}` said two different things in the same form —
+  # "there is no rule to bypass here" and "there is nothing to worry about". The
+  # first is an ALARM, the second is silence. It was noticed on 2026-08-18 when
+  # `pilot-access-test` was added.
   #
-  # Boş harita alarm olmalı: korumalı dalı olmayan repo'da bypass sorusu anlamsızdır,
-  # çünkü zaten herkes her şeyi yapabilir.
+  # An empty map must be an alarm: the bypass question is meaningless in a repo with
+  # no protected branch, because everyone can already do everything.
   unprotected_repos = sort([
     for repo_name, _ in local.repos : repo_name
     if length(local.protected_branches[repo_name]) == 0
@@ -88,9 +91,10 @@ output "branch_protection_bypass" {
   EOT
 
   value = {
-    # 2026-08-18'e kadar bu alan "org rolleri hiç zorlanmıyor, hepsi beyan" diyordu.
-    # `github_membership.people` devreye girince kapsam daraldı: artık yalnızca
-    # break-glass için yönetim dışı bırakılanlar beyan.
+    # Until 2026-08-18 this field said "org roles are not enforced at all, they are
+    # all declarations". Once `github_membership.people` came into play the scope
+    # narrowed: now only those left outside management for break-glass are
+    # declarations.
     _warning = length(local.unenforced_owners) == 0 ? "Every org role is enforced by Terraform." : join(" ", [
       "The role of this org owner is NOT ENFORCED by Terraform:",
       "${join(", ", local.unenforced_owners)}.",
@@ -106,10 +110,9 @@ output "branch_protection_bypass" {
       note                = "Both groups are admin on EVERY repository; they appear again in the per-repository list."
     }
 
-    # `repositories` altında bu repo'lar `{}` olarak görünür — ve boş harita tek
-    # başına yanıltıcıdır: "atlanacak kural yok" ile "sorun yok" aynı biçimde
-    # okunuyor. Burada ayrıca listelenmelerinin sebebi bu; sessizlik değil alarm
-    # olmalılar.
+    # Under `repositories` these repos show up as `{}` — and an empty map on its own
+    # is misleading: "no rule to bypass" and "no problem" read the same way. That is
+    # why they are listed separately here; they must be an alarm, not silence.
     unprotected_repos = {
       list = local.unprotected_repos
       note = length(local.unprotected_repos) == 0 ? "Every repository has at least one protected branch." : join(" ", [
@@ -126,16 +129,16 @@ output "branch_protection_bypass" {
         for branch, rules in local.protected_branches[repo_name] : branch => {
           enforce_admins = try(rules.enforce_admins, false)
 
-          # enforce_admins true ise kimse muaf değildir; false ise repo'da admin
-          # yetkisi taşıyan herkes muaftır.
+          # If enforce_admins is true, no one is exempt; if false, everyone with
+          # admin permission on the repo is exempt.
           exempt_from_all_rules = try(rules.enforce_admins, false) ? [] : sort(distinct(concat(
             try(repo.mentors, []),
             local.head_of_engineering,
             local.org_owners,
           )))
 
-          # Bu roller ayrıca push allowlist'inde de yazılı — muafiyetten bağımsız
-          # ikinci bir kapı (bkz. rbac-and-permissions.md Bölüm 3).
+          # These roles are also written in the push allowlist — a second gate,
+          # independent of the exemption (see rbac-and-permissions.md Section 3).
           push_allowlist_roles = try(rules.push_allowed_roles, [])
         }
       }

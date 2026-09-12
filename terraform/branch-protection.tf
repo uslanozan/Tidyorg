@@ -1,11 +1,11 @@
 # =============================================================================
-# Branch Protection — bu dosya artık boştur.
+# Branch Protection — this file is now empty.
 # =============================================================================
-# pilot-intern-api reposu 2026-08-15 tarihinde terraform state mv ile
-# modules/repository modülüne taşındı. Artık organization.yml üzerinden
-# config-driven biçimde yönetilmektedir.
+# The pilot-intern-api repo was moved into the modules/repository module via
+# terraform state mv on 2026-08-15. It is now managed config-driven through
+# organization.yml.
 #
-# Bu dosya silindi/boşaltıldı: pilot-intern-api'nin elle yazılmış
-# github_repository, github_branch ve github_branch_protection blokları
-# modules/repository modülünden üretilmektedir.
+# This file was deleted/emptied: the hand-written github_repository,
+# github_branch and github_branch_protection blocks for pilot-intern-api are
+# now produced by the modules/repository module.
 # =============================================================================

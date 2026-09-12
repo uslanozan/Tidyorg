@@ -1,42 +1,46 @@
 # =============================================================================
-# Kapsama Kontrolü — Yönetim Dışı Repo'lar (GIT-34)
+# Coverage Check — Unmanaged Repositories (GIT-34)
 # =============================================================================
-# Bu dosya ŞU soruyu cevaplıyor: "yönetmediğim ne var?"
+# This file answers THIS question: "what is out there that I don't manage?"
 #
-# Dikkat: bu, drift tespitinden FARKLI bir şey. İkisi sürekli karıştırılıyor:
+# Note: this is a DIFFERENT thing from drift detection. The two are constantly
+# confused:
 #
-#   Drift tespiti    → "yönettiğim şey değişmiş mi?"   → state'te OLANLARA bakar
-#   Kapsama tespiti  → "yönetmediğim ne var?"          → state'te OLMAYANLARA bakar
+#   Drift detection    → "did something I manage change?"  → looks at what IS in state
+#   Coverage detection → "what am I not managing?"         → looks at what is NOT in state
 #
-# `terraform plan` state'te olmayan bir repo'yu ASLA göstermez — onun için o repo
-# yoktur. Bugüne kadar org'a sessizce bir repo girip hiçbir kontrolün kapsamına
-# girmeden durabiliyordu:
+# `terraform plan` NEVER shows a repository that is not in state — for it, that
+# repo does not exist. Until now a repo could quietly enter the org and stay
+# outside the scope of every control:
 #
-#   - Terraform onu görmüyor (state'te yok)
-#   - Org güvenlik varsayılanları uygulanmıyor (`*_for_new_repositories` yalnızca
-#     YENİ repo'lara; mevcut olana dokunmuyor)
-#   - Bypass raporunda çıkmıyor (o rapor `local.repos`'tan, yani CONFIG'ten üretiliyor)
-#   - Ve fark edilmiyor, çünkü bakılacak bir yer yok
+#   - Terraform does not see it (not in state)
+#   - Org security defaults are not applied (`*_for_new_repositories` only touch
+#     NEW repos; they do not touch existing ones)
+#   - It does not appear in the bypass report (that report is generated from
+#     `local.repos`, i.e. from CONFIG)
+#   - And it goes unnoticed, because there is nowhere to look
 #
-# İki kez canlı örneği yaşandı:
-#   1. `vulnerability_alerts` bu repo'da KAPALIYDI (2026-08-18) — elle açılmış tek
-#      repo, denetlenmeyen tek repo oydu.
-#   2. `tmp-app-create-test` `state rm` sonrası GitHub'da öksüz kaldı (2026-08-18).
+# It happened live twice:
+#   1. `vulnerability_alerts` was OFF on this repo (2026-08-18) — the one repo
+#      opened by hand was the one repo that went unaudited.
+#   2. `tmp-app-create-test` was left orphaned on GitHub after a `state rm`
+#      (2026-08-18).
 #
-# Sektördeki adı: IaC coverage / unmanaged resources.
-# Bkz. docs/notes/industry-terms.md §3, ROADMAP.md → "Geçmişi kim koruyacak?"
+# The industry name for it: IaC coverage / unmanaged resources.
+# See docs/notes/industry-terms.md §3, ROADMAP.md → "Who will protect the past?"
 # =============================================================================
 
 locals {
-  # `data.github_organization.this` org-settings.tf'te TANIMLI — orada org ayarlarını
-  # yönetmek için kullanılıyor ve `repositories` alanı bugüne kadar hiç okunmadı.
-  # Yeni bir data source eklemek gerekmiyor; ekstra API çağrısı da doğmuyor.
+  # `data.github_organization.this` is DEFINED in org-settings.tf — it is used
+  # there to manage org settings, and its `repositories` field has never been read
+  # until now. No new data source is needed; no extra API call is created either.
   #
-  # ⚠️ Alanın `org/repo` mu yoksa yalnızca `repo` mu döndürdüğü provider sürümüne
-  # göre değişebiliyor. İkisini de tolere etmek için son bölüm alınıyor: `split`
-  # sonucunun son elemanı, ayraç yoksa dizinin kendisidir. Bu, alan biçimi değişirse
-  # kontrolün sessizce YANLIŞ sonuç vermesini engelliyor — normalize edilmezse
-  # "your-org/foo" ile "foo" eşleşmez ve HER repo yönetim dışı görünürdü.
+  # ⚠️ Whether the field returns `org/repo` or just `repo` can vary by provider
+  # version. To tolerate both, the last segment is taken: the last element of the
+  # `split` result, or the array itself when there is no separator. This keeps the
+  # check from silently giving the WRONG answer if the field format changes — if it
+  # were not normalized, "your-org/foo" would not match "foo" and EVERY repo would
+  # look unmanaged.
   org_repo_names = sort([
     for full_name in data.github_organization.this.repositories :
     element(split("/", full_name), length(split("/", full_name)) - 1)
@@ -44,16 +48,17 @@ locals {
 
   managed_repo_names = sort(keys(local.repos))
 
-  # ASIL SORU: org'da var, config'de yok.
+  # THE REAL QUESTION: present in the org, absent from config.
   unmanaged_repos = sort(setsubtract(
     toset(local.org_repo_names),
     toset(local.managed_repo_names),
   ))
 
-  # Ters yön: config'de var, org'da yok. Normal koşulda bu liste
-  # "henüz apply edilmemiş yeni repo" demektir — data source plan sırasında
-  # okunuyor, yani repo daha yaratılmamış olur. Alarm DEĞİL, bilgi.
-  # Apply sonrası boş olmalı; boş kalmıyorsa repo GitHub'dan elle silinmiştir.
+  # The reverse direction: present in config, absent from the org. Normally this
+  # list means "a new repo not applied yet" — the data source is read during plan,
+  # so the repo may not be created yet. NOT an alarm, information.
+  # It should be empty after apply; if it is not, the repo was deleted from GitHub
+  # by hand.
   declared_but_absent_repos = sort(setsubtract(
     toset(local.managed_repo_names),
     toset(local.org_repo_names),
@@ -61,24 +66,26 @@ locals {
 }
 
 # -----------------------------------------------------------------------------
-# `check` bloğu — neden error değil, WARNING
+# `check` block — why a WARNING, not an error
 # -----------------------------------------------------------------------------
-# `check` bloğunun başarısız assert'i plan'da **Warning** üretir, plan'ı KIRMAZ.
-# Bu bilinçli:
+# A failed assert in a `check` block produces a **Warning** in the plan, it does
+# NOT break the plan. This is deliberate:
 #
-#   - Bu bir CONFIG hatası değil, dünyayla ilgili bir GÖZLEM. Org'a birinin repo
-#     transfer etmesi, alakasız bir stajyer eklemesinin apply'ını bloklamamalı.
-#     `people.tf`'teki precondition'lar fail-closed, çünkü onlar config hatası;
-#     bu fail-loud, çünkü bu bir bulgu.
-#   - Ve uyarı KAYBOLMUYOR: 2026-08-18'de kurulan mekanizma Terraform uyarılarını
-#     PR yorumuna (sayılıp listelenerek) ve apply'da `::warning::` annotation +
-#     step summary'ye taşıyor. Yani bu blok hiç yeni CI kodu gerektirmiyor.
+#   - This is not a CONFIG error, it is an OBSERVATION about the world. Someone
+#     transferring a repo into the org should not block the apply of an unrelated
+#     intern being added. The preconditions in `people.tf` are fail-closed, because
+#     those are config errors; this is fail-loud, because this is a finding.
+#   - And the warning DOES NOT DISAPPEAR: the mechanism set up on 2026-08-18 carries
+#     Terraform warnings into the PR comment (counted and listed) and, on apply,
+#     into a `::warning::` annotation + step summary. So this block needs no new CI
+#     code at all.
 #
-# ⚠️ Plan yorumundaki uyarı BAŞLIĞI Terraform'un kendi metni olur — "Check block
-# assertion failed". Repo adları başlıkta değil, uyarının gövdesinde ve
-# `terraform output repository_coverage` içinde. Bugün tek `check` bloğu var, yani
-# başlık belirsizlik yaratmıyor; ikincisi eklenirse yorumdaki başlık ayırt edici
-# olmaz ve plan yorumundaki çıkarıcı `check` adını da alacak şekilde genişletilmeli.
+# ⚠️ The warning TITLE in the plan comment becomes Terraform's own text — "Check
+# block assertion failed". The repo names are not in the title, they are in the
+# body of the warning and in `terraform output repository_coverage`. Today there is
+# a single `check` block, so the title creates no ambiguity; if a second one is
+# added, the title in the comment stops being distinctive and the extractor in the
+# plan comment must be widened to also capture the `check` name.
 # -----------------------------------------------------------------------------
 
 check "repository_coverage" {
@@ -138,8 +145,8 @@ output "repository_coverage" {
       ])
     }
 
-    # Bu iki sayı raporun kendi kapsamını beyan ediyor: bir gün org'da 40 repo
-    # olup burada 4 görünüyorsa, sorun repo'larda değil bu kontroldedir.
+    # These two numbers declare the report's own scope: if one day the org has 40
+    # repos and 4 show up here, the problem is not in the repos but in this check.
     _scope = {
       repositories_in_organization = length(local.org_repo_names)
       repositories_in_config       = length(local.managed_repo_names)

@@ -378,7 +378,7 @@ This work **cannot be done**, or even attempted, without the GitHub Team plan.
 | :--- | :--- | :--- |
 | [`config/organization.yml`](terraform/config/organization.yml) → `defaults.visibility` | `public` → `private` | **1 line** |
 | [`config/repositories/pilot-access-test.yml`](terraform/config/repositories/pilot-access-test.yml) | `protected_branches: {main,develop} = null` can be removed | 3 lines _(the repo is already temporary)_ |
-| [`outputs.tf`](terraform/outputs.tf) → `korumasiz_repolar` note | the "expected on the free plan" wording is updated | Comment |
+| [`outputs.tf`](terraform/outputs.tf) → `unprotected_repos` note | the "expected on the free plan" wording is updated | Comment |
 | Document/report notes | the "verified on public" warnings | Comment |
 
 **The engine code (`modules/repository/`) does not change.** `visibility` already comes from config
