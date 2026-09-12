@@ -8,16 +8,14 @@ terraform/*.tfstate.*
 terraform/.terraform
 
 # Backend + imports are install-specific:
-#   backend.tf   → HCP org (tidyorg-infra); the entrypoint writes a local backend
+#   backend.tf   → your remote backend (e.g. HCP); the entrypoint writes a local backend
 #   imports.tf   → imports a specific repo by name; breaks for any other org
 terraform/backend.tf
 terraform/imports.tf
 
-# Dashboard source IS needed (built in stage 1), but not its local artifacts.
-dashboard/node_modules
-dashboard/dist
-dashboard/.env
-dashboard/.env.*
+# Dashboard is a separate image (dashboard/Dockerfile); it is not part of the
+# engine build context.
+dashboard
 
 # Not part of the image.
 docs

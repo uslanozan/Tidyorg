@@ -1,16 +1,12 @@
 #!/bin/sh
 # =============================================================================
-# tidyorg entrypoint — one image, two modes
+# tidyorg engine entrypoint
 # =============================================================================
-#   tidyorg serve                → serve the dashboard (nginx, static SPA)
-#   tidyorg plan|apply|validate  → run the Terraform engine
+#   tidyorg plan|apply|validate|output|version  → run the Terraform engine
 #
-# The image ships the engine (modules, templates, root .tf) AND the built
-# dashboard. Config and state are mounted at runtime; the backend is forced local
-# (the committed HCP backend.tf is never copied in — see .dockerignore).
-#
-#   docker run -p 8080:8080 -e GITHUB_CLIENT_ID=... -e CONFIG_OWNER=... \
-#     -e CONFIG_REPO=... tidyorg serve
+# The image ships the engine (modules, templates, root .tf). Config and state are
+# mounted at runtime; TF_STATE selects the backend (local|hcp|custom, default
+# local). The dashboard is a SEPARATE image — see dashboard/Dockerfile.
 #
 #   docker run -v ./config:/config -v ./state:/state -v ./app.pem:/secrets/app.pem \
 #     -e TF_VAR_github_org_name=... -e TF_VAR_github_app_id=... \
@@ -20,37 +16,60 @@ set -eu
 
 CMD="${1:-plan}"
 
-# --- Dashboard mode ---------------------------------------------------------
-# Static SPA. No Terraform, no credentials. Runtime config is injected into
-# env.js (window.__ENV__), which the dashboard reads before build-time values.
-if [ "$CMD" = "serve" ]; then
-  cat > /usr/share/nginx/html/env.js <<EOF
-window.__ENV__ = {
-  VITE_GITHUB_CLIENT_ID: "${GITHUB_CLIENT_ID:-}",
-  VITE_CONFIG_OWNER: "${CONFIG_OWNER:-}",
-  VITE_CONFIG_REPO: "${CONFIG_REPO:-}",
-  VITE_CONFIG_BRANCH: "${CONFIG_BRANCH:-main}"
-};
-EOF
-  exec nginx -g 'daemon off;'
-fi
-
-# --- Engine mode ------------------------------------------------------------
+# --- Engine ------------------------------------------------------------------
 ENGINE_DIR=/engine
 CONFIG_DIR="${CONFIG_PATH:-/config}"
 STATE_DIR="${STATE_PATH:-/state}"
 
 cd "$ENGINE_DIR"
 
-# Backend: always local inside the container (state on the mounted volume).
-mkdir -p "$STATE_DIR"
-cat > backend.tf <<EOF
+# --- Backend selection ------------------------------------------------------
+# TF_STATE controls where Terraform keeps its state:
+#   local  (default) → on the mounted /state volume; zero setup.
+#   hcp              → HCP Terraform / Terraform Cloud (recommended for teams).
+#                      Requires TF_CLOUD_ORGANIZATION and TF_WORKSPACE, plus a
+#                      token in TF_TOKEN_app_terraform_io.
+#   custom           → bring your own backend: mount a backend.tf at
+#                      /engine/backend.tf (S3, GCS, azurerm, …); it is left as-is.
+# The image was `terraform init`ed with a local backend at build time, so any
+# non-local mode re-inits with -reconfigure (providers stay cached).
+STATE_MODE="${TF_STATE:-local}"
+INIT_FLAGS="-input=false"
+
+case "$STATE_MODE" in
+  local)
+    mkdir -p "$STATE_DIR"
+    cat > backend.tf <<EOF
 terraform {
   backend "local" {
     path = "${STATE_DIR}/terraform.tfstate"
   }
 }
 EOF
+    ;;
+  hcp | cloud | remote)
+    : "${TF_CLOUD_ORGANIZATION:?TF_STATE=hcp requires TF_CLOUD_ORGANIZATION}"
+    : "${TF_WORKSPACE:?TF_STATE=hcp requires TF_WORKSPACE}"
+    if [ -z "${TF_TOKEN_app_terraform_io:-}" ]; then
+      echo "error: TF_STATE=hcp requires a token in TF_TOKEN_app_terraform_io" >&2
+      exit 2
+    fi
+    # Cloud integration is env-driven; a backend block must NOT be present.
+    rm -f backend.tf
+    INIT_FLAGS="$INIT_FLAGS -reconfigure"
+    ;;
+  custom)
+    [ -f backend.tf ] || {
+      echo "error: TF_STATE=custom needs your backend config mounted at /engine/backend.tf" >&2
+      exit 2
+    }
+    INIT_FLAGS="$INIT_FLAGS -reconfigure"
+    ;;
+  *)
+    echo "error: unknown TF_STATE='$STATE_MODE' (use local | hcp | custom)" >&2
+    exit 2
+    ;;
+esac
 
 # Point the engine at the mounted config.
 export TF_VAR_config_path="$CONFIG_DIR"
@@ -75,7 +94,7 @@ case "$CMD" in
     ;;
 esac
 
-terraform init -input=false >/dev/null
+terraform init $INIT_FLAGS >/dev/null
 
 case "$CMD" in
   plan) terraform plan -input=false ;;

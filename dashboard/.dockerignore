@@ -1,0 +1,7 @@
+# Local build artifacts and secrets never enter the image build context.
+node_modules
+dist
+.env
+.env.*
+Dockerfile
+.dockerignore
