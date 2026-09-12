@@ -10,10 +10,13 @@
 # =============================================================================
 
 locals {
-  # Location of the config directory. An empty `var.config_path` = in-repo layout
-  # (${path.module}/config). A container mounts the user's config elsewhere
-  # (e.g. /config) and points here with TF_VAR_config_path.
-  config_dir = var.config_path != "" ? var.config_path : "${path.module}/config"
+  # Location of the config directory. An empty `var.config_path` falls back to the
+  # bundled example set (config.example/), so the engine validates/plans out of the
+  # box. Real deployments override it: a container mounts the operator's config
+  # (e.g. /config) and points here with TF_VAR_config_path; a from-source run sets
+  # it to their own config dir. The in-repo terraform/config/ ships without real
+  # data (see its .gitkeep) — only the *.example.yml schema references remain.
+  config_dir = var.config_path != "" ? var.config_path : "${path.module}/../config.example"
 
   org_config = yamldecode(file("${local.config_dir}/organization.yml"))
 

@@ -36,13 +36,10 @@ device flow and can batch many edits into a single PR.
 You need: a GitHub organization you own, and a **GitHub App** installed on it (below).
 
 ```bash
-# 1. Scaffold your config from the examples
-mkdir -p config/repositories
-cp examples/organization.example.yml config/organization.yml
-cp examples/people.example.yml       config/people.yml
-cp examples/privileged.example.yml   config/privileged.yml
-cp examples/repository.example.yml   config/repositories/my-first-repo.yml
-# edit these to describe your org
+# 1. Scaffold your config from the bundled example set
+cp -r config.example config
+# edit config/ to describe your org (organization.yml, people.yml,
+# privileged.yml, repositories/*.yml)
 
 # 2. Drop your GitHub App private key next to the config
 #    (downloaded when you created the App)
@@ -116,7 +113,8 @@ Four files under `config/`, split by ownership:
 The split of `people.yml` / `privileged.yml` is the escalation gate: the file a dashboard
 can write cannot express "make this person an org owner." That lives in `privileged.yml`,
 which is protected by CODEOWNERS. The org name itself is **not** in config — it comes from
-`TF_VAR_github_org_name`, so there is a single source of truth. See `examples/` for every field.
+`TF_VAR_github_org_name`, so there is a single source of truth. See `config.example/` for a
+working set and `terraform/config/*.example.yml` for the fully-commented schema of every field.
 
 ### A repository, minimally
 
