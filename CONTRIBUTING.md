@@ -1,41 +1,63 @@
-# Contributing to Tidyorg
+# Contributing to tidyorg
 
-First off, thank you for considering contributing to our project. This document outlines the engineering standards and workflows we follow.
+Thanks for your interest! tidyorg has two parts in one repo:
 
-## 1. Branching Strategy
+| Path | What it is |
+| :--- | :--- |
+| `terraform/` | the engine — modules, root config, and distributed templates |
+| `dashboard/` | the web UI (React + Vite + TypeScript) |
+| `config.example/` | a working example config set (also the default the engine validates against) |
+| `docs/` | configuration guide, access model, workflow, release process |
 
-We follow a Modified GitFlow approach. Never push directly to the `main` or `develop` branches — those branches are protected and direct pushes are rejected.
+## Development setup
 
-* **`feat/...`** : For new features and enhancements.
-* **`fix/...`** : For bug fixes.
-* **`chore/...`** : For routine tasks, dependency updates, and tooling.
-* **`docs/...`** : For documentation-only changes.
-* **`release/...`** : For release preparation (branches from `develop`, merges into `main`).
-* **`hotfix/...`** : For urgent production issues (must branch from `main`, and must also be merged back into `develop`).
+**Dashboard**
 
-> **Note:** Control-plane repositories (those holding infrastructure config) are trunk-based and have no `develop` branch; there, branches are opened from `main` and merged back into `main`.
+```bash
+cd dashboard
+npm install
+npm run dev        # local dev server (Vite)
+```
 
-## 2. Commit Convention
+Runtime config comes from `dashboard/.env` (see `.env.example`) or, in the Docker
+image, from environment variables injected into `env.js`.
 
-We use Conventional Commits to automate our semantic versioning and changelog generation.
+**Engine**
 
-* **`feat:`** Introduces a new feature (triggers a MINOR version bump).
-* **`fix:`** Patches a bug (triggers a PATCH version bump).
-* **`docs:`** Documentation only changes.
-* **`refactor:`** A code change that neither fixes a bug nor adds a feature.
+```bash
+cd terraform
+terraform init -backend=false   # providers only, no state/credentials
+terraform validate
+```
 
-A `!` after the type, or a `BREAKING CHANGE:` footer, triggers a MAJOR version bump.
+The engine reads config from `config.example/` by default; point `TF_VAR_config_path`
+at your own config to run against a real org (see the root `README.md`).
 
-## 3. Pull Request (PR) Process
+## Before you open a PR
 
-1. Ensure your code passes all local linting and testing steps.
+Run the same checks CI runs (`.github/workflows/ci.yml`):
 
-2. Open a PR against the `develop` branch using our standard PR template. Fill in the **"Why?"** section — the diff already shows *what* changed.
+```bash
+# engine
+terraform -chdir=terraform fmt -check -recursive
+terraform -chdir=terraform validate
 
-3. Wait for the `ci/test` status check to pass. It is a required check; the merge button stays locked until it is green.
+# dashboard
+cd dashboard && npm run build && npm run verify:yaml
+```
 
-4. Obtain the required approvals. The exact number depends on the target branch and is configured per repository — the PR page tells you what is still missing. Typically: `develop` needs 1 approval, `main` needs 2 approvals **plus** a code owner (mentor) review.
+`verify:yaml` is the safety net for the dashboard's config serialization — keep it green.
 
-5. Merge with **Squash and merge** when targeting `develop`. The branch is deleted automatically.
+## Conventions
 
-> Pushing a new commit dismisses existing approvals (`dismiss_stale_reviews`). This is deliberate: the approved code and the merged code must be the same code.
+- **Branches / PRs / commits:** see [`docs/branching-strategy.md`](docs/branching-strategy.md),
+  [`docs/commit-convention.md`](docs/commit-convention.md), and the PR template.
+  Commits follow `<type>(scope): <subject>` (Conventional Commits).
+- **Keep PRs small and focused** — one logical change per PR.
+- **No secrets** in the diff or in git history (keys, tokens, credentials).
+- **Security issues:** do not open a public issue — see the security policy.
+
+## License
+
+By contributing you agree that your contributions are licensed under the project's
+[MIT License](LICENSE).

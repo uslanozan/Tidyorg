@@ -168,6 +168,24 @@ The image is built with a local backend, so switching to `hcp`/`custom` re-runs 
 - Some org settings (e.g. billing email, PAT policy) are not readable by the API, so their
   drift is not detected — tidyorg treats the config as the source of truth for those.
 
+## Development
+
+```bash
+# Dashboard (React + Vite + TS)
+cd dashboard && npm install && npm run dev
+
+# Engine (Terraform) — providers only, no state/credentials
+terraform -chdir=terraform init -backend=false && terraform -chdir=terraform validate
+
+# Checks CI runs before merge
+terraform -chdir=terraform fmt -check -recursive
+cd dashboard && npm run build && npm run verify:yaml
+```
+
+Build the images locally with `docker build -t tidyorg .` (engine) and
+`docker build -t tidyorg-dashboard ./dashboard`. See [`CONTRIBUTING.md`](CONTRIBUTING.md)
+for conventions.
+
 ## License
 
 [MIT](LICENSE).
