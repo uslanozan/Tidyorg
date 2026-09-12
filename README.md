@@ -1,8 +1,19 @@
-# tidyorg
+<p align="center">
+  <img src="docs/images/tidyorg-mark.svg" width="84" alt="Tidyorg logo">
+</p>
 
-**Manage your GitHub organization from config files, not the settings UI.**
+<h1 align="center">Tidyorg</h1>
 
-tidyorg is a config-driven engine for GitHub organizations. You describe repositories,
+<p align="center"><strong>Manage your GitHub organization from config files, not the settings UI.</strong></p>
+
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
+  <img src="https://img.shields.io/badge/Terraform-%E2%89%A5%201.5-7B42BC?logo=terraform&logoColor=white" alt="Terraform >= 1.5">
+  <img src="https://img.shields.io/badge/provider-integrations%2Fgithub%20~%3E%206.0-2b3137?logo=github&logoColor=white" alt="Provider: integrations/github ~> 6.0">
+  <a href="https://github.com/uslanozan/Tidyorg/actions/workflows/ci.yml"><img src="https://github.com/uslanozan/Tidyorg/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+</p>
+
+Tidyorg is a config-driven engine for GitHub organizations. You describe repositories,
 teams, access, branch protection, and org settings in YAML; Terraform reconciles GitHub
 to match. Every change is a pull request — reviewed, versioned, and reversible.
 
@@ -62,11 +73,11 @@ State is kept in `./state` on your host — no HCP / Terraform Cloud required. P
 own remote backend if you prefer (see **Backend** below).
 
 `docker compose` users: copy `docker-compose.yml`, fill in the three variables, then
-`docker compose run --rm tidyorg plan`.
+`docker compose run --rm engine plan`.
 
 ## GitHub Apps
 
-tidyorg authenticates as a **GitHub App** (short-lived tokens, org-owned identity — no
+Tidyorg authenticates as a **GitHub App** (short-lived tokens, org-owned identity — no
 personal access token). Depending on what you run, you create up to two Apps:
 
 **1. Engine bot** (required) — used by Terraform. Broad, because it reconciles the whole org:
@@ -161,12 +172,12 @@ The image is built with a local backend, so switching to `hcp`/`custom` re-runs 
 
 ## Known limitations
 
-- **No backup is built in.** Code history and issue/PR metadata are not backed up by tidyorg;
+- **No backup is built in.** Code history and issue/PR metadata are not backed up by Tidyorg;
   add your own off-GitHub backup if you need one.
-- **Free-plan GitHub** cannot use branch protection on private repos; tidyorg surfaces this
+- **Free-plan GitHub** cannot use branch protection on private repos; Tidyorg surfaces this
   but cannot work around it.
 - Some org settings (e.g. billing email, PAT policy) are not readable by the API, so their
-  drift is not detected — tidyorg treats the config as the source of truth for those.
+  drift is not detected — Tidyorg treats the config as the source of truth for those.
 
 ## Development
 

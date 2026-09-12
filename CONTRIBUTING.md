@@ -1,6 +1,6 @@
-# Contributing to tidyorg
+# Contributing to Tidyorg
 
-Thanks for your interest! tidyorg has two parts in one repo:
+Thanks for your interest! Tidyorg has two parts in one repo:
 
 | Path | What it is |
 | :--- | :--- |

@@ -1,0 +1,12 @@
+<svg viewBox="0 0 32 32" width="128" height="128" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Tidyorg">
+  <g fill="#2f6fed">
+    <rect x="2" y="12" width="8" height="8" rx="2"/>
+    <rect x="2" y="22" width="8" height="8" rx="2"/>
+    <rect x="12" y="22" width="8" height="8" rx="2"/>
+  </g>
+  <g fill="#5b8ff5">
+    <rect x="2" y="2" width="8" height="8" rx="2"/>
+    <rect x="12" y="12" width="8" height="8" rx="2"/>
+    <rect x="22" y="22" width="8" height="8" rx="2"/>
+  </g>
+</svg>
