@@ -4,16 +4,15 @@
 # asking the reporter for a version number or reproduction steps.
 blank_issues_enabled: false
 
-# Replace OWNER with this repository's owner.
 contact_links:
   - name: 💬 Question or idea
-    url: https://github.com/OWNER/tidyorg/discussions
+    url: https://github.com/uslanozan/Tidyorg/discussions
     about: Not sure it is a bug or a feature yet? Open a discussion instead — issues are for actionable work.
 
   - name: 📖 Documentation
-    url: https://github.com/OWNER/tidyorg/tree/main/docs
+    url: https://github.com/uslanozan/Tidyorg/tree/main/docs
     about: Configuration guide, access model, workflow, and release process.
 
   - name: 🔐 Report a security vulnerability
-    url: https://github.com/OWNER/tidyorg/security/policy
+    url: https://github.com/uslanozan/Tidyorg/security/policy
     about: Never report security issues in public issues, follow the policy here.

@@ -135,7 +135,7 @@ The following are now **in effect in Section 4** — they remain in this table a
 
 1. **Do not open a public GitHub issue** for vulnerabilities.
 2. Send findings, along with technical detail and reproduction steps, by email to
-   `security@example.com`.
+   **[uslanozan@gmail.com](mailto:uslanozan@gmail.com)**.
 
 The per-repo policy text is in the `SECURITY.md` file at the root of each repo
 ([`../SECURITY.md`](../SECURITY.md)). This file is deployed in `seed` mode: it is written on the
