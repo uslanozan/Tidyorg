@@ -12,7 +12,7 @@ export function Toaster() {
   if (!toasts.length) return null
 
   return (
-    <div className="toast-region" role="region" aria-label="Bildirimler">
+    <div className="toast-region" role="region" aria-label="Notifications">
       {toasts.map((toast) => (
         <div
           key={toast.id}
@@ -38,7 +38,7 @@ export function Toaster() {
             type="button"
             className="btn btn-ghost btn-sm"
             onClick={() => dismiss(toast.id)}
-            aria-label="Bildirimi kapat"
+            aria-label="Close notification"
           >
             ✕
           </button>

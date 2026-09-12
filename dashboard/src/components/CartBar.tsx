@@ -11,11 +11,11 @@ import { proposeMultiChange, type FileChange } from '../services/configRepo'
 const shortPath = (p: string) => p.replace(/^terraform\/config\//, '')
 
 /**
- * Header'daki toplu-mod anahtarı + değişiklik sepeti.
+ * Batch mode toggle + change cart in the header.
  *
- * Toplu mod AÇIK'ken mutasyonlar anında PR açmaz, sepete birikir. "Tek PR'da
- * uygula" tüm sepeti TEK PR + TEK apply olarak açar (proposeMultiChange). Aynı
- * dosyaya düşen öğeler sırayla bestelenir.
+ * When batch mode is ON, mutations do not immediately open a PR; they accumulate
+ * in the cart. "Apply in single PR" opens the entire cart as a SINGLE PR + SINGLE apply
+ * (proposeMultiChange). Items targeting the same file are composed sequentially.
  */
 export function CartBar() {
   const t = useT()
@@ -43,19 +43,19 @@ export function CartBar() {
         proposeMultiChange({
           client,
           slug: 'batch',
-          commitMessage: `config: toplu güncelleme (${n} değişiklik)`,
-          prTitle: `config: toplu güncelleme (${n} değişiklik)`,
+          commitMessage: `config: batch update (${n} changes)`,
+          prTitle: `config: batch update (${n} changes)`,
           prBody: [
-            `**Toplu değişiklik** — ${n} işlem, tek PR, tek apply.`,
+            `**Batch changes** — ${n} operations, single PR, single apply.`,
             '',
             ...items.map((i) => `- ${i.detail}`),
             '',
             '---',
-            '> Bu PR yönetim panelinin sepetinden açıldı.',
+            '> This PR was opened from the management dashboard cart.',
           ].join('\n'),
           files,
         }),
-      `${n} değişiklik tek PR'da açıldı`,
+      `${n} changes opened in a single PR`,
     )
     if (result) {
       clear()

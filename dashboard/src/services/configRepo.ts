@@ -24,7 +24,7 @@ import type {
 import type { PullRequest } from '../types/github'
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   OKUMA
+   READ
    ═══════════════════════════════════════════════════════════════════════ */
 
 export async function loadProjects(client: GitHubClient): Promise<Project[]> {
@@ -51,7 +51,7 @@ export async function loadProjects(client: GitHubClient): Promise<Project[]> {
         )
         return { name, path: entry.path, sha, config: parseRepoConfig(text) }
       } catch (error) {
-        // Tek bozuk dosya tüm listeyi düşürmesin — kart "okunamadı" olarak çıkar.
+        // Do not let a single corrupted file drop the entire list — card appears as "corrupted".
         return {
           name,
           path: entry.path,
@@ -107,7 +107,7 @@ export async function loadPrivileged(client: GitHubClient): Promise<PrivilegedCo
   return parsePrivilegedConfig(text)
 }
 
-/** Bir kişinin hangi projede hangi rolde olduğu. */
+/** Which role a person has in which project. */
 export function membershipsFor(login: string, projects: Project[]): Membership[] {
   const key = login.toLowerCase()
   const result: Membership[] = []
@@ -128,13 +128,13 @@ export function membershipsFor(login: string, projects: Project[]): Membership[]
 }
 
 export type EffectiveRule = ProtectedBranchRule & {
-  /** Repo dosyası bu dalı eziyor mu? */
+  /** Does repo file override this branch? */
   overridden: boolean
-  /** `branch: null` → varsayılan koruma tamamen kaldırılmış (repositories.tf). */
+  /** `branch: null` → default protection completely removed (repositories.tf). */
   removed: boolean
 }
 
-/** Repo dosyası yalnızca farkları yazar; gösterirken org varsayılanı ile birleştirilir. */
+/** Repo file only writes diffs; merged with org defaults when displayed. */
 export function effectiveBranchRules(
   project: RepoConfig,
   org: OrgConfig | null,
@@ -158,7 +158,7 @@ export function effectiveBranchRules(
 
 const sameLogin = (a: string, b: string) => a.toLowerCase() === b.toLowerCase()
 
-/** Org kapsamlı rol/owner bilgisi privileged.yml'dan gelir (people.yml artık yetki taşımaz). */
+/** Org-wide role/owner information comes from privileged.yml (people.yml no longer carries permissions). */
 export function isHeadOfEngineering(
   login: string,
   privileged: PrivilegedConfig | null,
@@ -173,10 +173,10 @@ export function isOrgOwner(login: string, privileged: PrivilegedConfig | null): 
 }
 
 /**
- * Bir kullanıcı bu projenin config'ini YÖNETEBİLİR mi (yazma butonları ona açılır mı)?
- * Repo'nun mentörü, head-of-engineering, ya da org owner. Developer'lar ve diğerleri
- * salt-okunur görür. Bu yalnızca UI ipucudur — asıl kapı GitHub (CODEOWNERS + branch
- * protection); yetkisiz bir istek sunucuda zaten reddedilir.
+ * Can a user MANAGE this project's config (are edit buttons enabled for them)?
+ * Repo mentor, head-of-engineering, or org owner. Developers and others see read-only.
+ * This is only a UI hint — the real gate is GitHub (CODEOWNERS + branch protection);
+ * an unauthorized request is rejected on the server.
  */
 export function canManageProject(
   login: string,
@@ -188,7 +188,7 @@ export function canManageProject(
   return (project.config.mentors ?? []).some((m) => sameLogin(m, login))
 }
 
-/** Bir kişinin org'daki durumu — MemberDetail rozeti için. */
+/** User's standing in the org — for MemberDetail badge. */
 export function orgStanding(
   login: string,
   people: PeopleConfig | null,
@@ -203,29 +203,29 @@ export function orgStanding(
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   YAZMA — her değişiklik main'e değil, PR'a gider
-   ═══════════════════════════════════════════════════════════════════════ */
+   WRITE — every change goes to a PR, not to main
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 export interface ProposalResult {
   pullRequest: PullRequest
   branch: string
-  /** Çakışma sebebiyle baştan denendiyse true — kullanıcıya bilgi verilir. */
+  /** true if retried due to conflict — user is notified. */
   retried: boolean
 }
 
 interface ProposeArgs {
   client: GitHubClient
-  /** Değişecek dosyanın repo kökünden yolu. */
+  /** Path from repo root of the file to change. */
   path: string
-  /** Branch adında kullanılacak kısa ad (genelde repo adı). */
+  /** Short name used in branch name (typically repo name). */
   slug: string
   action: 'update' | 'create'
   commitMessage: string
   prTitle: string
   prBody: string
   /**
-   * Dosyanın güncel hâlinden yeni içeriği üretir.
-   * Çakışmada yeniden okunan içerikle TEKRAR çağrılır — bu yüzden saf olmalı.
+   * Generates new content from the current state of the file.
+   * Called AGAIN on conflict with re-read content — thus must be pure.
    */
   build: (current: { text: string; sha: string } | null) => string
 }
@@ -233,11 +233,11 @@ interface ProposeArgs {
 const MAX_ATTEMPTS = 3
 
 /**
- * Yazma akışı: oku → değiştir → branch aç → yaz → PR aç.
+ * Write flow: read → modify → create branch → write → open PR.
  *
- * Çakışma (kayıp güncelleme) koruması: dosya `sha`'sı ile yazılır. Araya başka
- * bir değişiklik girdiyse GitHub 409/422 döner; o zaman dosya baştan okunup
- * değişiklik güncel içeriğin üstüne uygulanır ve yeniden denenir.
+ * Conflict (lost update) protection: file is written with its `sha`. If another
+ * change intervened, GitHub returns 409/422; in that case the file is re-read,
+ * changes are applied on top of current content, and retried.
  */
 export async function proposeChange({
   client,
@@ -257,14 +257,14 @@ export async function proposeChange({
     if (action === 'update') {
       current = await client.readTextFile(CONFIG_OWNER, CONFIG_REPO, path, CONFIG_BRANCH)
     } else {
-      // Aynı adda dosya varsa "yeni proje" değildir — sessizce üzerine yazmayalım.
+      // Same-named file exists: not a "new project" — don't overwrite silently.
       try {
         await client.getFile(CONFIG_OWNER, CONFIG_REPO, path, CONFIG_BRANCH)
         throw new GitHubError(
           409,
           'conflict',
           'file exists',
-          'Bu adda bir config dosyası zaten var.',
+          'A config file with this name already exists.',
         )
       } catch (error) {
         if (!(error instanceof GitHubError) || error.kind !== 'not-found') throw error
@@ -290,7 +290,7 @@ export async function proposeChange({
     } catch (error) {
       if (error instanceof GitHubError && error.kind === 'conflict' && attempt < MAX_ATTEMPTS) {
         lastConflict = error
-        continue // dosyayı baştan oku, değişikliği güncel içeriğe uygula
+        continue // re-read file, apply changes on top of updated content
       }
       throw error
     }
@@ -309,26 +309,26 @@ export async function proposeChange({
 
   throw (
     lastConflict ??
-    new GitHubError(409, 'conflict', 'retry exhausted', 'Değişiklik yazılamadı, tekrar deneyin.')
+    new GitHubError(409, 'conflict', 'retry exhausted', 'Could not write change, please try again.')
   )
 }
 
 export interface FileChange {
-  /** Repo kökünden dosya yolu (hep 'update'; dosya mevcut olmalı). */
+  /** File path from repo root (always 'update'; file must exist). */
   path: string
-  /** Dosyanın güncel hâlinden yeni içeriği üretir. Değişiklik yoksa aynı metni döndür. */
+  /** Generates new content from current file state. Returns same text if no change. */
   build: (current: { text: string; sha: string }) => string
 }
 
 /**
- * Birden çok dosyayı TEK branch + TEK PR içinde değiştirir (atomik).
+ * Modifies multiple files in a SINGLE branch + SINGLE PR (atomically).
  *
- * "Org'dan tamamen çıkar" gibi işlemler için gerekli: kişi hem tüm repolardan hem
- * people.yml'dan aynı PR'da çıkarılmalı — yoksa merge sonrası ara durumda engine'in
- * "repo referansı people.yml'da yok" doğrulaması patlar (dangling).
+ * Required for operations like "remove from org completely": user must be removed
+ * from both all repos and people.yml in the same PR — otherwise during merge,
+ * engine's "repo reference not in people.yml" validation fails (dangling).
  *
- * Not: proposeChange'deki tek-dosya çakışma-retry döngüsü burada yok; nadir bir
- * yönetici işlemi olduğu için çakışmada hata verir ve kullanıcı tekrar dener.
+ * Note: the single-file conflict-retry loop in proposeChange is omitted here;
+ * since this is a rare admin operation, it fails on conflict and user retries.
  */
 export async function proposeMultiChange({
   client,
@@ -352,7 +352,7 @@ export async function proposeMultiChange({
   for (const file of files) {
     const current = await client.readTextFile(CONFIG_OWNER, CONFIG_REPO, file.path, CONFIG_BRANCH)
     const content = file.build(current)
-    if (content === current.text) continue // bu dosyada değişiklik yok — atla
+    if (content === current.text) continue // no change in this file — skip
     await client.putFile({
       owner: CONFIG_OWNER,
       repo: CONFIG_REPO,
@@ -380,26 +380,26 @@ const PR_FOOTER = [
   '',
   '---',
   '',
-  '> Bu PR yönetim paneli tarafından açıldı.',
-  '> Merge edildiğinde Terraform çalışır ve değişiklik GitHub organizasyonuna yansır.',
+  '> This PR was opened by the management dashboard.',
+  '> When merged, Terraform will run and reflect the changes to the GitHub organization.',
 ].join('\n')
 
 export interface RepoChangeArgs {
   client: GitHubClient
   project: Project
   /**
-   * Dosyanın GÜNCEL hâlinden değişecek anahtarları üretir.
-   * Çakışmada yeniden okunan içerikle tekrar çağrılır — böylece araya giren
-   * başka bir değişiklik ezilmez, üstüne uygulanır.
+   * Generates keys to modify from the CURRENT state of the file.
+   * Called again on conflict with re-read content — ensuring intervening
+   * changes are not overwritten, but applied on top.
    */
   edits: (config: RepoConfig) => Record<string, YamlValue | undefined>
-  /** "developer eklendi" gibi tek satırlık özet — commit ve PR başlığında kullanılır. */
+  /** Single-line summary like "developer added" — used in commit and PR title. */
   summary: string
-  /** PR gövdesine giren madde listesi. */
+  /** Bulleted list for the PR body. */
   details?: string[]
 }
 
-/** Mevcut bir repo config'ini güncelleyen PR açar. */
+/** Opens a PR updating an existing repo config. */
 export function proposeRepoConfigUpdate({
   client,
   project,
@@ -415,13 +415,13 @@ export function proposeRepoConfigUpdate({
     commitMessage: `config(${project.name}): ${summary}`,
     prTitle: `config(${project.name}): ${summary}`,
     prBody:
-      [`**${project.name}** konfigürasyonu güncellendi.`, '', ...details.map((d) => `- ${d}`)].join(
+      [`**${project.name}** configuration updated.`, '', ...details.map((d) => `- ${d}`)].join(
         '\n',
       ) + PR_FOOTER,
     build: (current) => {
-      if (!current) throw new Error('Dosya okunamadı')
+      if (!current) throw new Error('Could not read file')
 
-      // Dosya baştan yazılmaz, yalnızca ilgili satırlar değişir: yorumlar korunur.
+      // File is not rewritten from scratch, only relevant lines change: comments preserved.
       const nextText = applyEdits(current.text, edits(parseRepoConfig(current.text)))
 
       const errors = validateRepoConfig(parseRepoConfig(nextText))
@@ -432,30 +432,30 @@ export function proposeRepoConfigUpdate({
 }
 
 /* ───────────────────────────────────────────────────────────────────────────
-   ORG AYARLARI — config/organization.yml (İNSAN-SAHİPLİ, yorum dolu)
+   ORG SETTINGS — config/organization.yml (HUMAN-OWNED, full of comments)
    ───────────────────────────────────────────────────────────────────────────
-   Bu dosya baştan yazılamaz: her kararın gerekçesi yorumlarda. Yalnızca
-   değişen YAPRAKLAR nested yolla (setYamlPath) yerinde güncellenir; tüm yorumlar
-   ve dokunulmayan alanlar aynen kalır. privileged.yml (owner'lar) buraya DAHİL
-   DEĞİL — o dosya dashboard'ın asla yazmadığı yükseltme kapısı olarak kalır.   */
+   This file cannot be rewritten from scratch: rationale for each decision is in comments.
+   Only changed LEAVES are updated in-place via nested path (setYamlPath); all comments
+   and untouched fields remain intact. privileged.yml (owners) is NOT included here —
+   that file remains an escalation gate that the dashboard never writes to.     */
 
 export interface OrgConfigChange {
-  /** Nokta yolu segmentleri, ör. ['defaults','visibility'] veya ['roles','mentor','scope']. */
+  /** Dot-path segments, e.g. ['defaults','visibility'] or ['roles','mentor','scope']. */
   path: string[]
-  /** Yeni yaprak değeri (skaler, flow-liste ya da labels gibi nesne dizisi). */
+  /** New leaf value (scalar, flow-list, or array of objects like labels). */
   value: YamlValue
 }
 
 export interface OrgUpdateArgs {
   client: GitHubClient
-  /** Yalnızca gerçekten değişen yapraklar — çağıran diff'i hesaplar. */
+  /** Only leaves that actually changed — caller calculates diff. */
   changes: OrgConfigChange[]
-  /** "profil güncellendi" gibi tek satırlık özet. */
+  /** Single-line summary like "profile updated". */
   summary: string
   details?: string[]
 }
 
-/** organization.yml'da bir dizi yaprağı güncelleyen PR açar (yorum-koruyan). */
+/** Opens a PR updating a set of leaves in organization.yml (comment-preserving). */
 export function proposeOrgConfigUpdate({
   client,
   changes,
@@ -470,10 +470,10 @@ export function proposeOrgConfigUpdate({
     commitMessage: `config(org): ${summary}`,
     prTitle: `config(org): ${summary}`,
     prBody:
-      ['**Organizasyon ayarları** güncellendi.', '', ...details.map((d) => `- ${d}`)].join('\n') +
+      ['**Organization settings** updated.', '', ...details.map((d) => `- ${d}`)].join('\n') +
       PR_FOOTER,
     build: (current) => {
-      if (!current) throw new Error('Dosya okunamadı')
+      if (!current) throw new Error('Could not read file')
       let text = current.text
       for (const { path, value } of changes) text = setYamlPath(text, path, value)
       return text
@@ -481,7 +481,7 @@ export function proposeOrgConfigUpdate({
   })
 }
 
-/** Yeni bir repo config dosyası oluşturan PR açar. */
+/** Opens a PR creating a new repo config file. */
 export function proposeNewProject(
   client: GitHubClient,
   name: string,
@@ -495,40 +495,40 @@ export function proposeNewProject(
     path: `${PATHS.repositories}/${name}.yml`,
     slug: name,
     action: 'create',
-    commitMessage: `config(${name}): yeni proje`,
-    prTitle: `config(${name}): yeni proje oluştur`,
+    commitMessage: `config(${name}): new project`,
+    prTitle: `config(${name}): create new project`,
     prBody:
       [
-        `Yeni proje: **${name}**`,
+        `New project: **${name}**`,
         '',
-        `- Açıklama: ${config.description}`,
-        `- Dil: ${config.language}`,
-        `- Mentör: ${config.mentors.join(', ')}`,
+        `- Description: ${config.description}`,
+        `- Language: ${config.language}`,
+        `- Mentors: ${config.mentors.join(', ')}`,
         '',
-        'Merge sonrası Terraform bu repo\'yu oluşturur.',
+        'Terraform will create this repository after merge.',
       ].join('\n') + PR_FOOTER,
     build: () => serializeRepoConfig(config),
   })
 }
 
 /* ───────────────────────────────────────────────────────────────────────────
-   ÜYELİK — config/people.yml (yalnızca `members`; yetki DEĞİL)
+   MEMBERSHIP — config/people.yml (`members` only; NOT permissions)
    ───────────────────────────────────────────────────────────────────────── */
 
 export interface PeopleUpdateArgs {
   client: GitHubClient
-  /** Org'a eklenecek login (gerçek GitHub daveti üretir). */
+  /** Login to add to org (generates actual GitHub invitation). */
   add?: string
-  /** `members` listesinden çıkarılacak login (org'dan atmaz, `member`a düşürür). */
+  /** Login to remove from `members` list (does not expel from org, demotes to `member`). */
   remove?: string
 }
 
 /**
- * people.yml `members` listesine ekleme/çıkarma önerir.
+ * Proposes adding/removing from people.yml `members` list.
  *
- * 🔒 Bu servis SADECE people.yml'a dokunur. Owner'lık / head-of-engineering
- * privileged.yml'da yaşar ve dashboard oraya asla yazmaz — yetki yükseltme
- * yalnızca elle PR + CODEOWNERS onayıyla olur.
+ * 🔒 This service ONLY touches people.yml. Ownership / head-of-engineering
+ * lives in privileged.yml and dashboard never writes there — privilege escalation
+ * happens only via manual PR + CODEOWNERS approval.
  */
 export function proposePeopleUpdate({
   client,
@@ -536,8 +536,8 @@ export function proposePeopleUpdate({
   remove,
 }: PeopleUpdateArgs): Promise<ProposalResult> {
   const target = (add ?? remove ?? '').trim()
-  if (!target) return Promise.reject(new Error('Eklenecek veya çıkarılacak kişi belirtilmedi.'))
-  const verb = add ? 'eklendi' : 'çıkarıldı'
+  if (!target) return Promise.reject(new Error('No member specified to add or remove.'))
+  const verb = add ? 'added' : 'removed'
   const slug = target.toLowerCase().replace(/[^a-z0-9-]/g, '') || 'member'
 
   return proposeChange({
@@ -546,41 +546,42 @@ export function proposePeopleUpdate({
     slug: `people-${slug}`,
     action: 'update',
     commitMessage: `config(people): ${target} ${verb}`,
-    prTitle: `config(people): ${target} org üyeliğine ${verb}`,
+    prTitle: `config(people): ${target} ${verb} ${add ? 'to' : 'from'} org membership`,
     prBody:
       [
         add
-          ? `\`${target}\` organizasyon üyeliğine **eklendi**. Merge sonrası GitHub daveti gönderilir.`
-          : `\`${target}\` \`members\` listesinden **çıkarıldı**. Bu, kişiyi org'dan atmaz; rolü \`member\`a düşer.`,
+          ? `\`${target}\` **added** to organization membership. A GitHub invitation will be sent after merge.`
+          : `\`${target}\` **removed** from \`members\` list. This does not expel the user from the org; their role demotes to \`member\`.`,
         '',
-        '> Bu değişiklik yalnızca üyeliği etkiler. Owner / head-of-engineering yetkisi',
-        '> `privileged.yml` içindedir ve buradan değiştirilemez.',
+        '> This change only affects membership. Owner / head-of-engineering permissions',
+        '> reside in `privileged.yml` and cannot be modified from here.',
       ].join('\n') + PR_FOOTER,
     build: (current) => {
-      if (!current) throw new Error('people.yml okunamadı')
+      if (!current) throw new Error('Could not read people.yml')
       const { members } = parsePeopleConfig(current.text)
       const exists = members.some((l) => sameLogin(l, target))
 
       if (add) {
-        if (exists) throw new Error(`${target} zaten org üyesi.`)
+        if (exists) throw new Error(`${target} is already an org member.`)
         return serializePeopleConfig([...members, target])
       }
-      if (!exists) throw new Error(`${target} zaten üye listesinde değil.`)
+      if (!exists) throw new Error(`${target} is not in the member list.`)
       return serializePeopleConfig(members.filter((l) => !sameLogin(l, target)))
     },
   })
 }
 
 /**
- * Bir kişiyi organizasyondan TAMAMEN çıkarır: önce bulunduğu tüm repolardan (mentor
- * /developer/viewer) çıkarır, sonra people.yml üye listesinden — hepsi TEK PR'da.
+ * Completely removes a user from the organization: removes from all repos
+ * (mentor/developer/viewer) first, then from people.yml member list — all in a SINGLE PR.
  *
- * Sıra ve atomiklik önemli: people.yml'dan tek başına çıkarmak, kişi hâlâ bir repo
- * config'inde referanslıyken engine'in doğrulamasını patlatır (dangling). Tek PR
- * ile merge sonrası durum tutarlı olur.
+ * Order and atomicity are critical: removing from people.yml alone breaks engine
+ * validation while user is still referenced in a repo config (dangling). Single PR
+ * ensures state remains consistent after merge.
  *
- * ⚠️ Kişi bir repo'nun TEK mentörüyse, o repo mentörsüz kalır ve engine plan'da
- * reddeder — bu durumda önce başka bir mentör atanmalı. Çağıran taraf bunu uyarır.
+ * ⚠️ If the user is the ONLY mentor of a repo, that repo would be left without mentors
+ * and engine rejects it in plan — in that case another mentor must be assigned first.
+ * Caller warns about this.
  */
 export function proposeOrgRemoval({
   client,
@@ -622,29 +623,29 @@ export function proposeOrgRemoval({
     },
   ]
 
-  const repoList = affected.map((p) => `\`${p.name}\``).join(', ') || '(hiçbiri)'
+  const repoList = affected.map((p) => `\`${p.name}\``).join(', ') || '(none)'
 
   return proposeMultiChange({
     client,
     slug: `remove-${key.replace(/[^a-z0-9-]/g, '') || 'member'}`,
-    commitMessage: `config: ${login} organizasyondan tamamen çıkarıldı`,
-    prTitle: `config: ${login} organizasyondan çıkarıldı`,
+    commitMessage: `config: completely removed ${login} from organization`,
+    prTitle: `config: removed ${login} from organization`,
     prBody:
       [
-        `\`${login}\` organizasyondan **tamamen** çıkarılıyor.`,
+        `\`${login}\` is being **completely** removed from the organization.`,
         '',
-        `- Repo rollerinden çıkarıldı: ${repoList}`,
-        '- `people.yml` üye listesinden çıkarıldı',
+        `- Removed from repo roles: ${repoList}`,
+        '- Removed from `people.yml` member list',
         '',
-        '> Önce tüm repo rollerinden, sonra üyelikten çıkarılır — böylece dangling',
-        '> referans oluşmaz. Merge sonrası kişi org üyesi olmaktan çıkar ve bu repolara',
-        '> erişimi kalmaz.',
+        '> Removed from all repo roles first, then from membership — preventing',
+        '> dangling references. After merge, the user will no longer be an org member',
+        '> and will lose access to these repositories.',
       ].join('\n') + PR_FOOTER,
     files,
   })
 }
 
-/** Dashboard'ın açtığı PR'lar — branch adı önekinden tanınır. */
+/** PRs opened by the dashboard — recognized by branch name prefix. */
 export function isDashboardBranch(ref: string): boolean {
   return ref.startsWith('dashboard/')
 }

@@ -17,7 +17,7 @@ import { parsePeopleConfig, serializePeopleConfig } from '../services/yaml'
 import { LANGUAGES, type Project } from '../types/config'
 import type { GitHubOrg, GitHubUser } from '../types/github'
 
-/** Bare domain'i tıklanabilir URL'e çevir. */
+/** Convert bare domain into a clickable URL. */
 function normalizeUrl(url: string): string {
   return /^https?:\/\//i.test(url) ? url : `https://${url}`
 }
@@ -41,7 +41,7 @@ export function Projects() {
         if (!cancelled) setOrgInfo(o)
       })
       .catch(() => {
-        /* org bilgisi alınamazsa banner gizli kalır */
+        /* banner stays hidden if org info cannot be fetched */
       })
     return () => {
       cancelled = true
@@ -64,8 +64,8 @@ export function Projects() {
     })
   }, [projects, query, language])
 
-  // Gruplama. Mentör: bir proje birden çok mentöre sahipse her birinde görünür.
-  // Arşivli: Aktif / Arşivli olarak ikiye ayrılır (boş grup gösterilmez).
+  // Grouping. Mentor: if a project has multiple mentors it appears under each.
+  // Archived: split into Active / Archived (empty groups hidden).
   const grouped = useMemo<[string, Project[]][] | null>(() => {
     if (groupBy === 'mentor') {
       const map = new Map<string, Project[]>()
@@ -284,8 +284,8 @@ function AddMemberDialog({
     if (batchMode) {
       addToCart({
         file: PATHS.people,
-        summary: `people.yml: +${target} (org üyeliği)`,
-        detail: `\`${target}\` org üyeliğine eklendi`,
+        summary: `people.yml: +${target} (org membership)`,
+        detail: `\`${target}\` added to org membership`,
         transform: (text) => {
           const { members } = parsePeopleConfig(text)
           if (members.some((l) => l.toLowerCase() === target.toLowerCase())) return text

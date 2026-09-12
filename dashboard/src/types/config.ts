@@ -1,6 +1,6 @@
 /**
- * terraform/config/ altındaki YAML dosyalarının TypeScript karşılıkları.
- * Şema kaynağı: terraform/config/repository.example.yml ve organization.yml.
+ * TypeScript representations of YAML files under terraform/config/.
+ * Schema source: terraform/config/repository.example.yml and organization.yml.
  */
 
 export const LANGUAGES = [
@@ -36,7 +36,7 @@ export type Language = (typeof LANGUAGES)[number]
 
 export type Visibility = 'public' | 'private'
 
-/** organization.yml → defaults.labels ve repo bazlı labels girdisi. */
+/** organization.yml → defaults.labels and repo-level labels entry. */
 export interface RepoLabel {
   name: string
   color: string
@@ -54,16 +54,16 @@ export interface ProtectedBranchRule {
   push_allowed_roles?: string[]
 }
 
-/** Şablon dağıtım modu — terraform/config/organization.yml → defaults.files. */
+/** Template distribution mode — terraform/config/organization.yml → defaults.files. */
 export type TemplateMode = 'strict' | 'seed' | 'none'
 
-/** config/repositories/<repo>.yml — yalnızca varsayılandan farklı alanlar yazılır. */
+/** config/repositories/<repo>.yml — only fields differing from defaults are written. */
 export interface RepoConfig {
   description: string
   language: Language
   mentors: string[]
   developers?: string[]
-  /** Salt-okunur (pull) erişimi olan kişiler. Org config'inde `viewer` rolü. */
+  /** Users with read-only (pull) access. `viewer` role in org config. */
   viewers?: string[]
   visibility?: Visibility
   archived?: boolean
@@ -73,32 +73,32 @@ export interface RepoConfig {
   auto_init?: boolean
   default_branch?: string
   /**
-   * Dal bazında koruma ezmesi. `null` özel anlam taşır: o dal için varsayılan
-   * koruma tamamen KALDIRILIR (terraform/repositories.tf → `!= null` filtresi).
+   * Per-branch protection override. `null` has a special meaning: default protection
+   * is completely REMOVED for that branch (terraform/repositories.tf → `!= null` filter).
    */
   protected_branches?: Record<string, ProtectedBranchRule | null>
   code_owners?: Record<string, string[]>
-  /** Şablon dosyası → mod. Org varsayılanının üstüne sığ merge edilir. */
+  /** Template file → mode. Shallow merged on top of org defaults. */
   files?: Record<string, TemplateMode>
   workflows?: string[]
-  /** Dependabot güvenlik uyarıları. Org varsayılanı: açık. */
+  /** Dependabot security alerts. Org default: enabled. */
   vulnerability_alerts?: boolean
-  /** Secret scanning + push protection (yalnızca public repo'da ücretsiz). */
+  /** Secret scanning + push protection (free for public repos only). */
   secret_scanning?: boolean
-  /** Repo'ya özel etiket seti — verilirse org varsayılanının yerine geçer. */
+  /** Repo-specific label set — if provided, replaces org defaults. */
   labels?: RepoLabel[]
 }
 
-/** Bir repo config dosyası + GitHub'daki kimliği (yazma için `sha` şart). */
+/** A repo config file + its identity on GitHub (`sha` is required for writing). */
 export interface Project {
-  /** Repo adı = dosya adı (uzantısız). */
+  /** Repo name = file name (without extension). */
   name: string
-  /** Repo kökünden yol: terraform/config/repositories/<name>.yml */
+  /** Path from repo root: terraform/config/repositories/<name>.yml */
   path: string
-  /** Contents API blob sha'sı — yazarken çakışma korumasında kullanılır. */
+  /** Contents API blob sha — used for conflict protection when writing. */
   sha: string
   config: RepoConfig
-  /** Ayrıştırma başarısızsa dolu olur; kart bozuk olduğunu gösterir. */
+  /** Populated if parsing fails; indicates to card that it is corrupted. */
   parseError?: string
 }
 
@@ -118,13 +118,13 @@ export interface OrgDefaults {
   vulnerability_alerts?: boolean
   secret_scanning?: boolean
   protected_branches?: Record<string, ProtectedBranchRule>
-  /** Şablon dosyası → dağıtım modu (strict/seed/none). */
+  /** Template file → distribution mode (strict/seed/none). */
   files?: Record<string, TemplateMode>
   workflows?: string[]
   labels?: RepoLabel[]
 }
 
-/** organization.yml → profile: GitHub UI'da görünen org kimliği (kozmetik). */
+/** organization.yml → profile: cosmetic org identity shown in GitHub UI. */
 export interface OrgProfile {
   name?: string
   description?: string
@@ -134,7 +134,7 @@ export interface OrgProfile {
 
 export interface OrgConfig {
   version: number
-  /** Artık config'de yazılmaz; org adı TF_VAR_github_org_name'den gelir. Dashboard CONFIG_OWNER kullanır. */
+  /** No longer written in config; org name comes from TF_VAR_github_org_name. Dashboard uses CONFIG_OWNER. */
   organization?: string
   roles: Record<string, OrgRoleDefinition>
   org_admin_team: string
@@ -143,8 +143,8 @@ export interface OrgConfig {
 }
 
 /**
- * config/people.yml — SADECE org üyeliği (yetki taşımaz). Makine-sahipli;
- * dashboard `members` listesine ekler/çıkarır.
+ * config/people.yml — org membership ONLY (carries no permissions). Machine-owned;
+ * dashboard adds/removes from `members` list.
  */
 export interface PeopleConfig {
   version: number
@@ -152,19 +152,19 @@ export interface PeopleConfig {
 }
 
 /**
- * config/privileged.yml — org owner'lar + org kapsamlı roller.
- * İnsan-sahipli, CODEOWNERS korumalı. 🔒 Dashboard OKUR, asla yazmaz.
+ * config/privileged.yml — org owners + org-wide roles.
+ * Human-owned, CODEOWNERS-protected. 🔒 Dashboard READS, never writes.
  */
 export interface PrivilegedConfig {
   version: number
   org_owners: string[]
-  /** rol adı → o rolü taşıyan login'ler (bugün tek rol: head-of-engineering). */
+  /** role name → logins holding that role (currently single role: head-of-engineering). */
   roles: Record<string, string[]>
 }
 
 export type ProjectRole = 'mentor' | 'developer' | 'viewer'
 
-/** "Bu kişi hangi projede, hangi rolde?" görünümünün satırı. */
+/** Row in the "Which project is this user in, with what role?" view. */
 export interface Membership {
   project: string
   role: ProjectRole

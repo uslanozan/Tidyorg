@@ -4,22 +4,24 @@ import { GitHubError } from '../services/githubApi'
 import { useAuth } from './useAuth'
 
 /**
- * "Config = gerçek" senkron durumu. Dashboard hep config'i (istenen durumu)
- * gösterir; GitHub'daki fiili erişim ancak main'e merge sonrası Terraform apply
- * bitince oturur. Apply, main'e push'ta çalışan `terraform-apply.yml` workflow'u —
- * onun run durumu "senkron mu" sorusunun tek yetkili cevabı.
+ * "Config = reality" synchronization status. The dashboard always displays
+ * the config (desired state); actual access on GitHub takes effect only after
+ * Terraform apply finishes following a merge into main. Apply runs as the
+ * `terraform-apply.yml` workflow on push to main — its run status is the single
+ * authoritative answer to "is it synchronized".
  *
- * Apply hiçbir yorum/status yaymıyor (yalnızca Actions log'u), o yüzden run'ı
- * doğrudan Actions API'sinden okuruz. Bu, dashboard App'inde **Actions: Read**
- * izni ister; izin yoksa 403 gelir ve rozet sessizce "bilinmiyor"a düşer (hata basmaz).
+ * Apply does not broadcast comments/status (Actions log only), so we read the run
+ * directly from the Actions API. This requires **Actions: Read** permission on the
+ * dashboard App; if permission is missing, 403 is returned and the badge quietly
+ * falls back to "unknown" (without throwing an error).
  */
 export type SyncState = 'in-sync' | 'applying' | 'error' | 'unknown'
 
 export interface SyncStatus {
   state: SyncState
-  /** İlgili apply run'ının GitHub linki. */
+  /** GitHub link for the related apply run. */
   runUrl?: string
-  /** Actions:Read izni yok — rozet "bilinmiyor" gösterir, kullanıcı izni ekleyebilir. */
+  /** Missing Actions:Read permission — badge shows "unknown", user can grant permission. */
   forbidden?: boolean
 }
 
@@ -48,7 +50,7 @@ async function fetchStatus(
     )
     const runs = res.workflow_runs ?? []
 
-    // Kuyrukta/çalışan bir apply varsa: senkronize ediliyor.
+    // If an apply is queued/in progress: currently applying.
     const active = runs.find((r) => r.status !== 'completed')
     if (active) return { state: 'applying', runUrl: active.html_url }
 
@@ -62,7 +64,7 @@ async function fetchStatus(
     if (error instanceof GitHubError && (error.kind === 'forbidden' || error.status === 403)) {
       return { state: 'unknown', forbidden: true }
     }
-    // Geçici hata: rozet kritik değil, sessizce "bilinmiyor".
+    // Transient error: badge is non-critical, quietly fall back to "unknown".
     return { state: 'unknown' }
   }
 }
@@ -91,7 +93,7 @@ export function useSyncStatus(): SyncStatus {
       const next = await fetchStatus(client.request)
       if (cancelled) return
       setSync(next)
-      // Apply sürerken sık, aksi halde seyrek yokla.
+      // Poll frequently while apply is in progress, otherwise infrequently.
       const delay = next.state === 'applying' ? POLL_ACTIVE_MS : POLL_IDLE_MS
       handle.current = window.setTimeout(() => void tick(), delay)
     }

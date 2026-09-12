@@ -1,4 +1,4 @@
-/** Kullandığımız GitHub REST cevaplarının ihtiyacımız olan alanları. */
+/** Fields of GitHub REST responses needed by the dashboard. */
 
 export interface GitHubUser {
   login: string
@@ -11,7 +11,7 @@ export interface GitHubOrg {
   login: string
   name: string | null
   description: string | null
-  /** Org web sitesi (bare domain olabilir). */
+  /** Org website (can be a bare domain). */
   blog: string | null
   avatar_url: string
   html_url: string
@@ -23,7 +23,7 @@ export interface ContentFile {
   path: string
   sha: string
   size: number
-  /** base64 — yalnızca tek dosya çekildiğinde dolu gelir. */
+  /** base64 — populated only when a single file is fetched. */
   content?: string
   encoding?: string
   html_url: string
@@ -58,7 +58,7 @@ export interface IssueComment {
   user: Pick<GitHubUser, 'login' | 'avatar_url'> | null
 }
 
-/** Device Flow'un iki adımının cevapları. */
+/** Responses for the two steps of the Device Flow. */
 export interface DeviceCodeResponse {
   device_code: string
   user_code: string

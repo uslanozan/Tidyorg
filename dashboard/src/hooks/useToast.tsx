@@ -15,7 +15,7 @@ export interface Toast {
   kind: ToastKind
   title: string
   message?: string
-  /** Toast içinde gösterilecek bağlantı (örn. açılan PR). */
+  /** Link to display in the toast (e.g. opened PR). */
   link?: { href: string; label: string }
 }
 
@@ -59,6 +59,6 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
 export function useToast(): ToastValue {
   const value = useContext(ToastContext)
-  if (!value) throw new Error('useToast yalnızca ToastProvider içinde kullanılabilir')
+  if (!value) throw new Error('useToast must be used within ToastProvider')
   return value
 }

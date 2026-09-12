@@ -2,9 +2,9 @@ import type { CSSProperties } from 'react'
 import type { RepoLabel } from '../types/config'
 
 /**
- * GitHub tarzı issue etiketi: solid renkli kenar, camsı yarı-saydam iç, kontrastlı
- * yazı. Renk `--label-color` CSS değişkeninden gelir; fill/kenar/yazı tonlarını
- * global.css `color-mix` ile temaya göre türetir (açık/koyu ayrı).
+ * GitHub-style issue label: solid colored border, glassy semi-transparent fill, contrasting
+ * text. Color comes from `--label-color` CSS variable; fill/border/text shades are
+ * derived per theme via `color-mix` in global.css (separate for light/dark).
  */
 export function LabelChip({ label }: { label: RepoLabel }) {
   const hex = `#${(label.color || 'ededed').replace('#', '')}`
@@ -14,7 +14,7 @@ export function LabelChip({ label }: { label: RepoLabel }) {
       style={{ '--label-color': hex } as CSSProperties}
       title={label.description || undefined}
     >
-      {label.name || '(adsız)'}
+      {label.name || '(unnamed)'}
     </span>
   )
 }

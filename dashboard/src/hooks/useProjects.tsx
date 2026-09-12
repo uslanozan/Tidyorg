@@ -35,8 +35,8 @@ interface ConfigValue {
 const ConfigContext = createContext<ConfigValue | null>(null)
 
 /**
- * Config repo'su tek seferde okunur ve tüm sayfalar aynı kopyayı paylaşır.
- * Her sayfa kendi isteğini atsaydı GitHub'ın saatlik istek limiti hızla dolardı.
+ * The config repo is read once and all pages share the same copy.
+ * If each page made its own request, GitHub's hourly rate limit would deplete quickly.
  */
 export function ConfigProvider({ children }: { children: ReactNode }) {
   const { client, status, signOut } = useAuth()
@@ -55,8 +55,8 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     try {
       const [nextProjects, nextOrg, nextPeople, nextPrivileged] = await Promise.all([
         loadProjects(client),
-        // organization.yml / people.yml / privileged.yml okunamazsa liste yine
-        // de gösterilir: hepsi yalnızca zenginleştirme (varsayılan kurallar, roller).
+        // If organization.yml / people.yml / privileged.yml cannot be read, the list
+        // is still displayed: all are only enrichments (default rules, roles).
         loadOrgConfig(client).catch(() => null),
         loadPeople(client).catch(() => null),
         loadPrivileged(client).catch(() => null),
@@ -87,7 +87,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
 
 export function useConfig(): ConfigValue {
   const value = useContext(ConfigContext)
-  if (!value) throw new Error('useConfig yalnızca ConfigProvider içinde kullanılabilir')
+  if (!value) throw new Error('useConfig must be used within ConfigProvider')
   return value
 }
 

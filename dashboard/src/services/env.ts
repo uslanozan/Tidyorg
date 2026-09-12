@@ -1,14 +1,14 @@
 /**
- * Ayarlar tek yerde toplanır (bkz. .env.example).
+ * Configuration is gathered in one place (see .env.example).
  *
- * İki kaynak, bu sırayla:
- *   1. `window.__ENV__` — çalışma zamanında enjekte edilir. Docker image'ında
- *      entrypoint `env.js`'i konteyner ortam değişkenlerinden üretir; aynı image
- *      farklı org'lara yeniden derlenmeden çalışır.
- *   2. `import.meta.env` — Vite'ın build sırasında gömdüğü `.env` değerleri.
- *      Yerel geliştirmede ve statik hosting'de (Vercel/Netlify) kullanılır.
+ * Two sources, in this order:
+ *   1. `window.__ENV__` — injected at runtime. In the Docker image, the
+ *      entrypoint generates `env.js` from container environment variables; the same image
+ *      runs for different orgs without rebuilding.
+ *   2. `import.meta.env` — `.env` values embedded by Vite at build time.
+ *      Used in local development and static hosting (Vercel/Netlify).
  *
- * `window.__ENV__` her zaman kazanır; dev'de `public/env.js` boş nesne verir.
+ * `window.__ENV__` always wins; in dev, `public/env.js` provides an empty object.
  */
 
 interface RuntimeEnv {
@@ -38,10 +38,10 @@ export const CONFIG_OWNER = readEnv('VITE_CONFIG_OWNER') || 'your-org'
 export const CONFIG_REPO = readEnv('VITE_CONFIG_REPO') || 'tidyorg'
 export const CONFIG_BRANCH = readEnv('VITE_CONFIG_BRANCH') || 'main'
 
-/** github.com'un OAuth uçlarına giden proxy yolu — CORS için gerekli. */
+/** Proxy path to github.com OAuth endpoints — required for CORS. */
 export const OAUTH_PROXY = readEnv('VITE_OAUTH_PROXY') || '/gh-oauth'
 
-/** Config repo'sundaki sabit yollar. */
+/** Fixed paths in config repo. */
 export const PATHS = {
   repositories: 'terraform/config/repositories',
   organization: 'terraform/config/organization.yml',

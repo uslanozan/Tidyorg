@@ -5,10 +5,10 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [react()],
   server: {
-    // GitHub'ın OAuth uçları (github.com/login/*) CORS başlığı göndermez, yani
-    // tarayıcıdan doğrudan çağrılamaz. Dev'de Vite proxy'si, prod'da hosting
-    // rewrite'ı (vercel.json / public/_redirects) aynı yolu üstlenir.
-    // Böylece dashboard hâlâ backend-less: çalışan bir sunucu kodu yok.
+    // GitHub's OAuth endpoints (github.com/login/*) do not send CORS headers, meaning
+    // they cannot be called directly from the browser. In dev, the Vite proxy handles
+    // this path; in prod, hosting rewrites (vercel.json / public/_redirects) do so.
+    // Thus the dashboard remains backend-less: no server code is running.
     proxy: {
       '/gh-oauth': {
         target: 'https://github.com',

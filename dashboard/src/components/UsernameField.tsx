@@ -9,20 +9,20 @@ interface Props {
   label: string
   value: string
   onChange: (value: string) => void
-  /** Doğrulama sonucu. `members` verildiyse: org üyesi mi? Aksi halde: GitHub'da var mı? */
+  /** Validation result. If `members` is provided: org member? Otherwise: exists on GitHub? */
   onVerified?: (ok: boolean) => void
   /**
-   * Varsayılan modda GitHub doğrulaması başarılı olunca çözülen kullanıcı (avatar +
-   * gerçek ad) döner; alan boşaldığında / doğrulama başarısızsa `null`. Çağıran taraf
-   * "kimi ekliyoruz" önizlemesi gösterebilsin diye.
+   * In default mode, resolves to the user (avatar + display name) when GitHub validation
+   * succeeds; `null` when field is cleared / validation fails. Allows the caller
+   * to display a "who are we adding" preview.
    */
   onResolved?: (user: GitHubUser | null) => void
   hint?: string
   /**
-   * Verilirse alan bir ÜYE SEÇİCİ olur: autocomplete bu listeden gelir ve yalnızca
-   * listedeki (org üyesi) biri kabul edilir. GitHub'a istek atılmaz — üyeler zaten
-   * doğrulanmış. Repo'ya mentör/developer eklerken kullanılır; engine org üyesi
-   * olmayan birini zaten reddettiği için burada da engellemek doğru ve daha hızlı.
+   * If provided, the field becomes a MEMBER PICKER: autocomplete comes from this list and only
+   * someone in the list (org member) is accepted. No request is sent to GitHub — members are already
+   * verified. Used when adding mentor/developer to repo; since engine rejects non-org members anyway,
+   * preventing it here is proper and faster.
    */
   members?: string[]
 }
@@ -30,9 +30,9 @@ interface Props {
 type Check = 'idle' | 'checking' | 'ok' | 'missing' | 'error'
 
 /**
- * GitHub kullanıcı adı girişi. İki mod:
- *  - Varsayılan: alandan çıkınca `GET /users/{login}` ile kullanıcının var olduğunu doğrular.
- *  - `members` verildiğinde: org üyesi seçici (datalist autocomplete + yerel doğrulama).
+ * GitHub username input. Two modes:
+ *  - Default: on blur, validates user exists via `GET /users/{login}`.
+ *  - When `members` provided: org member picker (datalist autocomplete + local validation).
  */
 export function UsernameField({
   label,
@@ -58,7 +58,7 @@ export function UsernameField({
       return
     }
 
-    // Üye seçici modu — yerel kontrol, GitHub'a gitmez.
+    // Member picker mode — local check, does not call GitHub.
     if (members) {
       const found = members.some((m) => m.toLowerCase() === login.toLowerCase())
       if (found) {

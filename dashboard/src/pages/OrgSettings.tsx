@@ -23,7 +23,7 @@ import type {
   TemplateMode,
 } from '../types/config'
 
-// OrgConfigChange.value = YamlValue (services/yaml). Değişiklikler bu tipte taşınır.
+// OrgConfigChange.value = YamlValue (services/yaml). Changes are carried in this type.
 type ChangeValue = YamlValue
 
 const FILE_KEYS = [
@@ -37,7 +37,7 @@ const FILE_KEYS = [
 const WORKFLOW_KEYS = ['ci', 'release', 'dependabot'] as const
 const ROLE_PERMISSIONS = ['pull', 'triage', 'push', 'maintain', 'admin'] as const
 
-// label metinleri render sırasında t(`orgSettings.branches.${key}`) ile çözülür.
+// label strings are resolved via t(`orgSettings.branches.${key}`) during render.
 const BRANCH_BOOLS: { key: keyof ProtectedBranchRule }[] = [
   { key: 'require_code_owner_review' },
   { key: 'dismiss_stale_reviews' },
@@ -105,13 +105,13 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
   const { busy, submit } = useProposal()
   const d = org.defaults
 
-  // --- Profil ---------------------------------------------------------------
+  // --- Profile --------------------------------------------------------------
   const [name, setName] = useState(org.profile?.name ?? '')
   const [description, setDescription] = useState(org.profile?.description ?? '')
   const [blog, setBlog] = useState(org.profile?.blog ?? '')
   const [location, setLocation] = useState(org.profile?.location ?? '')
 
-  // --- Defaults: genel ------------------------------------------------------
+  // --- Defaults: general ----------------------------------------------------
   const [visibility, setVisibility] = useState<'public' | 'private'>(d.visibility ?? 'public')
   const [defaultBranch, setDefaultBranch] = useState(d.default_branch ?? '')
   const [hasIssues, setHasIssues] = useState(Boolean(d.has_issues))
@@ -126,12 +126,12 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
   const [files, setFiles] = useState<Record<string, TemplateMode>>(() => ({ ...(d.files ?? {}) }))
   const [labels, setLabels] = useState<RepoLabel[]>(() => (d.labels ?? []).map((l) => ({ ...l })))
 
-  // --- Defaults: protected_branches (leaf düzenleme) ------------------------
+  // --- Defaults: protected_branches (leaf editing) --------------------------
   const [branches, setBranches] = useState<Record<string, ProtectedBranchRule>>(() =>
     JSON.parse(JSON.stringify(d.protected_branches ?? {})),
   )
 
-  // --- Roller ---------------------------------------------------------------
+  // --- Roles ----------------------------------------------------------------
   const [roles, setRoles] = useState<Record<string, OrgRoleDefinition>>(() =>
     JSON.parse(JSON.stringify(org.roles ?? {})),
   )
@@ -156,19 +156,19 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
       details.push(detail)
     }
 
-    // Profil
-    if (name !== (org.profile?.name ?? '')) push(['profile', 'name'], name, `Profil adı: ${name}`)
+    // Profile
+    if (name !== (org.profile?.name ?? '')) push(['profile', 'name'], name, `Profile name: ${name}`)
     if (description !== (org.profile?.description ?? ''))
-      push(['profile', 'description'], description, 'Profil açıklaması güncellendi')
+      push(['profile', 'description'], description, 'Profile description updated')
     if (blog !== (org.profile?.blog ?? '')) push(['profile', 'blog'], blog, `Blog: ${blog}`)
     if (location !== (org.profile?.location ?? ''))
-      push(['profile', 'location'], location, `Konum: ${location}`)
+      push(['profile', 'location'], location, `Location: ${location}`)
 
-    // Defaults skalerleri
+    // Defaults scalars
     if (visibility !== (d.visibility ?? 'public'))
-      push(['defaults', 'visibility'], visibility, `Varsayılan görünürlük: ${visibility}`)
+      push(['defaults', 'visibility'], visibility, `Default visibility: ${visibility}`)
     if (defaultBranch !== (d.default_branch ?? ''))
-      push(['defaults', 'default_branch'], defaultBranch, `Varsayılan dal: ${defaultBranch}`)
+      push(['defaults', 'default_branch'], defaultBranch, `Default branch: ${defaultBranch}`)
     const boolLeaves: [string, boolean, boolean][] = [
       ['has_issues', hasIssues, Boolean(d.has_issues)],
       ['has_projects', hasProjects, Boolean(d.has_projects)],
@@ -180,22 +180,22 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
     for (const [key, next, orig] of boolLeaves)
       if (next !== orig) push(['defaults', key], next, `defaults.${key}: ${next}`)
 
-    // workflows (flow-liste)
+    // workflows (flow list)
     if (!same(workflows, d.workflows ?? []))
-      push(['defaults', 'workflows'], workflows, `Workflow'lar: ${workflows.join(', ') || '—'}`)
+      push(['defaults', 'workflows'], workflows, `Workflows: ${workflows.join(', ') || '—'}`)
 
-    // files (blok, iç yorum yok → tam değiştir)
+    // files (block, no internal comments → full replacement)
     const nextFiles: Record<string, TemplateMode> = {}
     for (const k of FILE_KEYS) if (files[k]) nextFiles[k] = files[k]
     if (!same(nextFiles, d.files ?? {}))
-      push(['defaults', 'files'], nextFiles, 'Şablon dağıtım modları güncellendi')
+      push(['defaults', 'files'], nextFiles, 'Template distribution modes updated')
 
-    // labels (blok, iç yorum yok → tam değiştir)
+    // labels (block, no internal comments → full replacement)
     const nextLabels = cleanLabels(labels)
     if (!same(nextLabels, d.labels ?? []))
-      push(['defaults', 'labels'], nextLabels as unknown as ChangeValue, `Seed etiket seti (${nextLabels.length})`)
+      push(['defaults', 'labels'], nextLabels as unknown as ChangeValue, `Seed label set (${nextLabels.length})`)
 
-    // protected_branches (LEAF bazında — yorumlar korunsun)
+    // protected_branches (per leaf — preserve comments)
     for (const [branch, orig] of Object.entries(d.protected_branches ?? {})) {
       const draft = branches[branch] ?? {}
       const leafKeys: (keyof ProtectedBranchRule)[] = [
@@ -213,13 +213,13 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
           push(
             ['defaults', 'protected_branches', branch, key],
             draft[key] as ChangeValue,
-            `${branch}.${key} güncellendi`,
+            `${branch}.${key} updated`,
           )
         }
       }
     }
 
-    // roles (LEAF bazında — viewer yorumu vb. korunsun)
+    // roles (per leaf — preserve viewer comment etc.)
     for (const [role, orig] of Object.entries(org.roles ?? {})) {
       const draft = roles[role]
       if (!draft) continue
@@ -245,7 +245,7 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
     if (batchMode) {
       addToCart({
         file: PATHS.organization,
-        summary: `Org ayarları: ${details.length} değişiklik`,
+        summary: `Org settings: ${details.length} changes`,
         detail: `organization.yml — ${details.join('; ')}`,
         transform: (text) => changes.reduce((t, c) => setYamlPath(t, c.path, c.value), text),
       })
@@ -256,10 +256,10 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
         proposeOrgConfigUpdate({
           client,
           changes,
-          summary: 'organizasyon ayarları güncellendi',
+          summary: 'org settings updated',
           details,
         }),
-      'Org ayarları güncellendi',
+      'Org settings updated',
     )
   }
 
@@ -309,7 +309,7 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
         </p>
       </div>
 
-      {/* PROFİL */}
+      {/* PROFILE */}
       <Section title={t('orgSettings.section.profileTitle')} hint={t('orgSettings.section.profileHint')} icon={ICONS.profile}>
         <div className="field">
           <label className="label">{t('orgSettings.profile.photo')}</label>
@@ -339,7 +339,7 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
         <TextField label={t('orgSettings.profile.location')} value={location} onChange={setLocation} disabled={!canManage} />
       </Section>
 
-      {/* DEFAULTS: GENEL */}
+      {/* DEFAULTS: GENERAL */}
       <Section title={t('orgSettings.section.generalTitle')} hint={t('orgSettings.section.generalHint')} icon={ICONS.general}>
         <div className="field">
           <label className="label">{t('orgSettings.general.visibility')}</label>
@@ -360,7 +360,7 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
         <BoolField label="auto_init" value={autoInit} onChange={setAutoInit} disabled={!canManage} />
       </Section>
 
-      {/* DEFAULTS: GÜVENLİK */}
+      {/* DEFAULTS: SECURITY */}
       <Section title={t('orgSettings.section.securityTitle')} icon={ICONS.security}>
         <BoolField label={t('orgSettings.security.vulnAlerts')} value={vulnAlerts} onChange={setVulnAlerts} disabled={!canManage} />
         <BoolField label={t('orgSettings.security.secretScanning')} value={secretScanning} onChange={setSecretScanning} disabled={!canManage} />
@@ -492,7 +492,7 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
         ))}
       </Section>
 
-      {/* ROLLER */}
+      {/* ROLES */}
       <Section title={t('orgSettings.section.rolesTitle')} hint={t('orgSettings.section.rolesHint')} icon={ICONS.roles}>
         <div className="card card-pad" style={{ background: 'var(--danger-soft)', border: '1px solid var(--danger)' }}>
           <p className="subtle" style={{ margin: 0 }}>
@@ -528,7 +528,7 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
         ))}
       </Section>
 
-      {/* SALT-OKUNUR: kimlik + gerçek GitHub org ayarları */}
+      {/* READ-ONLY: identity + actual GitHub org settings */}
       <Section title={t('orgSettings.section.structuralTitle')} icon={ICONS.structural}>
         <div className="meta-grid">
           <ReadOnly label="organization" value={CONFIG_OWNER} />
@@ -556,7 +556,7 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
   )
 }
 
-/* ── küçük yardımcı bileşenler ─────────────────────────────────────────────── */
+/* ── Small helper components ─────────────────────────────────────────────── */
 
 function Section({
   title,
@@ -587,7 +587,7 @@ function Section({
   )
 }
 
-/* ── bölüm ikonları (çizgi stili, currentColor) ────────────────────────────── */
+/* ── Section icons (stroke style, currentColor) ────────────────────────────── */
 
 const svg = (children: ReactNode) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">

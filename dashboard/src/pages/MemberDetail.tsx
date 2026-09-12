@@ -23,7 +23,7 @@ import { applyEdits, parsePeopleConfig, parseRepoConfig, serializePeopleConfig }
 import type { ProjectRole } from '../types/config'
 
 const ROLE_LABEL: Record<ProjectRole, string> = {
-  mentor: 'Mentör',
+  mentor: 'Mentor',
   developer: 'Developer',
   viewer: 'Viewer',
 }
@@ -52,8 +52,8 @@ export function MemberDetail() {
   const memberships = membershipsFor(login, projects)
   const standing = orgStanding(login, people, privileged)
 
-  // "Org'dan tamamen çıkar" öncesi: kişinin bulunduğu repolar + o reponun TEK
-  // mentörü mü (öyleyse çıkarınca repo mentörsüz kalır → engine plan'da reddeder).
+  // Before "fully remove from org": repos person belongs to + whether they are the
+  // SOLE mentor (if so, removing leaves repo without mentors → engine rejects in plan).
   const affectedRepos = useMemo(() => {
     const key = login.toLowerCase()
     const inList = (arr?: string[]) => (arr ?? []).some((l) => l.toLowerCase() === key)
@@ -62,7 +62,7 @@ export function MemberDetail() {
       .map((p) => {
         const roles: string[] = []
         const isMentor = inList(p.config.mentors)
-        if (isMentor) roles.push('mentör')
+        if (isMentor) roles.push('mentor')
         if (inList(p.config.developers)) roles.push('developer')
         if (inList(p.config.viewers)) roles.push('viewer')
         return { name: p.name, roles, soleMentor: isMentor && (p.config.mentors ?? []).length === 1 }
@@ -84,7 +84,7 @@ export function MemberDetail() {
     )
   }
 
-  /** Toplu mod: org'dan tam çıkarma cascade'ini sepete koyar (her dosya bir öğe). */
+  /** Batch mode: stages full org removal cascade into cart (one item per file). */
   function stageRemoveFromOrg() {
     const key = login.toLowerCase()
     const has = (arr?: string[]) => (arr ?? []).some((l) => l.toLowerCase() === key)
@@ -94,8 +94,8 @@ export function MemberDetail() {
     for (const project of affected) {
       addToCart({
         file: project.path,
-        summary: `${project.name}: −${login} (org çıkarma)`,
-        detail: `\`${login}\` → \`${project.name}\` rollerinden çıkarıldı`,
+        summary: `${project.name}: −${login} (org removal)`,
+        detail: `\`${login}\` → removed from \`${project.name}\` roles`,
         transform: (text) => {
           const cfg = parseRepoConfig(text)
           const drop = (arr?: string[]) => (arr ?? []).filter((l) => l.toLowerCase() !== key)
@@ -109,8 +109,8 @@ export function MemberDetail() {
     }
     addToCart({
       file: PATHS.people,
-      summary: `people.yml: −${login} (org üyeliği)`,
-      detail: `\`${login}\` people.yml üye listesinden çıkarıldı`,
+      summary: `people.yml: −${login} (org membership)`,
+      detail: `\`${login}\` removed from people.yml member list`,
       transform: (text) => {
         const { members } = parsePeopleConfig(text)
         return serializePeopleConfig(members.filter((l) => l.toLowerCase() !== key))
@@ -123,12 +123,12 @@ export function MemberDetail() {
     if (batchMode) return stageRemoveFromOrg()
     const result = await submit(
       () => proposeOrgRemoval({ client, login, projects }),
-      `${login} organizasyondan çıkarıldı`,
+      `${login} removed from organization`,
     )
     if (result) setConfirmRemove(false)
   }
 
-  /** Toplu mod: rol değişimini sepete koyar (tek repo dosyası). */
+  /** Batch mode: stages role change into cart (single repo file). */
   function stageRoleChange() {
     if (!roleEdit) return
     const project = projects.find((p) => p.name === roleEdit.project)
@@ -143,7 +143,7 @@ export function MemberDetail() {
           : `${project.name}: ${login} ${ROLE_LABEL[from]}→${ROLE_LABEL[to]}`,
       detail:
         to === 'remove'
-          ? `\`${login}\` **${ROLE_LABEL[from]}** rolünden çıkarıldı (${project.name})`
+          ? `\`${login}\` removed from **${ROLE_LABEL[from]}** role (${project.name})`
           : `\`${login}\` **${ROLE_LABEL[from]}** → **${ROLE_LABEL[to]}** (${project.name})`,
       transform: (text) => {
         const cfg = parseRepoConfig(text)
@@ -179,15 +179,15 @@ export function MemberDetail() {
           },
           summary:
             to === 'remove'
-              ? `${login} ${ROLE_LABEL[from]} listesinden çıkarıldı`
+              ? `${login} removed from ${ROLE_LABEL[from]} list`
               : `${login}: ${ROLE_LABEL[from]} → ${ROLE_LABEL[to]}`,
           details: [
             to === 'remove'
-              ? `\`${login}\` **${ROLE_LABEL[from]}** rolünden çıkarıldı`
+              ? `\`${login}\` removed from **${ROLE_LABEL[from]}** role`
               : `\`${login}\` **${ROLE_LABEL[from]}** → **${ROLE_LABEL[to]}**`,
           ],
         }),
-      `${login} rolü güncellendi (${roleEdit.project})`,
+      `${login} role updated (${roleEdit.project})`,
     )
     if (result) setRoleEdit(null)
   }

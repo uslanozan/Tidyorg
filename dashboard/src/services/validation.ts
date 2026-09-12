@@ -1,40 +1,38 @@
 import { LANGUAGES, type Language, type RepoConfig } from '../types/config'
 
 /**
- * Frontend doğrulamaları.
+ * Frontend validations.
  *
- * Ozan'ın JSON Schema'sı hazır olunca (Hafta 6) asıl doğrulama oraya taşınır;
- * buradaki kontroller o zaman da kalır — kullanıcıya PR açmadan önce anında
- * geri bildirim verirler.
+ * Provides immediate feedback to the user before opening a PR.
  */
 
-/** GitHub repo adı: küçük harf, rakam, tire; başta/sonda tire yok. */
+/** GitHub repo name: lowercase, numbers, hyphens; cannot start/end with a hyphen. */
 export const REPO_NAME_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
-/** GitHub kullanıcı adı kuralı. */
+/** GitHub username pattern. */
 export const USERNAME_PATTERN = /^[a-zA-Z\d](?:[a-zA-Z\d]|-(?=[a-zA-Z\d])){0,38}$/
 
 export function validateRepoName(name: string, existing: string[] = []): string | null {
-  if (!name.trim()) return 'Repo adı zorunlu.'
-  if (name.length > 100) return 'Repo adı en fazla 100 karakter olabilir.'
+  if (!name.trim()) return 'Repository name is required.'
+  if (name.length > 100) return 'Repository name can be at most 100 characters.'
   if (!REPO_NAME_PATTERN.test(name)) {
-    return 'Yalnızca küçük harf, rakam ve tire kullanılabilir (örn. odeme-servisi).'
+    return 'Only lowercase letters, numbers, and hyphens can be used (e.g. payment-service).'
   }
   if (existing.some((item) => item.toLowerCase() === name.toLowerCase())) {
-    return 'Bu adda bir proje zaten var.'
+    return 'A project with this name already exists.'
   }
   return null
 }
 
 export function validateUsername(login: string): string | null {
-  if (!login.trim()) return 'GitHub kullanıcı adı zorunlu.'
-  if (!USERNAME_PATTERN.test(login)) return 'Geçerli bir GitHub kullanıcı adı değil.'
+  if (!login.trim()) return 'GitHub username is required.'
+  if (!USERNAME_PATTERN.test(login)) return 'Not a valid GitHub username.'
   return null
 }
 
 export function validateDescription(description: string): string | null {
-  if (!description.trim()) return 'Açıklama zorunlu.'
-  if (description.length > 350) return 'Açıklama en fazla 350 karakter olabilir.'
+  if (!description.trim()) return 'Description is required.'
+  if (description.length > 350) return 'Description can be at most 350 characters.'
   return null
 }
 
@@ -42,7 +40,7 @@ export function isLanguage(value: string): value is Language {
   return (LANGUAGES as readonly string[]).includes(value)
 }
 
-/** Config'in tamamı — yazma akışı başlamadan hemen önce son kontrol. */
+/** Entire config — final check right before the write flow begins. */
 export function validateRepoConfig(config: RepoConfig): string[] {
   const errors: string[] = []
 
@@ -50,36 +48,36 @@ export function validateRepoConfig(config: RepoConfig): string[] {
   if (description) errors.push(description)
 
   if (!config.language || !isLanguage(config.language)) {
-    errors.push(`Dil şunlardan biri olmalı: ${LANGUAGES.join(', ')}.`)
+    errors.push(`Language must be one of: ${LANGUAGES.join(', ')}.`)
   }
 
   if (!config.mentors?.length) {
-    errors.push('Her repo\'nun en az bir mentörü olmalı.')
+    errors.push('Every repository must have at least one mentor.')
   }
 
   const seen = new Set<string>()
   for (const login of [...(config.mentors ?? []), ...(config.developers ?? [])]) {
     const key = login.toLowerCase()
-    if (seen.has(key)) errors.push(`"${login}" listede birden fazla kez var.`)
+    if (seen.has(key)) errors.push(`"${login}" appears multiple times in the list.`)
     seen.add(key)
   }
 
   return errors
 }
 
-/** Arşivlenmiş repo salt-okunurdur; kişi eklemek anlamsız ve yanıltıcıdır. */
+/** Archived repos are read-only; adding people is not allowed. */
 export function assertCanAddMember(config: RepoConfig): string | null {
   return config.archived
-    ? 'Bu repo arşivlenmiş. Arşivlenmiş repo\'ya kişi eklenemez.'
+    ? 'This repository is archived. Cannot add members to an archived repository.'
     : null
 }
 
-/** Mentör listesinden çıkarma repo'yu mentörsüz bırakıyor mu? */
+/** Does removing from mentor list leave the repo without mentors? */
 export function assertCanRemoveMentor(config: RepoConfig, login: string): string | null {
   const remaining = (config.mentors ?? []).filter(
     (item) => item.toLowerCase() !== login.toLowerCase(),
   )
   return remaining.length === 0
-    ? 'Son mentör çıkarılamaz — her repo\'nun en az bir mentörü olmalı.'
+    ? 'The last mentor cannot be removed — every repository must have at least one mentor.'
     : null
 }

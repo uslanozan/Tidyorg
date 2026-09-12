@@ -1,7 +1,7 @@
 /**
- * Üye / takım sayfalarının çeviri sözlükleri.
- * `tr` kaynak dildir; `en` aynı şekle sahiptir (her `tr` anahtarı `en`'de de var).
- * Anahtarlar nokta-yolu ile çözülür (ör. t('members.title')).
+ * Translation dictionaries for member / team pages.
+ * `tr` is the source language; `en` has the same structure (every `tr` key exists in `en`).
+ * Keys are resolved via dot-path (e.g. t('members.title')).
  */
 
 export const memberDetail = {

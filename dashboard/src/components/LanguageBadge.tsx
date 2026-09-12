@@ -1,7 +1,7 @@
 import type { Language } from '../types/config'
 
-// Bilinen diller: gerçek logo public/lang/<token>.svg (devicon, bundle edilmiş —
-// runtime CDN bağımlılığı yok). Bilinmeyen dil: renkli monogram fallback.
+// Known languages: actual logo at public/lang/<token>.svg (devicon, bundled —
+// no runtime CDN dependency). Unknown language: colored monogram fallback.
 const LANG_LABELS: Record<string, string> = {
   go: 'Go',
   python: 'Python',
@@ -32,7 +32,7 @@ const LANG_LABELS: Record<string, string> = {
   groovy: 'Groovy',
 }
 
-// Config token'ı olmayan ama gelebilecek yaygın yazımlar → kanonik token.
+// Common spellings not in config tokens but possible → canonical token.
 const ALIASES: Record<string, string> = {
   'c++': 'cpp',
   'c#': 'csharp',
@@ -59,14 +59,14 @@ const ALIASES: Record<string, string> = {
 
 const UNKNOWN_COLOR = '#94A3B8'
 
-/** Kanonik dil token'ı (bilinen bir dilse), yoksa undefined. */
+/** Canonical language token (if known language), otherwise undefined. */
 function resolve(lang: string): string | undefined {
   const lower = lang.toLowerCase()
   if (LANG_LABELS[lower]) return lower
   return ALIASES[lower]
 }
 
-/** Bir dil token'ının görünen adı (ör. "cpp" → "C++"). Dropdown'larda kullanılır. */
+/** Display name of a language token (e.g. "cpp" → "C++"). Used in dropdowns. */
 export function languageLabel(lang: string): string {
   const key = resolve(lang)
   return key ? LANG_LABELS[key] : String(lang)
@@ -92,7 +92,7 @@ export function LanguageBadge({ language }: { language: Language | string }) {
     )
   }
 
-  // Bilinmeyen dil → renkli monogram (logo yok).
+  // Unknown language → colored monogram (no logo).
   const mono = raw.slice(0, 2).toUpperCase() || '?'
   return (
     <span className="badge">

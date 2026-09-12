@@ -13,8 +13,8 @@ const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
 /**
- * Esc ile kapanan diyalog. Açılınca odağı içine alır, Tab ile odak panelde
- * hapsolur (arka plana kaçmaz) ve kapanınca odak tetikleyen öğeye geri döner.
+ * Dialog dismissible with Escape. Traps focus inside with Tab
+ * and returns focus to triggering element on close.
  */
 export function Modal({ title, onClose, children, footer }: ModalProps) {
   const panel = useRef<HTMLDivElement>(null)
@@ -44,22 +44,21 @@ export function Modal({ title, onClose, children, footer }: ModalProps) {
     }
 
     document.addEventListener('keydown', onKeyDown)
-    // preventScroll: odak ilk öğeye giderken tarayıcı gövdeyi kaydırıp başlığı
-    // görünmez yapmasın (sepet gibi uzun modallarda üst kırpılıyordu).
+    // preventScroll: prevent browser from scrolling body when focusing first element,
+    // which would hide the title (in tall modals like the cart, the top was clipped).
     panel.current
       ?.querySelector<HTMLElement>('input, button, select, textarea')
       ?.focus({ preventScroll: true })
 
     return () => {
       document.removeEventListener('keydown', onKeyDown)
-      // Odağı, diyaloğu açan öğeye (buton) geri ver — klavye kullanıcısı kaybolmasın.
+      // Return focus to triggering element (button) so keyboard user doesn't lose context.
       previouslyFocused?.focus?.()
     }
   }, [onClose])
 
-  // Portal document.body'ye: header'ın `backdrop-filter`'ı `position: fixed` için
-  // containing block oluşturuyor; portal olmadan modal viewport yerine header
-  // kutusuna göre konumlanıp üstten kırpılıyordu.
+  // Portal to document.body: header's `backdrop-filter` creates a containing block
+  // for `position: fixed`; without portal, modal positions relative to header box instead of viewport.
   return createPortal(
     <div
       className="modal-backdrop"

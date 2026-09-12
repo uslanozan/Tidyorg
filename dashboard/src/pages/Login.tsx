@@ -16,7 +16,7 @@ function errorMessage(error: unknown): string {
   if (error instanceof DeviceFlowError) return error.userMessage
   if (error instanceof GitHubError) return error.userMessage
   if (error instanceof Error) return error.message
-  return 'Beklenmedik bir hata oluştu.'
+  return 'An unexpected error occurred.'
 }
 
 export function Login() {
@@ -27,13 +27,13 @@ export function Login() {
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [manualToken, setManualToken] = useState('')
-  // Token ile giriş yalnızca geliştirmede: bir PAT, GitHub App kurulum
-  // kısıtını atlar, yani yayında güvenlik sınırını delerdi.
+  // Sign in with token is dev-only: a PAT bypasses GitHub App installation
+  // constraints, which would breach security boundaries in production.
   const manualAllowed = import.meta.env.DEV
   const [showManual, setShowManual] = useState(manualAllowed && !isDeviceFlowConfigured())
   const abort = useRef<AbortController | null>(null)
 
-  // Sayfadan çıkılırsa yoklamayı durdur.
+  // Stop polling if navigating away from the page.
   useEffect(() => () => abort.current?.abort(), [])
 
   async function startDeviceFlow() {
@@ -85,7 +85,7 @@ export function Login() {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
-      /* pano izni yoksa kod zaten ekranda */
+      /* if clipboard permission is missing, code is already on screen */
     }
   }
 
@@ -128,14 +128,14 @@ export function Login() {
         {phase === 'waiting' && device && (
           <div className="stack" style={{ gap: 'var(--sp-4)' }}>
             <p className="muted" style={{ fontSize: 'var(--text-sm)' }}>
-              1. Aşağıdaki sayfayı açın · 2. Bu kodu girin · 3. Bu ekrana dönün
+              1. Open the page below · 2. Enter this code · 3. Return to this screen
             </p>
 
             <code className="device-code">{device.user_code}</code>
 
             <div className="row" style={{ justifyContent: 'center' }}>
               <button type="button" className="btn btn-sm" onClick={copyCode}>
-                {copied ? 'Kopyalandı ✓' : 'Kodu kopyala'}
+                {copied ? 'Copied ✓' : 'Copy code'}
               </button>
               <a
                 className="btn btn-primary btn-sm"
@@ -143,13 +143,13 @@ export function Login() {
                 target="_blank"
                 rel="noreferrer"
               >
-                GitHub'da onayla ↗
+                Confirm on GitHub ↗
               </a>
             </div>
 
             <div className="row" style={{ justifyContent: 'center' }}>
               <span className="spinner" aria-hidden="true" />
-              <span className="subtle">Onay bekleniyor…</span>
+              <span className="subtle">Waiting for confirmation…</span>
             </div>
 
             <button
@@ -161,7 +161,7 @@ export function Login() {
                 setDevice(null)
               }}
             >
-              İptal
+              Cancel
             </button>
           </div>
         )}
@@ -179,20 +179,20 @@ export function Login() {
             <form className="stack" onSubmit={submitManualToken} style={{ textAlign: 'left' }}>
               <div className="field">
                 <label className="label" htmlFor="pat">
-                  Kişisel erişim token'ı ile giriş
+                  Sign in with personal access token
                 </label>
                 <input
                   id="pat"
                   className="input"
                   type="password"
                   autoComplete="off"
-                  placeholder="ghp_… veya github_pat_…"
+                  placeholder="ghp_… or github_pat_…"
                   value={manualToken}
                   onChange={(event) => setManualToken(event.target.value)}
                 />
                 <span className="hint">
-                  Yalnızca geliştirme/test için (yayın derlemesinde görünmez).
-                  `repo` kapsamı yeterli. Token yalnızca bu sekmede tutulur.
+                  For development/testing only (hidden in production builds).
+                  `repo` scope is sufficient. Token is only kept in this tab.
                 </span>
               </div>
               <button
@@ -200,7 +200,7 @@ export function Login() {
                 className="btn btn-block"
                 disabled={!manualToken.trim() || phase === 'authorizing'}
               >
-                Token ile devam et
+                Continue with token
               </button>
             </form>
           ) : (
@@ -209,7 +209,7 @@ export function Login() {
               className="btn btn-ghost btn-sm"
               onClick={() => setShowManual(true)}
             >
-              Gelişmiş: token ile giriş
+              Advanced: sign in with token
             </button>
           ))}
       </div>

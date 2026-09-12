@@ -3,11 +3,11 @@ import { Link } from 'react-router-dom'
 interface PersonProps {
   login: string
   size?: number
-  /** false verilirse üye sayfasına link verilmez (örn. form önizlemesi). */
+  /** If false, does not link to member page (e.g. form preview). */
   linked?: boolean
 }
 
-/** GitHub avatarı + kullanıcı adı. Avatar URL'i login'den türetilir (ek istek yok). */
+/** GitHub avatar + username. Avatar URL derived from login (no extra request). */
 export function Person({ login, size = 22, linked = true }: PersonProps) {
   const content = (
     <>

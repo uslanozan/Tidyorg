@@ -26,7 +26,7 @@ interface Team {
 const avatar = (login: string) => `https://github.com/${encodeURIComponent(login)}.png?size=80`
 const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s)
 
-/** Hub-and-spoke küme: merkezde takım, çevrede üyeler (avatar + rol rengi). */
+/** Hub-and-spoke cluster: team in center, members around (avatar + role color). */
 function TeamCluster({ team }: { team: Team }) {
   const t = useT()
   const S = 300
@@ -121,7 +121,7 @@ export function Teams() {
   const teams = useMemo<Team[]>(() => {
     const result: Team[] = []
 
-    // Org yönetim takımı (head-of-engineering taşıyıcıları).
+    // Org management team (head-of-engineering holders).
     const adminTeam = org?.org_admin_team ?? 'platform-admins'
     const admins = privileged?.roles?.['head-of-engineering'] ?? []
     if (admins.length) {
@@ -132,7 +132,7 @@ export function Teams() {
       })
     }
 
-    // Repo başına takım: mentörler (admin) + developer'lar (push).
+    // Per-repo team: mentors (admin) + developers (push).
     for (const project of projects) {
       const members: TeamMember[] = [
         ...(project.config.mentors ?? []).map((login) => ({ login, role: 'mentor' as const })),

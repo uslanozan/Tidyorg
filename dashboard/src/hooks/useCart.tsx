@@ -1,27 +1,27 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
 
 /**
- * DEĞİŞİKLİK SEPETİ + TOPLU MOD.
+ * CHANGE CART + BATCH MODE.
  *
- * Normalde her mutasyon anında bir PR açar. "Toplu mod" açıkken işlemler bir
- * sepete birikir; sonra hepsi TEK PR + TEK apply olarak uygulanır
- * (proposeMultiChange). 10 stajyeri tek seferde onboard etmek buradan geçer.
+ * Normally every mutation immediately opens a PR. When "Batch mode" is enabled,
+ * operations accumulate in a cart; then all are applied as a SINGLE PR + SINGLE apply
+ * (proposeMultiChange). Onboarding 10 interns at once is handled this way.
  *
- * Bir öğe tek bir config dosyasını dönüştürür (`transform`). Aynı dosyaya birden
- * çok öğe düşerse apply sırasında sırayla bestelenir (reduce) — transform daima
- * güncel metin üzerinde çalışır, o yüzden birleşme çakışmasızdır.
+ * An item transforms a single config file (`transform`). If multiple items target
+ * the same file, they are composed sequentially during apply (reduce) — transform always
+ * operates on the current text, making merging conflict-free.
  *
- * Sepet bellekte yaşar; F5/sekme kapanışı temizler (bilinçli — v1, kasmıyoruz).
+ * Cart lives in memory; refresh/tab close clears it (intentional in v1).
  */
 export interface CartItem {
   id: string
-  /** Repo kökünden config dosyası yolu (gruplama anahtarı). */
+  /** Path of config file from repo root (grouping key). */
   file: string
-  /** Sepet listesinde görünen kısa özet: "odeme-servisi: +ali (developer)". */
+  /** Short summary shown in the cart list: "payment-service: +ali (developer)". */
   summary: string
-  /** PR gövdesine giren madde. */
+  /** Bullet point included in the PR body. */
   detail: string
-  /** Dosyanın güncel metnini yeni metne dönüştürür (yorum-koruyan applyEdits vb.). */
+  /** Transforms the current text of the file into new text (comment-preserving applyEdits, etc.). */
   transform: (text: string) => string
 }
 

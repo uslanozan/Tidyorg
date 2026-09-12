@@ -9,14 +9,14 @@ function readChoice(): ThemeChoice {
     const stored = localStorage.getItem(STORAGE_KEY)
     if (stored === 'light' || stored === 'dark' || stored === 'system') return stored
   } catch {
-    /* depolama kapalı olabilir */
+    /* storage might be unavailable */
   }
   return 'system'
 }
 
 /**
- * Varsayılan sistem tercihidir (`prefers-color-scheme`); kullanıcı isterse
- * ezebilir. Seçim `data-theme` özniteliğine yazılır, renkler tokens.css'te.
+ * Default is system preference (`prefers-color-scheme`); user can override.
+ * Selection is written to `data-theme` attribute, colors are in tokens.css.
  */
 export function useTheme() {
   const [choice, setChoice] = useState<ThemeChoice>(readChoice)
@@ -29,7 +29,7 @@ export function useTheme() {
     try {
       localStorage.setItem(STORAGE_KEY, choice)
     } catch {
-      /* yoksay */
+      /* ignore */
     }
   }, [choice])
 

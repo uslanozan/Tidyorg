@@ -39,8 +39,8 @@ export function NewProject() {
     language,
     mentors,
     developers,
-    // auto_init yalnızca varsayılandan farklıysa (false) yazılır — boş repo,
-    // mevcut kod push'lanacak senaryosu.
+    // auto_init is written only if different from default (false) — empty repo,
+    // scenario where existing code will be pushed.
     ...(autoInit ? {} : { auto_init: false }),
   }
 
@@ -83,10 +83,10 @@ export function NewProject() {
 
   async function create() {
     setError(null)
-    // Üyeler zaten org üyesi (picker'dan) — ayrıca GitHub doğrulaması gerekmez.
+    // Members are already org members (from picker) — no additional GitHub verification needed.
     const result = await submit(
       () => proposeNewProject(client, name.trim(), draft),
-      `${name.trim()} projesi oluşturuluyor`,
+      `Creating project ${name.trim()}`,
     )
 
     if (result) navigate('/pr')
@@ -138,7 +138,7 @@ export function NewProject() {
               <span className="hint">
                 {t('newProject.nameHint')}{' '}
                 <code>
-                  {PATHS.repositories}/{name.trim() || '<ad>'}.yml
+                  {PATHS.repositories}/{name.trim() || '<name>'}.yml
                 </code>
               </span>
             </div>

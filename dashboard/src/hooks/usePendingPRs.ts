@@ -4,9 +4,9 @@ import { CONFIG_OWNER, CONFIG_REPO } from '../services/env'
 import { useAuth } from './useAuth'
 
 /**
- * Panelden açılmış, henüz merge edilmemiş açık PR sayısı — nav rozeti için.
- * Tek hafif istek; sekmeye geri dönülünce (focus) tazelenir. Ayrı sayfa değil,
- * yalnızca AppShell tükettiği için context yerine basit hook.
+ * Count of open PRs created from the console that have not been merged yet — for nav badge.
+ * Single lightweight request; refreshed on tab focus. Since only AppShell consumes it
+ * rather than a dedicated page, implemented as a simple hook instead of a context.
  */
 export function usePendingPRs(): number {
   const { client, status } = useAuth()
@@ -18,7 +18,7 @@ export function usePendingPRs(): number {
       const pulls = await client.listPullRequests(CONFIG_OWNER, CONFIG_REPO, 'open')
       setCount(pulls.filter((pr) => isDashboardBranch(pr.head.ref)).length)
     } catch {
-      // Rozet kritik değil: sayı alınamazsa gizli kalır (0).
+      // Badge is not critical: if count cannot be fetched, it remains hidden (0).
       setCount(0)
     }
   }, [client])

@@ -15,10 +15,10 @@ import {
 } from '../types/config'
 
 /**
- * Repo config'inin tüm düzenlenebilir alanları (mentör/developer hariç — onlar
- * ProjectDetail'de kendi akışında). Yalnızca DEĞİŞEN anahtarlar `applyEdits`'e
- * gider; iç içe alanlar (protected_branches, code_owners, files) blok olarak
- * yeniden yazılır, anahtarın üstündeki yorumlar korunur.
+ * All editable fields of the repo config (except mentor/developer — those have
+ * their own flow in ProjectDetail). Only CHANGED keys are sent to `applyEdits`;
+ * nested fields (protected_branches, code_owners, files) are rewritten as blocks,
+ * preserving comments above the key.
  */
 
 const FILE_KEYS = [
@@ -53,18 +53,18 @@ const triToBool = (t: Tri): boolean | undefined =>
 const boolToTri = (v: boolean | undefined): Tri =>
   v === undefined ? 'inherit' : v ? 'on' : 'off'
 
-/** Repo dosyasında yazan dal kuralları — org varsayılanı burada gösterilmez. */
+/** Branch rules specified in repo file — org defaults are not displayed here. */
 type BranchState = 'default' | 'removed' | 'custom'
 
 interface Props {
   repoName: string
   config: RepoConfig
-  /** Org varsayılanındaki dal adları — "dala geri koruma ekle" için. */
+  /** Branch names in org defaults — for "re-add protection to branch". */
   defaultBranches: string[]
-  /** Org varsayılan etiket seti — miras önizlemesi ve "ez"e başlangıç için. */
+  /** Org default label set — for inheritance preview and starting an override. */
   defaultLabels: RepoLabel[]
   busy: boolean
-  /** Kaydet butonunun metni; toplu modda "Sepete ekle" geçilir. Varsayılan "PR oluştur". */
+  /** Label for save button; in batch mode "Add to cart" is passed. Defaults to "Create PR". */
   primaryLabel?: string
   onCancel: () => void
   onSave: (changes: Record<string, YamlValue | undefined>, details: string[]) => void
@@ -76,7 +76,7 @@ export function RepoSettingsDialog({
   defaultBranches,
   defaultLabels,
   busy,
-  primaryLabel = 'PR oluştur',
+  primaryLabel = 'Create PR',
   onCancel,
   onSave,
 }: Props) {
@@ -116,8 +116,8 @@ export function RepoSettingsDialog({
     })),
   )
 
-  // Etiketler: override kapalıysa org varsayılanı miras alınır. Açılınca org
-  // setinden bir kopyayla başlanır (boş listeden değil) — düzenlemesi kolay olsun.
+  // Labels: if override is off, org defaults are inherited. When enabled, starts
+  // with a copy of org set (not an empty list) — making it easier to edit.
   const [overrideLabels, setOverrideLabels] = useState(Boolean(config.labels))
   const [labels, setLabels] = useState<RepoLabel[]>(() =>
     (config.labels ?? []).map((l) => ({ ...l })),
@@ -151,7 +151,7 @@ export function RepoSettingsDialog({
 
   function toggleOverrideLabels(on: boolean) {
     setOverrideLabels(on)
-    // İlk kez ezerken boş listeyle değil, org setinin kopyasıyla başla.
+    // When overriding for the first time, start with a copy of org set instead of empty list.
     if (on && labels.length === 0) setLabels(defaultLabels.map((l) => ({ ...l })))
   }
 
@@ -169,23 +169,23 @@ export function RepoSettingsDialog({
 
     if (description !== (config.description ?? '')) {
       changes.description = description
-      details.push('Açıklama güncellendi')
+      details.push('Description updated')
     }
     if (language !== config.language) {
       changes.language = language
-      details.push(`Dil: \`${config.language}\` → \`${language}\``)
+      details.push(`Language: \`${config.language}\` → \`${language}\``)
     }
 
     const nextVisibility = visibility === 'inherit' ? undefined : visibility
     if (nextVisibility !== config.visibility) {
       changes.visibility = nextVisibility
-      details.push(`Görünürlük: ${nextVisibility ?? 'varsayılan'}`)
+      details.push(`Visibility: ${nextVisibility ?? 'default'}`)
     }
 
     const nextDefaultBranch = defaultBranch.trim() || undefined
     if (nextDefaultBranch !== config.default_branch) {
       changes.default_branch = nextDefaultBranch
-      details.push(`Varsayılan dal: ${nextDefaultBranch ?? 'varsayılan'}`)
+      details.push(`Default branch: ${nextDefaultBranch ?? 'default'}`)
     }
 
     const bools: [string, Tri, boolean | undefined][] = [
@@ -200,18 +200,18 @@ export function RepoSettingsDialog({
       const next = triToBool(tri)
       if (next !== current) {
         changes[key] = next
-        details.push(`${key}: ${next ?? 'varsayılan'}`)
+        details.push(`${key}: ${next ?? 'default'}`)
       }
     }
 
-    // files — yalnızca "inherit" olmayanlar yazılır
+    // files — only non-"inherit" ones are written
     const nextFiles: Record<string, TemplateMode> = {}
     for (const key of FILE_KEYS) {
       if (files[key] !== 'inherit') nextFiles[key] = files[key] as TemplateMode
     }
     if (!shallowEqual(nextFiles, config.files ?? {})) {
       changes.files = Object.keys(nextFiles).length ? nextFiles : undefined
-      details.push('Şablon dosya modları güncellendi')
+      details.push('Template file modes updated')
     }
 
     // workflows
@@ -219,7 +219,7 @@ export function RepoSettingsDialog({
     if (!arrayEqual(nextWorkflows, config.workflows)) {
       changes.workflows = nextWorkflows
       details.push(
-        nextWorkflows ? `Workflow'lar: ${nextWorkflows.join(', ')}` : 'Workflow ezmesi kaldırıldı',
+        nextWorkflows ? `Workflows: ${nextWorkflows.join(', ')}` : 'Workflow override removed',
       )
     }
 
@@ -229,7 +229,7 @@ export function RepoSettingsDialog({
       changes.protected_branches = Object.keys(cleanBranches).length
         ? (cleanBranches as unknown as YamlValue)
         : undefined
-      details.push('Dal koruması güncellendi')
+      details.push('Branch protection updated')
     }
 
     // code_owners
@@ -246,18 +246,18 @@ export function RepoSettingsDialog({
       changes.code_owners = Object.keys(nextOwners).length
         ? (nextOwners as unknown as YamlValue)
         : undefined
-      details.push('CODEOWNERS kuralları güncellendi')
+      details.push('CODEOWNERS rules updated')
     }
 
-    // labels — override kapalıysa anahtar silinir (org varsayılanı miras); açıksa
-    // temizlenmiş liste yazılır (adsız satırlar düşer, renk normalize edilir).
+    // labels — if override is off, key is deleted (org defaults inherited); if on,
+    // cleaned list is written (unnamed lines dropped, color normalized).
     const nextLabels = overrideLabels ? cleanLabels(labels) : undefined
     if (!deepEqual(nextLabels ?? null, config.labels ?? null)) {
       changes.labels = nextLabels as unknown as YamlValue | undefined
       details.push(
         overrideLabels
-          ? `Etiket seti bu repoya özel yapıldı (${nextLabels?.length ?? 0} etiket)`
-          : 'Etiket ezmesi kaldırıldı — org varsayılanı miras alınacak',
+          ? `Label set customized for this repo (${nextLabels?.length ?? 0} labels)`
+          : 'Label override removed — org defaults will be inherited',
       )
     }
 
@@ -690,8 +690,8 @@ function pruneEmptyRules(
 }
 
 /**
- * Etiket satırlarını yazıma hazırlar: adsız satırları at, rengi `#`'siz küçük
- * harf hex'e normalize et, boş açıklamayı düşür. GitHub/engine bu formatı bekler.
+ * Prepares label rows for writing: drops unnamed rows, normalizes color
+ * to lowercase hex without `#`, drops empty description. GitHub/engine expects this format.
  */
 function cleanLabels(rows: RepoLabel[]): RepoLabel[] {
   const out: RepoLabel[] = []

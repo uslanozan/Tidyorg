@@ -1,7 +1,7 @@
 /**
- * OrgSettings ve NewProject sayfalarının çeviri sözlükleri.
- * `tr` kaynak dildir; `en` aynı şekle sahip olmalı. Anahtarlar nokta-yolu ile
- * çözülür (ör. t('orgSettings.header.title')).
+ * Translation dictionaries for OrgSettings and NewProject pages.
+ * `tr` is the source language; `en` must mirror its shape. Keys are resolved
+ * via dot-path (e.g. t('orgSettings.header.title')).
  */
 
 export const orgSettings = {

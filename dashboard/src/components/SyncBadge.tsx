@@ -2,15 +2,15 @@ import { useI18n } from '../i18n'
 import { useSyncStatus } from '../hooks/useSyncStatus'
 
 /**
- * Header'da canlı senkron rozeti: config (main) ile GitHub gerçeği arasındaki
- * apply durumunu gösterir. Kaynak: terraform-apply workflow run'ı (useSyncStatus).
- * Actions:Read izni yoksa "kapalı" gösterir; geçici bilinmezlikte hiç görünmez.
+ * Live sync badge in the header: displays apply status between
+ * config (main) and GitHub reality. Source: terraform-apply workflow run (useSyncStatus).
+ * Shows "off" if Actions:Read permission is missing; hidden completely on transient unknowns.
  */
 export function SyncBadge() {
   const sync = useSyncStatus()
   const { t } = useI18n()
 
-  // İzin yoksa: kullanıcıya nazik ipucu (Actions:Read eklerse açılır).
+  // If permission is missing: gentle hint to user (enabled once Actions:Read is added).
   if (sync.forbidden) {
     return (
       <span className="badge" title={t('sync.forbiddenHint')} style={{ opacity: 0.65 }}>
@@ -18,7 +18,7 @@ export function SyncBadge() {
       </span>
     )
   }
-  // Geçici bilinmezlik / run yok: rozet gizli kalsın.
+  // Transient unknown / no run: keep badge hidden.
   if (sync.state === 'unknown') return null
 
   const meta =

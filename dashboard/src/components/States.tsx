@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { useT } from '../i18n'
 import { GitHubError } from '../services/githubApi'
 
-/** Yükleniyor — iskelet blok. */
+/** Loading — skeleton block. */
 export function Skeleton({ height = 14, width = '100%' }: { height?: number; width?: string }) {
   return <div className="skeleton" style={{ height, width }} aria-hidden="true" />
 }
@@ -47,8 +47,8 @@ export function EmptyState({ icon = '📭', title, description, action }: StateP
 }
 
 /**
- * Giriş başarılı ama GitHub App bu kullanıcı için config repo'suna kurulu değil
- * (Contents/PR isteği 403 döndü). Yetkiyi GitHub verir; panelde yapılacak bir şey yok.
+ * Login succeeded but GitHub App is not installed on config repo for this user
+ * (Contents/PR request returned 403). Permissions are granted by GitHub; nothing can be done in the console.
  */
 export function AccessDenied({
   login,
@@ -78,7 +78,7 @@ export function AccessDenied({
   )
 }
 
-/** Hata — GitHubError ise kullanıcıya dönük Türkçe mesajı gösterir. */
+/** Error — displays user-facing message if GitHubError. */
 export function ErrorState({
   error,
   onRetry,

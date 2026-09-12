@@ -1,9 +1,9 @@
 /**
- * Sözlük parçası: Bekleyen PR'lar sayfası (`pulls`), değişiklik sepeti (`cart`)
- * ve paylaşılan bileşen metinleri (`ui` — MemberPicker / UsernameField / States /
- * Modal). `tr` kaynak dildir; `en` aynı anahtar şekline sahip olmalı. Anahtarlar
- * nokta-yolu ile çözülür (ör. t('pulls.title')); `{x}` yer tutucuları t(key, vars)
- * ile doldurulur.
+ * Dictionary module: Pending PRs page (`pulls`), change cart (`cart`),
+ * and shared component strings (`ui` — MemberPicker / UsernameField / States /
+ * Modal). `tr` is the source language; `en` must mirror its shape. Keys are
+ * resolved via dot-path (e.g. t('pulls.title')); `{x}` placeholders are filled
+ * via t(key, vars).
  */
 
 export const pulls = {

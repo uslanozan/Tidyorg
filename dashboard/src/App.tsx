@@ -19,7 +19,7 @@ import { Projects } from './pages/Projects'
 import { PullRequests } from './pages/PullRequests'
 import { Teams } from './pages/Teams'
 
-/** Saklı token doğrulanırken gösterilir — giriş ekranının bir an parlamasını önler. */
+/** Shown while stored token is being validated — prevents flash of login screen. */
 function Booting() {
   const t = useT()
   return (
@@ -33,8 +33,8 @@ function Booting() {
 }
 
 /**
- * Config repo'sunun ilk okuması 403/404 döndüyse App bu kullanıcı için kurulu
- * değildir — her sayfada genel hata göstermek yerine tek bir açıklama ekranı.
+ * If initial read of config repo returned 403/404, App is not installed for
+ * this user — shows a single explanation screen instead of generic errors on every page.
  */
 function AuthenticatedRoutes() {
   const { user } = useAuth()
@@ -80,7 +80,7 @@ function AuthenticatedRoutes() {
 
 function Gate() {
   const { status } = useAuth()
-  useTheme() // seçili tema giriş ekranında da geçerli olsun
+  useTheme() // ensure selected theme applies to login screen as well
 
   if (status === 'loading') return <Booting />
   if (status !== 'authenticated') return <Login />

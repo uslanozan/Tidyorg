@@ -4,19 +4,19 @@ import { useT } from '../i18n'
 interface Props {
   label: string
   hint?: string
-  /** Seçilebilecek tüm org üyeleri (people.yml → members). */
+  /** All org members available for selection (people.yml → members). */
   all: string[]
   selected: string[]
   onChange: (next: string[]) => void
-  /** Bu listede gösterilmeyecekler (örn. diğer roldeki seçilenler). */
+  /** Not shown in this list (e.g. selected in other roles). */
   exclude?: string[]
 }
 
 const avatarUrl = (login: string) => `https://github.com/${encodeURIComponent(login)}.png?size=48`
 
 /**
- * Aranabilir org üyesi seçici — avatar + nick. 100 kişide bile rahat: yaz, süz, tıkla.
- * Seçilenler kaldırılabilir çip olarak üstte; aday listesi altta kaydırılabilir.
+ * Searchable org member picker — avatar + username. Smooth even with 100 people: type, filter, click.
+ * Selected items appear as removable chips on top; candidate list is scrollable below.
  */
 export function MemberPicker({ label, hint, all, selected, onChange, exclude = [] }: Props) {
   const t = useT()

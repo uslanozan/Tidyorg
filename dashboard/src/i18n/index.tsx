@@ -13,19 +13,19 @@ const STORAGE_KEY = 'tidyorg.dashboard.lang'
 
 type Vars = Record<string, string | number>
 
-/** Saklı seçim → tarayıcı dili → İngilizce. */
+/** Stored selection → browser language → English. */
 function detectLang(): Lang {
   try {
     const saved = localStorage.getItem(STORAGE_KEY)
     if (saved === 'tr' || saved === 'en') return saved
   } catch {
-    /* private mode vb. — sessiz geç */
+    /* private mode etc. — ignore silently */
   }
   const nav = typeof navigator !== 'undefined' ? navigator.language.toLowerCase() : ''
   return nav.startsWith('tr') ? 'tr' : 'en'
 }
 
-/** Nokta-yolu ile çeviri; eksikse tr'ye, o da yoksa anahtara düşer. */
+/** Dot-path translation; falls back to tr if missing, then to key. */
 function resolve(lang: Lang, key: string, vars?: Vars): string {
   const read = (dict: unknown): string | undefined => {
     let node: unknown = dict
@@ -87,11 +87,11 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
 export function useI18n(): I18nValue {
   const value = useContext(I18nContext)
-  if (!value) throw new Error('useI18n yalnızca I18nProvider içinde kullanılabilir')
+  if (!value) throw new Error('useI18n must be used within I18nProvider')
   return value
 }
 
-/** Kısayol: yalnızca çeviri fonksiyonu lazım olan bileşenler için. */
+/** Shortcut: for components that only need the translation function. */
 export function useT() {
   return useI18n().t
 }

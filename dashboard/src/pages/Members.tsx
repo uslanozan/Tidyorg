@@ -14,16 +14,16 @@ type RoleKey = 'owner' | 'head-of-engineering' | 'mentor' | 'developer' | 'viewe
 const ROLE_META: Record<RoleKey, { label: string; color: string }> = {
   owner: { label: 'Owner', color: '#dc2626' },
   'head-of-engineering': { label: 'Head of Eng', color: '#7c3aed' },
-  mentor: { label: 'Mentör', color: '#d97706' },
+  mentor: { label: 'Mentor', color: '#d97706' },
   developer: { label: 'Developer', color: '#64748b' },
   viewer: { label: 'Viewer', color: '#0891b2' },
 }
 
 const FILTERS: { value: '' | RoleKey; label: string }[] = [
-  { value: '', label: 'Tüm roller' },
+  { value: '', label: 'All roles' },
   { value: 'owner', label: 'Owner' },
   { value: 'head-of-engineering', label: 'Head of Eng' },
-  { value: 'mentor', label: 'Mentör' },
+  { value: 'mentor', label: 'Mentor' },
   { value: 'developer', label: 'Developer' },
   { value: 'viewer', label: 'Viewer' },
 ]

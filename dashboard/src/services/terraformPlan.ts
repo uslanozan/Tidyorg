@@ -1,11 +1,11 @@
 import type { IssueComment } from '../types/github'
 
 /**
- * GitOps workflow'u (Ozan — Faz 3) `terraform plan` çıktısını PR'a yorum olarak
- * düşürür. Burada o yorumu okunur bir özete indiriyoruz.
+ * GitOps workflow posts `terraform plan` output as a comment on PRs.
+ * Here we distill that comment into a readable summary.
  *
- * Beklenen satır: `Plan: 2 to add, 1 to change, 0 to destroy.`
- * "No changes." biçimi de tanınır.
+ * Expected line: `Plan: 2 to add, 1 to change, 0 to destroy.`
+ * "No changes." format is also recognized.
  */
 
 export type PlanStatus = 'pending' | 'no-changes' | 'changes' | 'error'
@@ -13,7 +13,7 @@ export type PlanAction = 'create' | 'update' | 'destroy' | 'replace'
 
 export interface PlanResource {
   action: PlanAction
-  /** Terraform kaynak adresi (ör. module.repositories["x"].github_repository.this). */
+  /** Terraform resource address (e.g. module.repositories["x"].github_repository.this). */
   address: string
 }
 
@@ -22,15 +22,15 @@ export interface PlanSummary {
   add: number
   change: number
   destroy: number
-  /** destroy > 0 — kullanıcıya belirgin uyarı gösterilir. */
+  /** destroy > 0 — prominent warning shown to user. */
   hasDestroy: boolean
-  /** Türkçe tek satırlık özet. */
+  /** Single-line summary text. */
   text: string
-  /** Plan log'undan çıkarılan, etkilenen kaynakların listesi. */
+  /** List of affected resources extracted from the plan log. */
   resources: PlanResource[]
   commentUrl?: string
   createdAt?: string
-  /** Hata durumunda ilk `Error:` satırı. */
+  /** First `Error:` line in case of failure. */
   errorLine?: string
 }
 
@@ -46,7 +46,7 @@ const ACTION_MAP: Record<string, PlanAction> = {
   replaced: 'replace',
 }
 
-/** Plan log'undaki `# <adres> will be <action>` satırlarını ayıklar. */
+/** Extracts `# <address> will be <action>` lines from plan log. */
 function parseResources(body: string): PlanResource[] {
   const out: PlanResource[] = []
   for (const m of body.matchAll(RESOURCE_LINE)) {
@@ -62,7 +62,7 @@ const PENDING: PlanSummary = {
   change: 0,
   destroy: 0,
   hasDestroy: false,
-  text: 'Plan bekleniyor…',
+  text: 'Waiting for plan…',
   resources: [],
 }
 
@@ -75,7 +75,7 @@ function looksLikePlanComment(body: string): boolean {
   )
 }
 
-/** PR'ın yorumları arasından en güncel plan yorumunu bulup özetler. */
+/** Finds the most recent plan comment among PR comments and summarizes it. */
 export function summarizePlan(comments: IssueComment[]): PlanSummary {
   const planComments = comments.filter((comment) => looksLikePlanComment(comment.body))
   const latest = planComments[planComments.length - 1]
@@ -91,9 +91,9 @@ export function summarizePlan(comments: IssueComment[]): PlanSummary {
     const destroy = Number(destroyRaw)
 
     const parts: string[] = []
-    if (add) parts.push(`${add} kaynak eklenecek`)
-    if (change) parts.push(`${change} kaynak değişecek`)
-    parts.push(`${destroy} kaynak yok edilecek`)
+    if (add) parts.push(`${add} to add`)
+    if (change) parts.push(`${change} to change`)
+    parts.push(`${destroy} to destroy`)
 
     return {
       ...shared,
@@ -116,7 +116,7 @@ export function summarizePlan(comments: IssueComment[]): PlanSummary {
       change: 0,
       destroy: 0,
       hasDestroy: false,
-      text: 'Plan hata verdi',
+      text: 'Plan failed',
       resources: [],
       errorLine: error[1].trim(),
     }
@@ -130,7 +130,7 @@ export function summarizePlan(comments: IssueComment[]): PlanSummary {
       change: 0,
       destroy: 0,
       hasDestroy: false,
-      text: 'Değişiklik yok — altyapı config ile uyumlu',
+      text: 'No changes — infrastructure matches configuration',
       resources: [],
     }
   }

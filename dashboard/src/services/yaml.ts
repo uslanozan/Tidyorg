@@ -28,8 +28,8 @@ export function parsePrivilegedConfig(text: string): PrivilegedConfig {
 }
 
 /**
- * people.yml'ı SIFIRDAN yazar (makine-sahipli, yorumsuz — Karar 16). Yalnızca
- * `members` listesi; yetki alanı yok, olamaz.
+ * Writes people.yml FROM SCRATCH (machine-owned, no comments — Decision 16). Only
+ * the `members` list; no permission fields exist or can exist.
  */
 export function serializePeopleConfig(members: string[]): string {
   const lines = ['version: 1', '', 'members:']
@@ -38,14 +38,14 @@ export function serializePeopleConfig(members: string[]): string {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   YERİNDE DÜZENLEME
+   IN-PLACE EDITING
    ═══════════════════════════════════════════════════════════════════════════
 
-   Mevcut bir config dosyasını "parse → dump" turundan geçirmek dosyadaki
-   YORUMLARI SİLER. Bu repo'da yorumlar süs değil: gerekçe taşıyorlar
-   (örn. tidyorg.yml içindeki mentör listesi uyarısı).
-   Bu yüzden güncellemede yalnızca ilgili anahtarın satır bloğu değiştirilir;
-   dosyanın geri kalanı bayt bayt korunur.                                    */
+   Running an existing config file through a "parse → dump" roundtrip
+   DELETES COMMENTS in the file. In this repo, comments are not decorative:
+   they carry rationale (e.g., mentor list warning in tidyorg.yml).
+   Therefore, updates only modify the line block of the relevant key;
+   the rest of the file is preserved byte-by-byte.                           */
 
 export type YamlScalar = string | number | boolean | null
 export type YamlValue =
@@ -54,7 +54,7 @@ export type YamlValue =
   | YamlValue[]
   | { [key: string]: YamlValue }
 
-/** Düz skaler / string listesi mi, yoksa iç içe yapı mı? */
+/** Is it a flat scalar / string list, or a nested structure? */
 function isFlat(value: YamlValue): value is YamlScalar | string[] {
   if (Array.isArray(value)) return value.every((item) => typeof item === 'string')
   return value === null || typeof value !== 'object'
@@ -70,17 +70,17 @@ function renderScalar(value: string | number | boolean | null): string {
     : value
 }
 
-/** Üst düzey anahtarın satır aralığı: [başlangıç, bitiş). */
+/** Line range of a top-level key: [start, end). */
 function findBlock(lines: string[], key: string): { start: number; end: number } | null {
   const header = new RegExp(`^${key}\\s*:`)
   const start = lines.findIndex((line) => header.test(line))
   if (start === -1) return null
 
   let end = start + 1
-  // Blok, bir sonraki üst düzey anahtara (girintisiz, yorum olmayan satır) kadar sürer.
+  // Block continues until the next top-level key (unindented, non-comment line).
   while (end < lines.length && !/^[A-Za-z_"']/.test(lines[end])) end += 1
 
-  // Bloğun sonundaki boş satırlar ve bir sonraki anahtara ait yorumlar dışarıda kalsın.
+  // Exclude trailing blank lines and comments belonging to the next key.
   let last = end - 1
   while (last > start && (lines[last].trim() === '' || lines[last].trim().startsWith('#'))) {
     last -= 1
@@ -88,7 +88,7 @@ function findBlock(lines: string[], key: string): { start: number; end: number }
   return { start, end: last + 1 }
 }
 
-/** Liste akış stilinde mi yazılmış (`key: [a, b]`) yoksa blok stilinde mi? */
+/** Is the list written in flow style (`key: [a, b]`) or block style? */
 function usesFlowStyle(blockLines: string[]): boolean {
   return /:\s*\[/.test(blockLines[0])
 }
@@ -105,17 +105,17 @@ function renderEntry(key: string, value: YamlValue, flow: boolean): string[] {
     if (Array.isArray(value)) return renderList(key, value, flow)
     return [`${key}: ${renderScalar(value)}`]
   }
-  // İç içe yapı (protected_branches, code_owners, labels…): blok olarak yaz.
-  // Anahtarın kendisi ve üstündeki yorumlar yerinde kalır; yalnızca gövde yenilenir.
+  // Nested structure (protected_branches, code_owners, labels…): write as a block.
+  // The key itself and comments above it remain in place; only the body is replaced.
   const empty = Array.isArray(value) ? value.length === 0 : Object.keys(value).length === 0
   if (empty) return [`${key}: ${Array.isArray(value) ? '[]' : '{}'}`]
   return [`${key}:`, dumpBlock(value)]
 }
 
 /**
- * Verilen anahtarları dosyada günceller; anahtar yoksa dosyanın sonuna ekler.
- * Değer `undefined` ise anahtar dosyadan SİLİNİR (org varsayılanına bırakılır).
- * Yorumlar, anahtar sırası ve dokunulmayan alanlar aynen kalır.
+ * Updates the given keys in the file; if key does not exist, appends to end of file.
+ * If value is `undefined`, the key is DELETED from the file (deferred to org defaults).
+ * Comments, key ordering, and untouched fields remain intact.
  */
 export function applyEdits(
   text: string,
@@ -127,8 +127,8 @@ export function applyEdits(
     const block = findBlock(lines, key)
 
     if (value === undefined) {
-      // Anahtarı kaldır — üstündeki yorum bloğu kişiye ait olabileceğinden dokunma;
-      // yalnızca anahtarın kendi satır aralığını sil.
+      // Remove key — do not touch the comment block above it as it may belong to the author;
+      // delete only the line range of the key itself.
       if (block) lines.splice(block.start, block.end - block.start)
       continue
     }
@@ -137,7 +137,7 @@ export function applyEdits(
       const flow = usesFlowStyle(lines.slice(block.start, block.end))
       lines.splice(block.start, block.end - block.start, ...renderEntry(key, value, flow))
     } else {
-      // Yeni anahtar: dosyanın sonuna, boş satırla ayrılmış olarak.
+      // New key: at the end of the file, separated by an empty line.
       while (lines.length && lines[lines.length - 1].trim() === '') lines.pop()
       lines.push('', ...renderEntry(key, value, Array.isArray(value)))
     }
@@ -148,29 +148,29 @@ export function applyEdits(
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   İÇ İÇE (NESTED) LEAF DÜZENLEME — insan-sahipli, yorum dolu dosyalar için
+   NESTED LEAF EDITING — for human-owned, comment-rich files
    ═══════════════════════════════════════════════════════════════════════════
 
-   organization.yml repo config'lerinden farklı: İNSAN-SAHİPLİ ve her kararın
-   gerekçesi satır-içi/blok yorumlarında. Bir üst-seviye bloğu (`defaults`,
-   `roles`) komple yeniden yazmak (applyEdits'in nested yolu) bu yorumları YOK
-   EDER. Bu yüzden derin bir yol (`defaults.visibility`, `roles.mentor.scope`,
-   `defaults.protected_branches.main.required_reviews`) üzerindeki TEK yaprağı,
-   girinti takip ederek, dosyanın geri kalanına ve TÜM yorumlara dokunmadan
-   değiştiririz. Satır-içi yorumlar (`visibility: public # sebep...`) korunur —
-   PR'ı bir insan inceleyeceği için anlamsal tutarlılık ona bırakılır; araç
-   yalnızca hiçbir yorumu SİLMEZ.                                              */
+   organization.yml is different from repo configs: it is HUMAN-OWNED and the
+   rationale for every decision is in inline/block comments. Rewriting an entire
+   top-level block (`defaults`, `roles`) completely (applyEdits nested path)
+   WOULD DESTROY these comments. Therefore, we modify the SINGLE leaf along a
+   deep path (`defaults.visibility`, `roles.mentor.scope`,
+   `defaults.protected_branches.main.required_reviews`) by tracking indentation,
+   without touching the rest of the file and ALL comments. Inline comments
+   (`visibility: public # reason...`) are preserved — since a human will review
+   the PR, semantic consistency is left to them; the tool simply DELETES NO COMMENTS. */
 
 const indentWidth = (line: string): number => line.match(/^(\s*)/)![1].length
 
-/** Bir data satırının değer kısmındaki satır-içi yorumu (` # ...`) ayırır. */
+/** Separates the inline comment (` # ...`) from the value part of a data line. */
 function splitTrailingComment(rest: string): { value: string; comment: string } {
   const m = rest.match(/\s+#.*$/)
   if (!m) return { value: rest, comment: '' }
   return { value: rest.slice(0, m.index), comment: rest.slice(m.index!) }
 }
 
-/** [start, end) aralığında `indent` girintili `key:` satırını bulur. */
+/** Finds the line with `key:` at `indent` within the [start, end) range. */
 function findKeyLine(
   lines: string[],
   key: string,
@@ -187,9 +187,9 @@ function findKeyLine(
 }
 
 /**
- * `key:` satırının çocuk blok aralığını verir: [ilk çocuk, son anlamlı çocuk+1).
- * Sonraki anahtara ait boş satır ve yorumlar dışarıda kalır (findBlock ile aynı
- * özen — o yorumlar bir sonraki alana aittir, bu bloğa değil).
+ * Returns child block range of a `key:` line: [first child, last meaningful child+1).
+ * Trailing empty lines and comments belonging to the next key are excluded
+ * (same care as findBlock — those comments belong to the next field, not this block).
  */
 function childRange(lines: string[], keyLine: number, end: number): [number, number] {
   const keyIndent = indentWidth(lines[keyLine])
@@ -210,9 +210,9 @@ function childRange(lines: string[], keyLine: number, end: number): [number, num
 }
 
 /**
- * `path` (ör. ['defaults','visibility']) üzerindeki yaprağı `value` ile değiştirir;
- * dosyanın geri kalanı ve tüm yorumlar aynen kalır. Yol bulunamazsa metin
- * değişmeden döner. Skaler ve blok-liste (labels) değerleri desteklenir.
+ * Replaces the leaf at `path` (e.g. ['defaults','visibility']) with `value`;
+ * the rest of the file and all comments remain intact. If path is not found,
+ * returns text unmodified. Scalar and block-list (labels) values are supported.
  */
 export function setYamlPath(
   text: string,
@@ -226,19 +226,19 @@ export function setYamlPath(
   for (let d = 0; d < path.length; d++) {
     const key = path[d]
     const idx = findKeyLine(lines, key, lo, hi)
-    if (idx === -1) return text // yol yok — sessizce dokunma
+    if (idx === -1) return text // path not found — silently leave untouched
 
     if (d < path.length - 1) {
       ;[lo, hi] = childRange(lines, idx, hi)
       continue
     }
 
-    // Son segment: yaprağı değiştir.
+    // Last segment: replace leaf.
     const indent = lines[idx].match(/^(\s*)/)![1]
     const afterColon = lines[idx].slice(lines[idx].indexOf(':') + 1)
     const { comment } = splitTrailingComment(afterColon)
 
-    // Bu anahtarın mevcut blok aralığı (varsa çocukları) sonuçta silinecek.
+    // Current block range for this key (including children) will be replaced.
     const [, blockEnd] = childRange(lines, idx, hi)
 
     let rendered: string[]
@@ -249,7 +249,7 @@ export function setYamlPath(
         rendered = [`${indent}${key}: ${renderScalar(value)}${comment}`]
       }
     } else {
-      // İç içe yapı/nesne dizisi (ör. labels): blok olarak, doğru girintiyle.
+      // Nested structure / object array (e.g. labels): as a block, with proper indentation.
       const empty = Array.isArray(value)
         ? value.length === 0
         : Object.keys(value).length === 0
@@ -267,8 +267,8 @@ export function setYamlPath(
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   SIFIRDAN YAZMA — yalnızca yeni dosyalar için
-   ═══════════════════════════════════════════════════════════════════════ */
+   WRITING FROM SCRATCH — only for new files
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 const SCALAR_KEYS = [
   'visibility',
@@ -282,7 +282,7 @@ const SCALAR_KEYS = [
   'secret_scanning',
 ] as const
 
-/** Elle yazdığımız anahtarlar; bunların dışındakiler js-yaml ile aynen geçirilir. */
+/** Keys we write explicitly; all other keys are passed through as-is with js-yaml. */
 const KNOWN_KEYS = new Set<string>([
   'description',
   'language',
@@ -306,8 +306,8 @@ function dumpBlock(value: unknown, indent = 2): string {
 }
 
 /**
- * Yeni bir repo config dosyası üretir. Anahtar sırası sabittir; şemaya sonradan
- * eklenen (burada tanınmayan) alanlar düşürülmez, dosyanın sonuna aynen yazılır.
+ * Generates a new repo config file. Key ordering is fixed; fields added
+ * to the schema later (unrecognized here) are not dropped, but written as-is at the end.
  */
 export function serializeRepoConfig(config: RepoConfig): string {
   const lines: string[] = []

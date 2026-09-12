@@ -5,8 +5,8 @@ import { useConfig } from './useProjects'
 import { useToast } from './useToast'
 
 /**
- * Yazma akışının ortak sarmalı: PR'ı aç, sonucu toast ile bildir, config'i
- * tazele. Her ekranda aynı hata/başarı dilini kullanmak için tek yerde durur.
+ * Common wrapper for the write flow: opens the PR, notifies outcome via toast,
+ * refreshes config. Kept in a single place to maintain consistent error/success language.
  */
 export function useProposal() {
   const { push } = useToast()
@@ -24,13 +24,13 @@ export function useProposal() {
 
         push({
           kind: 'success',
-          title: 'PR oluşturuldu ✓',
+          title: 'PR created ✓',
           message: result.retried
-            ? `${summary} — Dosya bu sırada başkası tarafından değiştirilmişti, değişiklik güncel hâline uygulanıp tekrar denendi.`
+            ? `${summary} — The file was modified by someone else in the meantime; changes were applied on top of the latest version and retried.`
             : summary,
           link: {
             href: result.pullRequest.html_url,
-            label: `#${result.pullRequest.number} — PR'ı görüntüle`,
+            label: `#${result.pullRequest.number} — View PR`,
           },
         })
 
@@ -39,13 +39,13 @@ export function useProposal() {
       } catch (error) {
         push({
           kind: 'error',
-          title: 'İşlem tamamlanamadı',
+          title: 'Action could not be completed',
           message:
             error instanceof GitHubError
               ? error.userMessage
               : error instanceof Error
                 ? error.message
-                : 'Bilinmeyen hata',
+                : 'Unknown error',
         })
         return null
       } finally {

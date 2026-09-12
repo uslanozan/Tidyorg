@@ -25,7 +25,7 @@ export function ProjectCard({ project }: { project: Project }) {
       <div className="row" style={{ flexWrap: 'wrap', gap: 'var(--sp-2)' }}>
         {!project.parseError && <LanguageBadge language={config.language} />}
         <span className="badge">
-          {mentors} mentör · {developers} developer
+          {mentors} mentor · {developers} developer
         </span>
         {config.visibility === 'private' && <span className="badge">Private</span>}
       </div>

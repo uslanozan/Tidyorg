@@ -23,12 +23,12 @@ import { useT } from '../i18n'
 import type { ProjectRole } from '../types/config'
 
 const ROLE_LABEL: Record<ProjectRole, string> = {
-  mentor: 'Mentör',
+  mentor: 'Mentor',
   developer: 'Developer',
   viewer: 'Viewer',
 }
 
-/** Dal koruması tablosu sütunları — başlıklara hover ile açıklama düşer. */
+/** Branch protection table columns — hover over headers shows description. */
 const RULE_COLUMNS: { labelKey: string; hintKey?: string }[] = [
   { labelKey: 'projectDetail.ruleCol.branch' },
   { labelKey: 'projectDetail.ruleCol.approvals', hintKey: 'projectDetail.ruleCol.approvalsHint' },
@@ -140,7 +140,7 @@ export function ProjectDetail() {
 
   const { config } = project
   const rules = effectiveBranchRules(config, org)
-  // Yazma butonları yalnızca yetkiliye görünür (UI ipucu; asıl kapı GitHub).
+  // Write buttons only visible to authorized users (UI hint; main gate is GitHub).
   const canManage = canManageProject(user?.login ?? '', project, privileged)
 
   function closeAdd() {
@@ -149,7 +149,7 @@ export function ProjectDetail() {
     setAddError(null)
   }
 
-  /** Toplu mod: PR açmak yerine ekleme işlemini sepete koyar (yorum-koruyan transform). */
+  /** Batch mode: stages add operation into cart instead of opening a PR (comment-preserving transform). */
   function stageAdd() {
     if (!project || !addRole || toAdd.length === 0) return
     const blocked = assertCanAddMember(project.config)
@@ -182,15 +182,15 @@ export function ProjectDetail() {
     const blocked = assertCanAddMember(project.config)
     if (blocked) return setAddError(blocked)
 
-    // Seçilenlerin hepsi tek PR'da eklenir. Zaten org üyesi (picker'dan) ve repo'da
-    // olmayanlar (exclude) — ek doğrulama gerekmez.
+    // All selected are added in a single PR. Already org members (from picker) and not
+    // in repo (exclude) — no additional validation needed.
     const result = await submit(
       () =>
         proposeRepoConfigUpdate({
           client,
           project,
           edits: (cfg) => ({ [key]: [...(cfg[key] ?? []), ...toAdd] }),
-          summary: `${toAdd.length} ${addRole} eklendi`,
+          summary: `Added ${toAdd.length} ${addRole}(s)`,
           details: toAdd.map((login) => `\`${login}\` → **${ROLE_LABEL[addRole]}**`),
         }),
       `${toAdd.join(', ')} → ${ROLE_LABEL[addRole]} (${project.name})`,
@@ -199,7 +199,7 @@ export function ProjectDetail() {
     if (result) closeAdd()
   }
 
-  /** Toplu mod: çıkarma işlemini sepete koyar. */
+  /** Batch mode: stages remove operation into cart. */
   function stageRemove() {
     if (!project || !removeTarget) return
     const { login, role } = removeTarget
@@ -207,7 +207,7 @@ export function ProjectDetail() {
     addToCart({
       file: project.path,
       summary: `${project.name}: −${login} (${ROLE_LABEL[role]})`,
-      detail: `\`${login}\` → **${ROLE_LABEL[role]}** listesinden çıkarıldı (${project.name})`,
+      detail: `\`${login}\` → removed from **${ROLE_LABEL[role]}** list (${project.name})`,
       transform: (text) => {
         const cfg = parseRepoConfig(text)
         return applyEdits(text, {
@@ -234,10 +234,10 @@ export function ProjectDetail() {
               (item) => item.toLowerCase() !== login.toLowerCase(),
             ),
           }),
-          summary: `${login} ${role} listesinden çıkarıldı`,
-          details: [`\`${login}\` → **${ROLE_LABEL[role]}** listesinden çıkarıldı`],
+          summary: `${login} removed from ${role} list`,
+          details: [`\`${login}\` → removed from **${ROLE_LABEL[role]}** list`],
         }),
-      `${login} çıkarıldı (${project.name})`,
+      `${login} removed (${project.name})`,
     )
 
     if (result) setRemoveTarget(null)
@@ -252,8 +252,8 @@ export function ProjectDetail() {
         file: p.path,
         summary: `${p.name}: archived → ${next}`,
         detail: next
-          ? `\`${p.name}\` arşivlendi (\`archived: true\`)`
-          : `\`${p.name}\` arşivden çıkarıldı (\`archived: false\`)`,
+          ? `\`${p.name}\` archived (\`archived: true\`)`
+          : `\`${p.name}\` unarchived (\`archived: false\`)`,
         transform: (text) => applyEdits(text, { archived: next }),
       })
       return setArchiving(false)
@@ -265,15 +265,15 @@ export function ProjectDetail() {
           project,
           edits: () => ({ archived: next }),
           summary: next
-            ? `${project.name} arşivlendi`
-            : `${project.name} arşivden çıkarıldı`,
+            ? `${project.name} archived`
+            : `${project.name} unarchived`,
           details: [
             next
-              ? '`archived: true` — repo dondurulur (read-only), içerik korunur.'
-              : '`archived: false` — repo tekrar yazılabilir.',
+              ? '`archived: true` — repo is frozen (read-only), content preserved.'
+              : '`archived: false` — repo becomes writable again.',
           ],
         }),
-      next ? `${project.name} arşivleniyor` : `${project.name} arşivden çıkarılıyor`,
+      next ? `Archiving ${project.name}` : `Unarchiving ${project.name}`,
     )
     if (result) setArchiving(false)
   }
@@ -444,7 +444,7 @@ export function ProjectDetail() {
             <tbody>
               {Object.entries(rules).map(([branch, rule]) =>
                 rule.removed ? (
-                  // `branch: null` — repo dosyası varsayılan korumayı kaldırmış.
+                  // `branch: null` — repo file removed default protection.
                   <tr key={branch}>
                     <td>
                       <code>{branch}</code>
@@ -636,26 +636,24 @@ export function ProjectDetail() {
                   }}
                 >
                   <div className="meta-label" style={{ color: 'var(--danger)' }}>
-                    ⚠️ Kalıcı silme (hard delete) neden panelde yok
+                    ⚠️ Why hard delete is not available in the dashboard
                   </div>
                   <p className="subtle" style={{ margin: '4px 0 0' }}>
-                    Panel repoyu <strong>silmez</strong>: geri dönüşü yok ve motorda{' '}
-                    <code>prevent_destroy</code> kilidi var. Gerçekten silmek gerekiyorsa
-                    elle, bilinçli adımlarla:
+                    The dashboard does <strong>not delete</strong> repositories: it is irreversible and the engine has{' '}
+                    a <code>prevent_destroy</code> lifecycle lock. If true deletion is necessary,
+                    it requires manual, deliberate steps:
                   </p>
                   <ol className="subtle" style={{ margin: '6px 0 0', paddingLeft: '1.2em' }}>
                     <li>
-                      Repoyu <code>config/repositories/{project.name}.yml</code>'den kaldır (PR).
+                      Remove repository from <code>config/repositories/{project.name}.yml</code> (PR).
                     </li>
                     <li>
-                      Apply <em>silmez</em> (prevent_destroy) — bir platform-admin{' '}
-                      <code>terraform state rm 'module.repositories["{project.name}"]'</code>{' '}
-                      çalıştırır.
+                      Apply will <em>not delete</em> (prevent_destroy) — a platform-admin runs{' '}
+                      <code>terraform state rm 'module.repositories["{project.name}"]'</code>.
                     </li>
                     <li>
-                      Repoyu GitHub'dan elle sil; geride kalan{' '}
-                      <code>{project.name}-mentors</code> / <code>-devs</code> takımlarını da
-                      temizle.
+                      Delete the repo manually from GitHub; clean up any remaining{' '}
+                      <code>{project.name}-mentors</code> / <code>-devs</code> teams.
                     </li>
                   </ol>
                 </div>
@@ -682,15 +680,15 @@ export function ProjectDetail() {
           defaultBranches={Object.keys(org?.defaults.protected_branches ?? {})}
           defaultLabels={org?.defaults.labels ?? []}
           busy={busy}
-          primaryLabel={batchMode ? 'Sepete ekle' : 'PR oluştur'}
+          primaryLabel={batchMode ? 'Add to cart' : 'Create PR'}
           onCancel={() => setEditing(false)}
           onSave={async (changes, details) => {
             if (batchMode) {
               const p = project
               addToCart({
                 file: p.path,
-                summary: `${p.name}: ayarlar (${details.length} değişiklik)`,
-                detail: `\`${p.name}\` ayarları — ${details.join('; ')}`,
+                summary: `${p.name}: settings (${details.length} changes)`,
+                detail: `\`${p.name}\` settings — ${details.join('; ')}`,
                 transform: (text) => applyEdits(text, changes),
               })
               setEditing(false)
@@ -702,10 +700,10 @@ export function ProjectDetail() {
                   client,
                   project,
                   edits: () => changes,
-                  summary: 'repo ayarları güncellendi',
+                  summary: 'repo settings updated',
                   details,
                 }),
-              `${project.name} ayarları güncellendi`,
+              `${project.name} settings updated`,
             )
             if (result) setEditing(false)
           }}

@@ -19,8 +19,8 @@ export type ErrorKind =
   | 'unknown'
 
 /**
- * Tek hata tipi: HTTP durumunu, sınıfını ve kullanıcıya gösterilebilecek
- * Türkçe mesajı bir arada taşır. UI katmanı `userMessage`'ı doğrudan basar.
+ * Single error type: carries HTTP status, error kind, and a user-facing
+ * message together. The UI layer displays `userMessage` directly.
  */
 export class GitHubError extends Error {
   readonly status: number
@@ -62,12 +62,12 @@ async function toError(response: Response): Promise<GitHubError> {
 
   if ((response.status === 403 || response.status === 429) && remaining === '0') {
     const reset = resetHeader ? new Date(Number(resetHeader) * 1000) : undefined
-    const wait = reset ? `${minutesUntil(reset)} dakika` : 'bir süre'
+    const wait = reset ? `${minutesUntil(reset)} minute(s)` : 'a while'
     return new GitHubError(
       response.status,
       'rate-limit',
       detail,
-      `GitHub API limiti aşıldı, ${wait} sonra tekrar deneyin.`,
+      `GitHub API limit exceeded, try again after ${wait}.`,
       reset,
     )
   }
@@ -78,44 +78,44 @@ async function toError(response: Response): Promise<GitHubError> {
         401,
         'unauthorized',
         detail,
-        'Oturum sona erdi, lütfen tekrar giriş yapın.',
+        'Session expired, please sign in again.',
       )
     case 403:
       return new GitHubError(
         403,
         'forbidden',
         detail,
-        'Bu işlem için GitHub yetkiniz yok. Repo yazma izniniz olduğundan emin olun.',
+        'You do not have GitHub permissions for this action. Ensure you have repository write access.',
       )
     case 404:
-      return new GitHubError(404, 'not-found', detail, 'Kayıt bulunamadı.')
+      return new GitHubError(404, 'not-found', detail, 'Record not found.')
     case 409:
       return new GitHubError(
         409,
         'conflict',
         detail,
-        'Dosya bu sırada başka biri tarafından değiştirilmiş.',
+        'File was modified by someone else in the meantime.',
       )
     case 422:
-      // Contents API eski `sha` gönderildiğinde 409 yerine 422 döndürebiliyor.
+      // Contents API may return 422 instead of 409 when an old sha is sent.
       return new GitHubError(
         422,
         /sha|does not match|is at/i.test(detail) ? 'conflict' : 'validation',
         detail,
-        detail || 'GitHub isteği reddetti (doğrulama hatası).',
+        detail || 'GitHub rejected the request (validation error).',
       )
     default:
       return new GitHubError(
         response.status,
         'unknown',
         detail,
-        detail || `GitHub beklenmedik bir yanıt döndü (HTTP ${response.status}).`,
+        detail || `GitHub returned an unexpected response (HTTP ${response.status}).`,
       )
   }
 }
 
 /* ─── base64 <-> UTF-8 ────────────────────────────────────────────────────
-   YAML dosyalarında Türkçe karakter var; btoa/atob tek başına bozar.       */
+   YAML files contain UTF-8 characters; btoa/atob alone corrupts them.     */
 
 export function encodeBase64(text: string): string {
   const bytes = new TextEncoder().encode(text)
@@ -160,7 +160,7 @@ export interface PutFileArgs {
   branch: string
   message: string
   content: string
-  /** Yeni dosyada undefined; güncellemede zorunlu (kayıp güncelleme koruması). */
+  /** undefined for new files; mandatory for updates (lost update protection). */
   sha?: string
 }
 
@@ -192,7 +192,7 @@ export function createGitHubClient(token: string): GitHubClient {
         0,
         'network',
         String(cause),
-        'Bağlantı hatası, internet bağlantınızı kontrol edin.',
+        'Network error, please check your internet connection.',
       )
     }
 
@@ -229,7 +229,7 @@ export function createGitHubClient(token: string): GitHubClient {
     async readTextFile(owner, repo, path, ref) {
       const file = await client.getFile(owner, repo, path, ref)
       if (!file.content) {
-        // 1 MB üstü dosyalarda Contents API içeriği boş döner; blob'a düşülür.
+        // For files > 1 MB, Contents API returns empty content; fall back to blob.
         const blob = await request<{ content: string }>(
           `/repos/${owner}/${repo}/git/blobs/${file.sha}`,
         )

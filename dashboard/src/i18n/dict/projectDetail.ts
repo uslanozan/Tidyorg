@@ -1,7 +1,7 @@
 /**
- * ProjectDetail sayfası ve RepoSettingsDialog bileşeni için çeviri sözlükleri.
- * `tr` kaynak dildir; `en` aynı anahtar şekline sahiptir. Anahtarlar bileşenlerde
- * namespace önekiyle çözülür: t('projectDetail.<key>'), t('repoSettings.<key>').
+ * Translation dictionaries for ProjectDetail page and RepoSettingsDialog component.
+ * `tr` is the source language; `en` has the same key shape. Keys are resolved
+ * in components with namespace prefixes: t('projectDetail.<key>'), t('repoSettings.<key>').
  */
 
 export const projectDetail = {

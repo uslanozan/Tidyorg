@@ -1,10 +1,10 @@
 /**
- * Çeviri sözlükleri. `tr` kaynak dildir; `en` aynı şekle sahip olmalı.
- * Anahtarlar nokta-yolu ile çözülür (ör. t('nav.projects')). Eksik anahtar
- * `tr`'ye, o da yoksa anahtarın kendisine düşer.
+ * Translation dictionaries. `tr` is the source language; `en` must mirror its shape.
+ * Keys are resolved via dot-paths (e.g. t('nav.projects')). Missing keys fall back
+ * to `tr`, and if missing there as well, to the key itself.
  *
- * Yeni sayfa çevirisi eklerken: TR metnini buraya taşı, EN karşılığını yaz,
- * bileşende hard-coded metni t('...') ile değiştir.
+ * When adding translations for a new page: move TR text here, write EN equivalent,
+ * and replace hard-coded text in the component with t('...').
  */
 import { projects } from './dict/projects'
 import { projectDetail, repoSettings } from './dict/projectDetail'

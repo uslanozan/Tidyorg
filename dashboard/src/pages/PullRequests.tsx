@@ -80,7 +80,7 @@ export function PullRequests() {
             const comments = await client.listIssueComments(CONFIG_OWNER, CONFIG_REPO, pr.number)
             return { pr, plan: summarizePlan(comments) }
           } catch {
-            // Yorumlar okunamazsa PR yine listelensin — plan "bekleniyor" kalır.
+            // If comments cannot be read, still list the PR — plan stays "pending".
             return { pr, plan: summarizePlan([]) }
           }
         }),
@@ -101,7 +101,7 @@ export function PullRequests() {
     void load()
   }, [load])
 
-  // Plan yorumu bekleyen PR varsa 30 saniyede bir tazele; hepsi gelmişse dur.
+  // Refresh every 30s if any PR is waiting for plan comments; stop once all arrive.
   const hasPending = rows.some((row) => row.plan.status === 'pending')
   useEffect(() => {
     if (!hasPending) return

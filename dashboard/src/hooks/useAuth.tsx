@@ -11,8 +11,8 @@ import { createGitHubClient, GitHubError, type GitHubClient } from '../services/
 import type { GitHubUser } from '../types/github'
 
 /**
- * Token yalnızca sekme ömrü boyunca `sessionStorage`'da durur — `localStorage`
- * değil. Sekme kapanınca oturum biter; XSS penceresi kalıcı olmaz.
+ * Token lives in `sessionStorage` only for the lifetime of the tab — not `localStorage`.
+ * Closing the tab terminates the session; XSS window is not persistent.
  */
 const STORAGE_KEY = 'tidyorg.dashboard.token'
 
@@ -32,7 +32,7 @@ function readStoredToken(): string | null {
   try {
     return sessionStorage.getItem(STORAGE_KEY)
   } catch {
-    return null // özel pencere / depolama kapalı
+    return null // private mode / storage disabled
   }
 }
 
@@ -41,7 +41,7 @@ function storeToken(token: string | null) {
     if (token) sessionStorage.setItem(STORAGE_KEY, token)
     else sessionStorage.removeItem(STORAGE_KEY)
   } catch {
-    /* depolama yoksa oturum yalnızca bellekte yaşar */
+    /* if storage is unavailable, session lives only in memory */
   }
 }
 
@@ -70,7 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return profile
   }, [])
 
-  // Sayfa yenilendiğinde saklı token hâlâ geçerli mi?
+  // Is the stored token still valid on page reload?
   useEffect(() => {
     if (!client || user) return
     let cancelled = false
@@ -103,13 +103,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth(): AuthValue {
   const value = useContext(AuthContext)
-  if (!value) throw new Error('useAuth yalnızca AuthProvider içinde kullanılabilir')
+  if (!value) throw new Error('useAuth must be used within AuthProvider')
   return value
 }
 
-/** Giriş yapılmış sayfalarda client kesin vardır; her yerde null kontrolü yapmayalım. */
+/** On authenticated pages client is guaranteed; avoids null checks everywhere. */
 export function useClient(): GitHubClient {
   const { client } = useAuth()
-  if (!client) throw new Error('Oturum yok')
+  if (!client) throw new Error('No active session')
   return client
 }
