@@ -1,10 +1,10 @@
 /**
- * Translation dictionaries. `tr` is the source language; `en` must mirror its shape.
+ * Translation dictionaries. `en` is the source language; `tr` must mirror its shape.
  * Keys are resolved via dot-paths (e.g. t('nav.projects')). Missing keys fall back
- * to `tr`, and if missing there as well, to the key itself.
+ * to `en`, and if missing there as well, to the key itself.
  *
- * When adding translations for a new page: move TR text here, write EN equivalent,
- * and replace hard-coded text in the component with t('...').
+ * When adding translations for a new page: write the EN text here, add the TR
+ * equivalent, and replace hard-coded text in the component with t('...').
  */
 import { projects } from './dict/projects'
 import { projectDetail, repoSettings } from './dict/projectDetail'
@@ -12,9 +12,79 @@ import { memberDetail, members, teams } from './dict/members'
 import { orgSettings, newProject } from './dict/orgSettings'
 import { pulls, cart, ui } from './dict/misc'
 
-export type Lang = 'tr' | 'en'
+export type Lang = 'en' | 'tr'
 
 export const messages = {
+  en: {
+    brand: 'Tidyorg',
+
+    nav: {
+      aria: 'Main navigation',
+      projects: 'Projects',
+      members: 'Members',
+      teams: 'Teams',
+      pulls: 'Pending PRs',
+      org: 'Org Settings',
+      pendingAria: '{n} pending PRs',
+    },
+
+    sync: {
+      aria: 'Sync status',
+      inSync: 'In sync',
+      applying: 'Applying…',
+      error: 'Apply failed',
+      off: 'Sync status off',
+      forbiddenHint: 'Add Actions (read-only) permission to the GitHub App for live sync status.',
+    },
+
+    theme: {
+      system: 'System theme',
+      light: 'Light theme',
+      dark: 'Dark theme',
+      toggleAria: 'Theme: {label}. Click to change.',
+    },
+
+    lang: {
+      toggleAria: 'Change language (currently {label})',
+      tr: 'Turkish',
+      en: 'English',
+    },
+
+    auth: {
+      signOut: 'Sign out',
+    },
+
+    footer: {
+      source: 'Configuration source:',
+      note: '— every change opens as a pull request, never written directly.',
+    },
+
+    app: {
+      booting: 'Checking your session…',
+      notFoundTitle: 'Page not found',
+      backToProjects: 'Back to projects',
+    },
+
+    login: {
+      title: 'Tidyorg Management Console',
+      subtitle: 'Manage projects and teams through GitHub',
+      signIn: 'Sign in with GitHub',
+      authorizing: 'Signing in…',
+    },
+
+    projects: projects.en,
+    projectDetail: projectDetail.en,
+    repoSettings: repoSettings.en,
+    memberDetail: memberDetail.en,
+    members: members.en,
+    teams: teams.en,
+    orgSettings: orgSettings.en,
+    newProject: newProject.en,
+    pulls: pulls.en,
+    cart: cart.en,
+    ui: ui.en,
+  },
+
   tr: {
     brand: 'Tidyorg',
 
@@ -84,75 +154,5 @@ export const messages = {
     pulls: pulls.tr,
     cart: cart.tr,
     ui: ui.tr,
-  },
-
-  en: {
-    brand: 'Tidyorg',
-
-    nav: {
-      aria: 'Main navigation',
-      projects: 'Projects',
-      members: 'Members',
-      teams: 'Teams',
-      pulls: 'Pending PRs',
-      org: 'Org Settings',
-      pendingAria: '{n} pending PRs',
-    },
-
-    sync: {
-      aria: 'Sync status',
-      inSync: 'In sync',
-      applying: 'Applying…',
-      error: 'Apply failed',
-      off: 'Sync status off',
-      forbiddenHint: 'Add Actions (read-only) permission to the GitHub App for live sync status.',
-    },
-
-    theme: {
-      system: 'System theme',
-      light: 'Light theme',
-      dark: 'Dark theme',
-      toggleAria: 'Theme: {label}. Click to change.',
-    },
-
-    lang: {
-      toggleAria: 'Change language (currently {label})',
-      tr: 'Turkish',
-      en: 'English',
-    },
-
-    auth: {
-      signOut: 'Sign out',
-    },
-
-    footer: {
-      source: 'Configuration source:',
-      note: '— every change opens as a pull request, never written directly.',
-    },
-
-    app: {
-      booting: 'Checking your session…',
-      notFoundTitle: 'Page not found',
-      backToProjects: 'Back to projects',
-    },
-
-    login: {
-      title: 'Tidyorg Management Console',
-      subtitle: 'Manage projects and teams through GitHub',
-      signIn: 'Sign in with GitHub',
-      authorizing: 'Signing in…',
-    },
-
-    projects: projects.en,
-    projectDetail: projectDetail.en,
-    repoSettings: repoSettings.en,
-    memberDetail: memberDetail.en,
-    members: members.en,
-    teams: teams.en,
-    orgSettings: orgSettings.en,
-    newProject: newProject.en,
-    pulls: pulls.en,
-    cart: cart.en,
-    ui: ui.en,
   },
 } as const
