@@ -4,7 +4,7 @@
  * The dashboard REWRITES config files — silently dropping a field
  * or deleting a comment would cause Terraform to generate an incorrect plan
  * or erase the rationale behind decisions. This script verifies three things
- * on actual `terraform/config/repositories/*.yml` files:
+ * on the example config set (`config.example/`):
  *
  *   1. applyEdits — do unedited fields and ALL comments remain intact?
  *   2. applyEdits — does the target field actually change?
@@ -27,8 +27,9 @@ import {
 import { validateRepoConfig } from '../src/services/validation'
 import type { RepoConfig } from '../src/types/config'
 
-// npm script runs from the dashboard/ directory; config is in the parent directory.
-const CONFIG_BASE = join(process.cwd(), '..', 'terraform', 'config')
+// npm script runs from the dashboard/ directory; the example config set lives at
+// the repo root in config.example/ (the live config is provided at runtime, not committed).
+const CONFIG_BASE = join(process.cwd(), '..', 'config.example')
 const CONFIG_DIR = join(CONFIG_BASE, 'repositories')
 
 const TEST_USER = 'verify-yaml-test-user'

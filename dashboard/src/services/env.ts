@@ -16,6 +16,7 @@ interface RuntimeEnv {
   VITE_CONFIG_OWNER?: string
   VITE_CONFIG_REPO?: string
   VITE_CONFIG_BRANCH?: string
+  VITE_CONFIG_BASE?: string
   VITE_OAUTH_PROXY?: string
 }
 
@@ -41,12 +42,21 @@ export const CONFIG_BRANCH = readEnv('VITE_CONFIG_BRANCH') || 'main'
 /** Proxy path to github.com OAuth endpoints — required for CORS. */
 export const OAUTH_PROXY = readEnv('VITE_OAUTH_PROXY') || '/gh-oauth'
 
-/** Fixed paths in config repo. */
+/**
+ * Directory holding the config files WITHIN the config repo. Defaults to `config`
+ * (the recommended layout, matching examples/config-repo/). Set VITE_CONFIG_BASE
+ * to '' for config at the repo root, or to any subdirectory.
+ */
+export const CONFIG_BASE = (readEnv('VITE_CONFIG_BASE') || 'config').replace(/\/+$/, '')
+
+const withBase = (rel: string) => (CONFIG_BASE ? `${CONFIG_BASE}/${rel}` : rel)
+
+/** Paths to the config files inside the config repo. */
 export const PATHS = {
-  repositories: 'terraform/config/repositories',
-  organization: 'terraform/config/organization.yml',
-  people: 'terraform/config/people.yml',
-  privileged: 'terraform/config/privileged.yml',
+  repositories: withBase('repositories'),
+  organization: withBase('organization.yml'),
+  people: withBase('people.yml'),
+  privileged: withBase('privileged.yml'),
 } as const
 
 export const repoUrl = (name: string) =>
