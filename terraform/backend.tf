@@ -1,25 +1,33 @@
 # =============================================================================
 # Backend / State — DEĞİŞTİRİLEBİLİR DOSYA
 # =============================================================================
-# Bu dosya bilerek ayrı: motorun state'i nerede tuttuğunu belirleyen TEK yer.
+# Motorun state'i nerede tutulduğunu belirleyen TEK yer.
 #
-#   Canlı (HCP)   → aşağıdaki `cloud {}` bloğu. Remote execution + ortak state.
-#   Docker        → entrypoint bu dosyayı `backend "local"` ile DEĞİŞTİRİR; state
-#                   `-v ./state:/state` mount volume'de tutulur, HCP gerekmez.
+# Varsayılan: LOCAL state — hiçbir dış servis gerektirmez, kutudan çıkar çıkmaz
+# çalışır. Docker'da entrypoint her durumda state'i /state (mount volume) altında
+# LOCAL backend'e zorlar; bu yüzden dosya image'a alınmaz (.dockerignore) ve
+# container'ı etkilemez.
 #
-# `terraform {}` bloğu birden fazla dosyaya bölünebilir; `cloud`/`backend` yalnızca
-# BİR kez görünür. required_providers/required_version main.tf'te.
+# UZAK backend (ekipler için önerilir) kullanmak için aşağıdaki bloğu kendi
+# backend'inle değiştir ya da `terraform init -backend-config=...` ver. Örnekler:
 #
-# ⚠️ Açık kaynak kullanıcısı repoyu Docker olmadan klonlarsa buradaki HCP org'u
-# kendisine ait değildir — Docker akışı (entrypoint) ya da Faz 7 fresh-repo'daki
-# genel şablon bunu çözer. Bu dosya CANLI kurulumun state bağlantısıdır.
+#   # Terraform Cloud / HCP
+#   cloud {
+#     organization = "your-tf-org"
+#     workspaces { name = "github-management" }
+#   }
+#
+#   # AWS S3
+#   backend "s3" {
+#     bucket = "your-state-bucket"
+#     key    = "tidyorg/terraform.tfstate"
+#     region = "eu-west-1"
+#   }
+#
+# `terraform {}` blokları dosyalar arası birleşir; required_providers/version
+# main.tf'te. `backend`/`cloud` yalnızca BİR kez görünebilir.
 # =============================================================================
 
 terraform {
-  cloud {
-    organization = "tidyorg-infra"
-    workspaces {
-      name = "github-management"
-    }
-  }
+  backend "local" {}
 }

@@ -1,0 +1,19 @@
+# =============================================================================
+# Mevcut repoları içe aktarma (opsiyonel, kuruluma özel) — ÖRNEK
+# =============================================================================
+# Kullanmak için `.example` uzantısını kaldır → `imports.tf`.
+#
+# Org'unda tidyorg'un yönetmesini istediğin, HÂLİHAZIRDA VAR OLAN bir repo varsa,
+# Terraform'un onu yaratmaya çalışmak yerine benimsemesi için state'e BİR KEZ içe
+# aktar:
+#
+#   import {
+#     to = module.repositories["my-existing-repo"].github_repository.this
+#     id = "my-existing-repo"
+#   }
+#
+# `"my-existing-repo"` anahtarı config/repositories/ altındaki bir dosyayla
+# eşleşmeli. İlk başarılı apply'dan sonra import bir no-op olur ve bu dosya
+# silinebilir. Hiç var olan reposu olmayan taze org'lar bu dosyaya HİÇ ihtiyaç
+# duymaz.
+# =============================================================================

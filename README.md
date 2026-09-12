@@ -1,9 +1,3 @@
-<!--
-  DRAFT of the open-source root README (English). Lives in docs/notes for now.
-  At extraction (fresh tidyorg repo) this becomes /README.md.
-  "tidyorg" is the working name. Polish before publishing.
--->
-
 # tidyorg
 
 **Manage your GitHub organization from config files, not the settings UI.**
@@ -21,7 +15,7 @@ to match. Every change is a pull request — reviewed, versioned, and reversible
   settings. Every change is a commit.
 - **Reproducible** — the whole org can be rebuilt from config.
 - **Least privilege by construction** — access comes from team membership derived from
-  config; org-owner escalation lives in a separate, review-gated file the UI cannot write.
+  config; org-owner escalation lives in a separate, review-gated file the dashboard cannot write.
 
 ## Architecture
 
@@ -31,11 +25,11 @@ config/*.yml            engine (Terraform)          GitHub
   (PR-reviewed)          (this image)                (one-way)
 ```
 
-Two optional layers on top:
-- an **Issue Form** to request changes without writing YAML, and
-- a **read-only dashboard** to see access across the org at a glance.
-
-Both open pull requests against the config — they never talk to Terraform directly.
+One optional layer on top: a **web dashboard** to view access across the org and make
+changes (add/remove members, edit repo access, branch protection, labels, org settings).
+The dashboard never talks to Terraform directly — every change it makes is a **pull request**
+against the config, so the same review gate applies. It authenticates each user via GitHub
+device flow and can batch many edits into a single PR.
 
 ## Quick start (Docker)
 
@@ -68,27 +62,45 @@ docker run --rm \
 ```
 
 State is kept in `./state` on your host — no HCP / Terraform Cloud required. Point at your
-own remote backend if you prefer (see below).
+own remote backend if you prefer (see **Backend** below).
 
 `docker compose` users: copy `docker-compose.yml`, fill in the three variables, then
 `docker compose run --rm tidyorg plan`.
 
-## The GitHub App
+## GitHub Apps
 
-tidyorg authenticates as a GitHub App (short-lived tokens, org-owned identity — no personal
-access token). Create one on your org with these permissions and install it:
+tidyorg authenticates as a **GitHub App** (short-lived tokens, org-owned identity — no
+personal access token). Depending on what you run, you create up to two Apps:
+
+**1. Engine bot** (required) — used by Terraform. Broad, because it reconciles the whole org:
 
 | Scope | Permission |
 | :--- | :--- |
 | Repository → Administration | Read & write |
 | Repository → Contents | Read & write |
 | Repository → Issues | Read & write |
+| Repository → Workflows | Read & write |
 | Repository → Metadata | Read |
 | Organization → Members | Read & write |
 | Organization → Administration | Read & write |
 
-Then supply `TF_VAR_github_app_id`, `TF_VAR_github_app_installation_id`, and the private key
+Supply `TF_VAR_github_app_id`, `TF_VAR_github_app_installation_id`, and the private key
 (`-v ./app.pem:/secrets/app.pem`).
+
+**2. Dashboard app** (optional — only if you run the dashboard) — deliberately narrow. It
+opens PRs on the signed-in user's behalf and nothing else, so it **cannot** delete repos or
+edit `privileged.yml`:
+
+| Scope | Permission |
+| :--- | :--- |
+| Repository → Contents | Read & write |
+| Repository → Pull requests | Read & write |
+| Repository → Actions | Read-only (live "applying/in-sync" badge) |
+| Repository → Metadata | Read |
+
+Enable "Device Flow" and install it on **only the config repo**. Give the dashboard its
+`client_id` via `VITE_GITHUB_CLIENT_ID`. See [`integrations/github-app/`](integrations/github-app/)
+for both manifests and step-by-step setup.
 
 ## Config schema
 
@@ -96,22 +108,24 @@ Four files under `config/`, split by ownership:
 
 | File | Owns | Who writes it |
 | :--- | :--- | :--- |
-| `organization.yml` | roles, defaults, org settings | humans |
-| `repositories/<name>.yml` | one repo: access, branch protection, files | humans / dashboard |
+| `organization.yml` | roles, defaults, org settings, profile | humans |
+| `repositories/<name>.yml` | one repo: access, branch protection, labels, files | humans / dashboard |
 | `people.yml` | org membership (a list of usernames) | humans / dashboard |
 | `privileged.yml` | org owners + org-scoped roles | **humans only** (review-gated) |
 
 The split of `people.yml` / `privileged.yml` is the escalation gate: the file a dashboard
 can write cannot express "make this person an org owner." That lives in `privileged.yml`,
-which is protected by CODEOWNERS. See `examples/` for every field.
+which is protected by CODEOWNERS. The org name itself is **not** in config — it comes from
+`TF_VAR_github_org_name`, so there is a single source of truth. See `examples/` for every field.
 
 ### A repository, minimally
 
 ```yaml
 description: "Payment gateway service"
-language: go            # go | python | typescript | php
+language: go            # display metadata; CI auto-detects the real languages
 mentors: [alice]        # repo admins (>=1)
 developers: [bob, carol]
+viewers: [dan]          # read-only (optional)
 # everything else inherits from organization.yml defaults;
 # override only what differs, e.g.:
 protected_branches:
@@ -122,8 +136,8 @@ protected_branches:
 ## Backend (state)
 
 By default the container keeps state locally on the mounted `/state` volume. To use a remote
-backend (S3, GCS, Terraform Cloud, …), mount your own `backend.tf` into the engine or run the
-engine directly with `-backend-config`.
+backend (S3, GCS, Terraform Cloud, …), edit [`terraform/backend.tf`](terraform/backend.tf)
+or run the engine with `-backend-config`.
 
 ## Known limitations
 
@@ -136,9 +150,10 @@ engine directly with `-backend-config`.
 
 ## License
 
-TODO — choose a license before publishing (Apache-2.0 recommended).
+[MIT](LICENSE).
 
 ## Status
 
-Working name; pre-1.0. The engine and read-only dashboard are functional; the dashboard's
-write mode and the single combined image (engine + dashboard) are in progress.
+Working name; pre-1.0. The engine, the web dashboard (full write mode via PRs), and the
+single combined Docker image (engine + dashboard) are functional. A fresh-org first-apply
+still needs live verification before a 1.0 tag.

@@ -1,69 +1,96 @@
 # =============================================================================
-# TASLAK — Tekil Repository Konfigürasyon Şeması (v0, henüz uygulanmadı)
+# Tekil Repository Konfigürasyon Şeması — TÜM ALANLAR
 # =============================================================================
-# Bu dosya, config/repositories/ dizini altındaki her bir repo dosyasının (.yml)
-# alabileceği tüm alanları ve örneklerini gösterir.
-# Dosyanın adı = Repo adı (GitHub'da oluşacak repo ismi).
+# config/repositories/ altındaki her .yml dosyası bir repo'yu tanımlar.
+# Dosya adı = repo adı (GitHub'da oluşacak isim).
 #
-# Yalnızca varsayılandan FARKLI olan alanlar yazılır. Boş bırakılan alanlar
-# config/organization.yml içindeki "defaults" bölümünden miras alınır.
-#
-# Bkz. ACCESS-MODEL.md & docs/config-guide.md
+# Yalnızca VARSAYILANDAN FARKLI alanları yazın. Boş bırakılanlar
+# config/organization.yml → defaults bölümünden miras alınır.
 # =============================================================================
 
-# Repo'nun açıklaması (Zorunlu)
+# --- Zorunlu ----------------------------------------------------------------
+
+# Repo açıklaması.
 description: "Ödeme geçidi entegrasyon servisi"
 
-# Projenin yazıldığı ana programlama dili (Zorunlu)
-# Değerler: go | python | typescript | php
+# Ana programlama dili. Yalnızca görsel etiket içindir; CI dili repo dosyalarından
+# otomatik algılar. Serbest metin (dashboard bilinen diller için logo, diğerleri
+# için tek harf gösterir).
 language: go
 
-# Projeden sorumlu mentörlerin GitHub kullanıcı adları (Liste)
-# En az 1 mentör atanmalıdır. Mentörler repo'da 'admin' yetkisine sahip olur.
+# En az bir mentör zorunlu. Mentörler repo'da `admin` yetkisi alır.
 mentors:
   - mentor-a
 
-# Projede katkı sağlayacak geliştiricilerin GitHub kullanıcı adları (Liste)
-# Geliştiriciler repo'da 'push' (yazma) yetkisine sahip olur, ancak branch protection kurallarına tabidir.
+# --- Kişiler (opsiyonel) ----------------------------------------------------
+
+# Geliştiriciler `push` yetkisi alır, branch protection'a tabidir.
 developers:
   - dev-1
   - dev-2
 
-# Repo görünürlüğü (Opsiyonel)
-# Değerler: public | private
-# Belirtilmezse organization.yml'daki defaults.visibility değeri kullanılır.
-visibility: private
+# Salt-okunur (pull) erişim — repoyu görür ve klonlar, push atamaz.
+viewers:
+  - observer-a
 
-# Arşivlenme durumu (Opsiyonel)
-# true yapılırsa repo dondurulur (read-only olur). Silmek yerine bu kullanılmalıdır.
-archived: false
+# --- Repo ayarları (opsiyonel — belirtilmezse defaults) ---------------------
 
-# GitHub özellik ayarları (Opsiyonel, belirtilmezse defaults kullanılır)
+visibility: private # public | private
+archived: false # true → repo dondurulur (silmek yerine bunu kullanın)
+
 has_issues: true
 has_projects: false
 has_wiki: false
-auto_init: true
+auto_init: true # ilk commit ile oluştur (varsayılan dalın var olması için)
 default_branch: develop
 
-# Dal koruması kurallarını ezmek için (Opsiyonel)
-# Yalnızca varsayılan kurallardan farklı olan alanlar yazılır (örn: onay sayısı artırma veya CI devre dışı bırakma)
+# --- Güvenlik (opsiyonel — defaults: ikisi de açık) -------------------------
+
+vulnerability_alerts: true # Dependabot güvenlik uyarıları (her planda çalışır)
+secret_scanning: true # secret scanning + push protection (yalnızca public'te ücretsiz)
+
+# --- Dal koruması (opsiyonel — yalnızca varsayılandan farklı alanlar) --------
+# `<dal>: null` özel anlam taşır: o dal için org varsayılan koruması KALDIRILIR.
 protected_branches:
   main:
-    required_reviews: 3 # Varsayılan 2 onay yerine 3 onay ister
+    required_reviews: 2 # merge öncesi gereken onay sayısı
+    require_code_owner_review: true # CODEOWNERS sahibinden ayrıca onay
+    dismiss_stale_reviews: true # yeni commit eski onayları düşürür
+    require_status_checks: [ci/test] # yeşil olması gereken CI kontrolleri
+    require_conversation_resolution: true # tüm yorumlar çözülmeli
+    allow_force_push: false
+    allow_deletions: false
+    push_allowed_roles: [mentor, head-of-engineering] # doğrudan push edebilen roller
   develop:
-    required_reviews: 0 # Hızlı deneme için develop onaysız merge edilebilir
-    require_status_checks: [] # CI kontrolü beklemeden merge edilebilir
+    required_reviews: 0 # hızlı deneme için onaysız merge
+    require_status_checks: [] # CI beklemeden merge
 
-# Yol bazlı review yönlendirmesi (CODEOWNERS) (Opsiyonel)
-# DİKKAT: Bu merge YETKİSİNİ kısıtlamaz, sadece PR aşamasında onay zorunluluğu ekler.
-# require_code_owner_review: true iken zorlayıcıdır.
+# --- CODEOWNERS (opsiyonel) -------------------------------------------------
+# Yol → o yol değişince onayı gereken kişiler. Yalnızca
+# require_code_owner_review: true iken zorlayıcıdır; merge YETKİSİNİ kısıtlamaz.
 code_owners:
   "/backend/": [dev-1]
   "/frontend/": [dev-2]
 
-# Harici olarak dağıtılacak workflow'lar (Faz 2 kapsamında uygulanacaktır)
-# Değerler: ci | release | dependabot
+# --- Şablon dosyaları (opsiyonel — defaults'un üstüne sığ merge) ------------
+# strict = TF içeriği sahiplenir (elle değişiklik apply'da geri alınır)
+# seed   = yalnızca ilk oluşturmada yazılır, repo sonradan değiştirebilir
+# none   = hiç yazılmaz
+files:
+  contributing: seed
+  security: seed
+  pr_template: strict
+
+# --- Workflow'lar (opsiyonel) -----------------------------------------------
+# Kaynak: terraform/templates/.github/workflows/<ad>.yml — daima strict.
+# ⚠️ `ci` yoksa `ci/test` status check'i hiç raporlanmaz → onu bekleyen dal
+# koruması PR'ları sonsuza kadar bekletir (modül bunu precondition ile yakalar).
 workflows:
   - ci
   - release
-  - dependabot
+
+# --- Etiketler (opsiyonel) --------------------------------------------------
+# Verilirse org varsayılan seed etiketlerinin YERİNE geçer (miras yerine ezme).
+labels:
+  - { name: "bug", color: "d73a4a", description: "Hatalı davranış" }
+  - { name: "enhancement", color: "0e8a16", description: "Yeni özellik" }
