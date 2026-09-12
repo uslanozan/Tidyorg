@@ -4,16 +4,16 @@
 # asking the reporter for a version number or reproduction steps.
 blank_issues_enabled: false
 
+# Replace OWNER with this repository's owner.
 contact_links:
   - name: 💬 Question or idea
-    url: https://github.com/orgs/your-org/discussions
+    url: https://github.com/OWNER/tidyorg/discussions
     about: Not sure it is a bug or a feature yet? Open a discussion instead — issues are for actionable work.
 
-  - name: 📖 Engineering handbook
-    url: https://github.com/your-org/tidyorg/tree/main/docs
-    about: Workflow, branching, commit convention, code review, and release process.
+  - name: 📖 Documentation
+    url: https://github.com/OWNER/tidyorg/tree/main/docs
+    about: Configuration guide, access model, workflow, and release process.
 
   - name: 🔐 Report a security vulnerability
-    # Requires the org-level .github repository with a SECURITY.md.
-    url: https://github.com/your-org/.github/security/policy
+    url: https://github.com/OWNER/tidyorg/security/policy
     about: Never report security issues in public issues, follow the policy here.
