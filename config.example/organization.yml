@@ -37,6 +37,24 @@ roles:
     repo_permission: push # Write across the repo; branch restrictions are applied separately
     bypass_branch_protection: false
 
+  # Read-only repo role: people in a repo's `viewers:` list can see and clone it
+  # but cannot push (e.g. an observer/advisor from another team).
+  viewer:
+    scope: repository
+    repo_permission: pull
+    bypass_branch_protection: false
+
+# The organization-level team that carries the head-of-engineering role.
+org_admin_team: platform-admins
+
+# Organization profile (as shown in the GitHub org UI). Managed here so each apply
+# does not wipe these fields; the dashboard edits this block.
+profile:
+  name: "Your Organization"
+  description: "What your organization does"
+  blog: "https://example.com"
+  location: "Earth"
+
 # -----------------------------------------------------------------------------
 # PEOPLE — NOT in this file, but in separate files
 # -----------------------------------------------------------------------------
