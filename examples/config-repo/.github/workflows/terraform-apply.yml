@@ -1,0 +1,57 @@
+# =============================================================================
+# Terraform Apply — runs on merge to main, reconciles GitHub to config/
+# =============================================================================
+# Template for YOUR config repo. On merge it runs the published tidyorg engine
+# image against your config/ directory and applies. Same variables/secrets as
+# terraform-plan.yml (see that file's header).
+#
+# Replace `ghcr.io/OWNER/tidyorg` with the image you publish (or the upstream one).
+# =============================================================================
+name: "Terraform Apply"
+
+on:
+  push:
+    branches: [main]
+    paths: ["config/**"]
+
+permissions:
+  contents: read
+
+# One apply at a time; never cancel a run mid-apply.
+concurrency:
+  group: terraform-apply
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    name: "Terraform Apply"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Write GitHub App key
+        env:
+          PEM: ${{ secrets.TIDYORG_APP_PEM }}
+        run: printf '%s' "$PEM" > "$RUNNER_TEMP/app.pem"
+
+      - name: Terraform Apply
+        env:
+          TF_CLOUD_ORGANIZATION: ${{ vars.TF_CLOUD_ORGANIZATION }}
+          TF_WORKSPACE: ${{ vars.TF_WORKSPACE }}
+          TF_TOKEN_APP_TERRAFORM_IO: ${{ secrets.TF_TOKEN_APP_TERRAFORM_IO }}
+          GITHUB_ORG: ${{ vars.TIDYORG_GITHUB_ORG }}
+          APP_ID: ${{ vars.TIDYORG_APP_ID }}
+          APP_INSTALLATION_ID: ${{ vars.TIDYORG_APP_INSTALLATION_ID }}
+        run: |
+          docker run --rm \
+            -v "$PWD/config:/config:ro" \
+            -v "$RUNNER_TEMP/app.pem:/secrets/app.pem:ro" \
+            -e TF_STATE=hcp \
+            -e TF_CLOUD_ORGANIZATION="$TF_CLOUD_ORGANIZATION" \
+            -e TF_WORKSPACE="$TF_WORKSPACE" \
+            -e TF_TOKEN_app_terraform_io="$TF_TOKEN_APP_TERRAFORM_IO" \
+            -e TF_VAR_github_org_name="$GITHUB_ORG" \
+            -e TF_VAR_github_app_id="$APP_ID" \
+            -e TF_VAR_github_app_installation_id="$APP_INSTALLATION_ID" \
+            ghcr.io/OWNER/tidyorg:latest apply
