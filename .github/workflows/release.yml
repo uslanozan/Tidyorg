@@ -11,6 +11,10 @@
 # auth uses the built-in GITHUB_TOKEN, so it works wherever the repo lives.
 # Tag a release with:  git tag v0.1.0 && git push origin v0.1.0
 # A manual run (workflow_dispatch) publishes a throwaway :sha-... tag for testing.
+#
+# NOTE: on the FIRST publish, GHCR packages are created PRIVATE. Make each public
+# once (GitHub → your profile → Packages → the package → Package settings →
+# Change visibility → Public) so `docker pull` works without authentication.
 # =============================================================================
 
 name: Release
