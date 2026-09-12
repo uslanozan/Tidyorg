@@ -1,0 +1,2 @@
+# Keeps the repositories/ directory tracked. Real repo configs are provided at
+# runtime (mounted /config, or copy config.example/ to your own config dir).
