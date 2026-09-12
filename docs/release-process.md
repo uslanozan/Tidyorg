@@ -1,69 +1,68 @@
-# Release Süreci
+# Release Process
 
-Sürüm çıkarmak elle yapılan bir iş olmamalıdır. `main` dalına merge edildiği anda
-[`release.yml`](../terraform/templates/.github/workflows/release.yml) workflow'u devreye
-girer: sürüm numarasını commit mesajlarından hesaplar, tag atar ve changelog'lu bir
-GitHub Release yayınlar.
+Releasing a version should not be a manual task. The moment it is merged into the `main` branch,
+the [`release.yml`](../terraform/templates/.github/workflows/release.yml) workflow kicks in:
+it computes the version number from commit messages, creates a tag, and publishes a
+GitHub Release with a changelog.
 
-Bu doküman o mekanizmanın nasıl çalıştığını ve süreci nasıl yürüteceğini anlatır.
+This document explains how that mechanism works and how to carry out the process.
 
-> ## ⚠️ Bugün bu otomasyon hiçbir repo'da aktif değil
+> ## ⚠️ Today this automation is not active in any repo
 >
-> `release.yml` şablonu yazılmış ve test edilmeye hazır, ancak
-> `config/organization.yml` → `defaults.workflows` değeri **`[ci]`**. Yani hiçbir repo'ya
-> dağıtılmıyor ve `main`'e merge hiçbir sürüm üretmiyor.
+> The `release.yml` template is written and ready to be tested, but
+> `config/organization.yml` → `defaults.workflows` is set to **`[ci]`**. So it is not deployed to
+> any repo, and a merge to `main` produces no version.
 >
-> Aşağıdaki her şey, workflow bir repo'ya dağıtıldığı anda geçerli olacak biçimde
-> yazılmıştır. Aktifleştirmek için ilgili repo'nun config dosyasına
-> `workflows: [ci, release]` yazmak yeterlidir.
+> Everything below is written to be valid the moment the workflow is deployed to a repo.
+> To activate it, it is enough to set `workflows: [ci, release]` in the relevant repo's config file.
 >
-> Karar takibi: [`../ROADMAP.md`](../ROADMAP.md) Faz 2.
+> Decision tracking: [`../ROADMAP.md`](../ROADMAP.md) Phase 2.
 
 ---
 
 ## 1. Semantic Versioning
 
-Sürüm numarası `vMAJOR.MINOR.PATCH` biçimindedir.
+The version number follows the form `vMAJOR.MINOR.PATCH`.
 
-| Bileşen | Ne zaman artar | Örnek |
+| Component | When it increases | Example |
 | :--- | :--- | :--- |
-| **MAJOR** | Geriye dönük uyumluluk kırıldığında | `v1.4.2` → `v2.0.0` |
-| **MINOR** | Yeni özellik eklendiğinde (uyumluluk korunur) | `v1.4.2` → `v1.5.0` |
-| **PATCH** | Hata düzeltmesi veya performans iyileştirmesi | `v1.4.2` → `v1.4.3` |
+| **MAJOR** | When backward compatibility is broken | `v1.4.2` → `v2.0.0` |
+| **MINOR** | When a new feature is added (compatibility preserved) | `v1.4.2` → `v1.5.0` |
+| **PATCH** | A bug fix or performance improvement | `v1.4.2` → `v1.4.3` |
 
-"Geriye dönük uyumluluğun kırılması" pratikte şu demektir: bu sürümü kuran biri, kendi
-kodunda değişiklik yapmadan çalışmaya devam **edemiyorsa** bu bir MAJOR değişikliktir.
-Kaldırılan bir API ucu, değişen bir yanıt formatı, zorunlu hale gelen bir parametre.
+"Breaking backward compatibility" in practice means this: if someone who installs this version
+**cannot** keep working without changing their own code, this is a MAJOR change.
+A removed API endpoint, a changed response format, a parameter that becomes mandatory.
 
 ---
 
-## 2. Sürüm Numarası Nasıl Hesaplanır
+## 2. How the Version Number Is Computed
 
-Numarayı kimse elle belirlemez — **commit mesajlarından türetilir.**
+Nobody sets the number by hand — **it is derived from commit messages.**
 
-| Commit | Etki |
+| Commit | Impact |
 | :--- | :--- |
-| `feat(...)!:` veya gövdede `BREAKING CHANGE:` | **MAJOR** |
+| `feat(...)!:` or `BREAKING CHANGE:` in the body | **MAJOR** |
 | `feat(...):` | **MINOR** |
-| `fix(...):` veya `perf(...):` | **PATCH** |
-| `chore`, `docs`, `refactor`, `test`, `ci` | **Sürüm çıkmaz** |
+| `fix(...):` or `perf(...):` | **PATCH** |
+| `chore`, `docs`, `refactor`, `test`, `ci` | **No version released** |
 
-Workflow, son tag ile `HEAD` arasındaki tüm commit'lere bakar ve **en yüksek** etkiyi
-uygular. Yani aralarında bir `feat` ve üç `fix` varsa sonuç MINOR artıştır.
+The workflow looks at all commits between the last tag and `HEAD` and applies the **highest**
+impact. So if there is one `feat` and three `fix` among them, the result is a MINOR increase.
 
-Hiç sürüm gerektiren commit yoksa workflow hiçbir şey yapmadan sonlanır — yalnızca
-dokümantasyon değişikliği içeren bir merge yeni sürüm üretmez.
+If there is no commit that requires a version, the workflow finishes without doing anything — a
+merge that contains only documentation changes produces no new version.
 
-Bu, [`commit-convention.md`](commit-convention.md) kurallarına uymanın somut sebebidir:
-commit mesajın sürüm numarasını doğrudan belirler.
+This is the concrete reason to follow the [`commit-convention.md`](commit-convention.md) rules:
+your commit message directly determines the version number.
 
 ---
 
-## 3. Release Dalı ile Sürüm Çıkarma
+## 3. Releasing a Version with a Release Branch
 
-`develop` yeterli olgunluğa ulaştığında:
+When `develop` reaches sufficient maturity:
 
-**1. Release dalı aç**
+**1. Open a release branch**
 
 ```bash
 git checkout develop
@@ -71,18 +70,18 @@ git pull origin develop
 git checkout -b release/v1.5.0
 ```
 
-**2. Yalnızca sürüm hazırlığı yap.** Bu dalda yeni özellik geliştirilmez:
-- Sürüm numarası dosyalarda geçiyorsa güncelle (`package.json`, `version.go` vb.)
-- Son testleri çalıştır
-- Varsa küçük hata düzeltmeleri
+**2. Do only release preparation.** No new features are developed on this branch:
+- If the version number appears in files, update it (`package.json`, `version.go`, etc.)
+- Run the final tests
+- Small bug fixes, if any
 
-**3. `main`'e PR aç ve merge et.**
-`main` koruması gereği 2 onay + mentör onayı gerekir.
+**3. Open a PR to `main` and merge it.**
+By `main`'s protection, 2 approvals + mentor approval are required.
 
-**4. Aynı dalı `develop`'a da merge et.**
-Release dalında yapılan düzeltmeler `develop`'a dönmezse bir sonraki sürümde kaybolur.
+**4. Merge the same branch into `develop` as well.**
+If fixes made on the release branch do not return to `develop`, they are lost in the next version.
 
-**5. Gerisi otomatik.** `main`'e merge, release workflow'unu tetikler.
+**5. The rest is automatic.** Merging to `main` triggers the release workflow.
 
 ```mermaid
 gitGraph
@@ -102,106 +101,108 @@ gitGraph
 
 ---
 
-## 4. Workflow Ne Yapıyor
+## 4. What the Workflow Does
 
-`main`'e her push'ta sırasıyla:
+On every push to `main`, in order:
 
-**1. Geçmişi çeker.** `fetch-depth: 0` ile tüm tag'ler alınır — son sürümü bulmak için
-gerekli.
+**1. Fetches history.** With `fetch-depth: 0` all tags are fetched — needed to find the last
+version.
 
-**2. Son tag'i bulur.** `git describe --tags --match 'v*'`. Hiç tag yoksa `v0.0.0`'dan
-başlar.
+**2. Finds the last tag.** `git describe --tags --match 'v*'`. If there is no tag, it starts from
+`v0.0.0`.
 
-**3. Aradaki commit'leri tarar** ve yukarıdaki tabloya göre artış tipini belirler.
+**3. Scans the commits in between** and determines the increment type per the table above.
 
-**4. Sürüm gerekmiyorsa durur.** `released=false` çıktısı üretip sonlanır.
+**4. Stops if no version is needed.** It produces the `released=false` output and finishes.
 
-**5. Tag atar.**
+**5. Creates a tag.**
 ```
 git tag -a v1.5.0 -m "Release v1.5.0"
 git push origin v1.5.0
 ```
 
-**6. GitHub Release yayınlar.** `gh release create --generate-notes` ile changelog
-otomatik üretilir; PR başlıkları ve katkıda bulunanlar listelenir.
+**6. Publishes a GitHub Release.** With `gh release create --generate-notes` the changelog is
+generated automatically; PR titles and contributors are listed.
 
-**7. Docker imajı yayınlar — yalnızca repo'da `Dockerfile` varsa.** İmaj
-`ghcr.io/<org>/<repo>:v1.5.0` ve `:latest` etiketleriyle push edilir. Dockerfile yoksa
-adım atlanır, hata vermez.
+**7. Publishes a Docker image — only if the repo has a `Dockerfile`.** The image is
+pushed with the `ghcr.io/<org>/<repo>:v1.5.0` and `:latest` tags. If there is no Dockerfile, the
+step is skipped and does not error.
 
-> **Tasarım notu:** Workflow üçüncü parti action kullanmaz; `git` ve `gh` ile yazılmıştır.
-> Sebep: bu workflow repo üzerinde yazma yetkisi taşır ve tedarik zinciri riskini en aza
-> indirmek istedik.
-
----
-
-## 5. Elle Sürüm Çıkarma
-
-Otomatik hesaplamayı devre dışı bırakmak gerekirse:
-
-GitHub → Actions → **Release** → **Run workflow** → `bump` alanından `patch`, `minor`
-veya `major` seç.
-
-Ne zaman gerekir:
-- Commit mesajları standart dışı yazılmış ve otomatik hesap yanlış sonuç veriyor
-- Bir MAJOR sürümü bilinçli olarak erken çıkarmak isteniyor
-- İlk sürüm (`v1.0.0`) elle işaretlenmek isteniyor
+> **Design note:** The workflow uses no third-party action; it is written with `git` and `gh`.
+> The reason: this workflow carries write permission on the repo, and we wanted to minimize
+> supply-chain risk.
 
 ---
 
-## 6. Hotfix Sürümleri
+## 5. Releasing a Version Manually
 
-Canlıdaki kritik bir hata için release dalı beklenmez:
+If you need to disable the automatic computation:
+
+GitHub → Actions → **Release** → **Run workflow** → from the `bump` field select `patch`, `minor`,
+or `major`.
+
+When it is needed:
+- Commit messages were written non-standard and the automatic computation gives the wrong result
+- You want to deliberately release a MAJOR version early
+- You want to mark the first version (`v1.0.0`) by hand
+
+---
+
+## 6. Hotfix Releases
+
+For a critical bug in production, you don't wait for a release branch:
 
 ```bash
 git checkout main
 git pull origin main
 git checkout -b hotfix/payment-crash
-# düzeltme
+# fix
 git commit -m "fix(payment): resolve null pointer in gateway"
 ```
 
-`main`'e PR açılıp merge edilir → workflow `fix` commit'ini görür → PATCH sürümü çıkar.
+A PR is opened to `main` and merged → the workflow sees the `fix` commit → a PATCH version is
+released.
 
-**Kritik:** Hotfix dalı `develop`'a da merge edilmelidir, yoksa düzeltme bir sonraki
-sürümde geri gelir (regression). Ayrıntı: [`branching-strategy.md`](branching-strategy.md),
-Bölüm 7.
+**Critical:** The hotfix branch must also be merged into `develop`, otherwise the fix comes back
+in the next version (regression). Details: [`branching-strategy.md`](branching-strategy.md),
+Section 7.
 
 ---
 
 ## 7. Changelog
 
-Ayrı bir `CHANGELOG.md` dosyası tutulmaz. GitHub Release notları otomatik üretilir ve
-tek doğruluk kaynağıdır: `https://github.com/<org>/<repo>/releases`.
+A separate `CHANGELOG.md` file is not kept. GitHub Release notes are generated automatically and
+are the single source of truth: `https://github.com/<org>/<repo>/releases`.
 
-Notların kalitesi doğrudan **PR başlıklarının** kalitesine bağlıdır — changelog'da
-görünen metin PR başlığıdır. "fix stuff" başlıklı bir PR changelog'da da öyle görünür.
-
----
-
-## 8. Sorun Giderme
-
-**Workflow çalıştı ama release oluşmadı.**
-Son tag'den beri sürüm gerektiren commit yoktur. Actions loglarında
-`No release-worthy commits since ...` satırını göreceksiniz. Beklenen davranış.
-
-**Yanlış sürüm numarası çıktı.**
-Commit mesajları büyük ihtimalle standart dışı. Tag'i silmek yerine bir sonraki sürümde
-düzeltin — yayınlanmış bir tag'i geri almak, o sürümü kuranlar için kırılma yaratır.
-
-**Tag atılamadı, izin hatası.**
-Workflow'un `permissions: contents: write` iznine ihtiyacı var. `release.yml` içinde
-tanımlı; repo ayarlarından Actions yazma izni kısıtlanmışsa açılmalı.
-
-**Docker adımı başarısız.**
-`packages: write` izni ve `ghcr.io` erişimi gerekir. Repo'da Dockerfile yoksa adım zaten
-atlanır.
+The quality of the notes depends directly on the quality of the **PR titles** — the text that
+appears in the changelog is the PR title. A PR titled "fix stuff" appears that way in the
+changelog too.
 
 ---
 
-## 9. İlgili Dokümanlar
+## 8. Troubleshooting
 
-- [`commit-convention.md`](commit-convention.md) — Sürümü belirleyen commit formatı
-- [`branching-strategy.md`](branching-strategy.md) — Release ve hotfix dal akışı
-- [`workflow-guide.md`](workflow-guide.md) — Genel iş akışı
-- [`release.yml`](../terraform/templates/.github/workflows/release.yml) — Workflow'un kendisi
+**The workflow ran but no release was created.**
+There is no version-requiring commit since the last tag. In the Actions logs you will see the line
+`No release-worthy commits since ...`. Expected behavior.
+
+**The wrong version number came out.**
+The commit messages are most likely non-standard. Instead of deleting the tag, fix it in the next
+version — reverting a published tag creates breakage for those who installed that version.
+
+**The tag could not be created, permission error.**
+The workflow needs the `permissions: contents: write` permission. It is defined in `release.yml`;
+if Actions write permission is restricted in the repo settings, it must be enabled.
+
+**The Docker step failed.**
+The `packages: write` permission and `ghcr.io` access are required. If the repo has no Dockerfile,
+the step is already skipped.
+
+---
+
+## 9. Related Documents
+
+- [`commit-convention.md`](commit-convention.md) — The commit format that determines the version
+- [`branching-strategy.md`](branching-strategy.md) — Release and hotfix branch flow
+- [`workflow-guide.md`](workflow-guide.md) — General workflow
+- [`release.yml`](../terraform/templates/.github/workflows/release.yml) — The workflow itself

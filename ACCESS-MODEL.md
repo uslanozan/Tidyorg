@@ -1,20 +1,20 @@
-# Erişim Modeli — Hedef Tasarım Notları
+# Access Model — Target Design Notes
 
-> Bu dosya, projenin **nihai hedefini** ve yetkilendirme modelini kayıt altına alır.
-> Haftalık görev listeleri **ne** yapılacağını anlatır; bu dosya **neden**ini anlatır.
-> Yeni bir ortamda çalışmaya başlayan biri (veya kod asistanı) önce bunu okumalı.
+> This file records the project's **ultimate goal** and its authorization model.
+> The weekly task lists describe **what** will be done; this file describes the **why**.
+> Anyone (or any code assistant) starting to work in a new environment should read this first.
 
-Son güncelleme: 2026-08-17
+Last updated: 2026-08-17
 
 ---
 
-## 1. Nihai Hedef
+## 1. Ultimate Goal
 
-Kurulan altyapı tek bir pilot repo'yu yönetmek için değil, **dışarıdan gelen bir
-konfigürasyonu girdi alıp organizasyondaki tüm repo'lar ve kişiler için yetki üreten
-bir motor** olmak için tasarlanıyor.
+The infrastructure being built is not designed to manage a single pilot repo, but to be
+**an engine that takes an externally supplied configuration as input and produces
+authorization for all repos and people in the organization**.
 
-Akış hedefi:
+Target flow:
 
 ```
 UI (config export)  →  JSON/YAML config  →  PR  →  terraform plan (CI)
@@ -24,330 +24,345 @@ UI (config export)  →  JSON/YAML config  →  PR  →  terraform plan (CI)
                                             terraform apply → GitHub
 ```
 
-Kimse elle HCL yazmayacak. Yeni repo, yeni kişi, yetki değişikliği — hepsi config
-dosyasındaki bir satır değişikliği olacak. Bu yüzden **modülün girdileri `map`
-şeklinde, config şemasını birebir yansıtacak biçimde** tasarlanmalı.
+No one will write HCL by hand. A new repo, a new person, an authorization change — all of
+them become a single-line change in a config file. This is why **the module's inputs must
+be designed as `map`s that mirror the config schema exactly**.
 
-Pilot repo(lar) bu motorun çalıştığını göstermek içindir, hedefin kendisi değildir.
+The pilot repo(s) exist to demonstrate that this engine works; they are not the goal itself.
 
 ---
 
-## 2. Aktörler ve Beklenen Davranış
+## 2. Actors and Expected Behavior
 
 ### Head of Engineering
-- Organizasyonun sahibi konumunda.
-- Repo'ları oluşturur (örn. varsayılan 8 repo).
-- Mentörleri repo'lara dağıtır ve **zaman içinde bu dağılımı değiştirebilir**.
-- Her şeye yetkilidir.
+- Holds the position of organization owner.
+- Creates the repos (e.g. the default 8 repos).
+- Distributes mentors across repos and **can change this distribution over time**.
+- Is authorized for everything.
 
-### Mentörler (hedef: 4 kişi, her biri 2 repo — toplam 8 repo)
-- **Bir repo'da tek mentör bulunur**, o repo'da başka mentör yoktur.
+### Mentors (target: 4 people, 2 repos each — 8 repos total)
+- **A repo has a single mentor**; there is no other mentor in that repo.
 
-> **Bu bir hedef tasarımdır, bugünkü tablo değil.** Şu an canlıda tek mentör var
-> (`owner-a`) ve üç repo'nun da mentörü o. "4 kişi × 2 repo" ifadesi mentör başına
-> düşen repo sayısını anlatır; bir repo'daki mentör sayısını değil. Kimin nerede mentör
-> olduğu tek yerden okunur: `config/repositories/<repo>.yml` → `mentors`.
+> **This is a target design, not today's picture.** Right now there is a single mentor in
+> production (`owner-a`) who is the mentor of all three repos. The phrase "4 people × 2
+> repos" describes the number of repos per mentor; not the number of mentors in a repo. Who
+> is a mentor where is read from a single place: `config/repositories/<repo>.yml` →
+> `mentors`.
 
-- Sorumlu oldukları repo'da **tam yetkiye** (`admin`) sahiptir.
-- `main` ve `develop` dahil her branch'e push atabilirler.
-- Repo kurallarını değiştirebilirler — ancak **config/dashboard üzerinden**
-  (bkz. Bölüm 5 — Karar 1).
-- Dışarıdan danışman ekleyip ona sınırlı yetki verebilirler (örn. tüm repo'ya read-only).
+- Has **full authority** (`admin`) in the repo they are responsible for.
+- Can push to every branch, including `main` and `develop`.
+- Can change the repo rules — but **via config/dashboard** (see Section 5 — Decision 1).
+- Can add an external consultant and grant them limited access (e.g. read-only across the whole repo).
 
-> Şema notu: bugün tek mentör olsa da config şemasında `mentors` alanı **liste** olarak
-> tanımlanmalıdır. Tekil alanı sonradan listeye çevirmek hem config'i hem modülü kırar;
-> liste bugün sıfır maliyetlidir.
+> Schema note: even though there is a single mentor today, the `mentors` field in the config
+> schema must be defined as a **list**. Turning a singular field into a list later breaks both
+> the config and the module; the list costs nothing today.
 
-### Developer'lar
-- Developer ↔ repo ilişkisi **many-to-many**'dir. Bir kişi aynı anda birden fazla
-  projede yer alabilir.
-- Hiçbir developer `main` veya `develop` dallarına doğrudan push atamaz.
-- Katkı yalnızca feature branch + PR üzerinden yapılır.
-- "Takım" burada somut bir kurum değil, **o an o repo'da çalışan developer'ların ortak
-  adıdır**. Teknik karşılığı: her repo için bir GitHub takımı, adı config'den türetilir
-  (örn. `payments-api-devs`). Kişi projeden ayrılınca tek üyelik silinir.
+### Developers
+- The developer ↔ repo relationship is **many-to-many**. A person can be involved in more
+  than one project at the same time.
+- No developer can push directly to the `main` or `develop` branches.
+- Contributions are made only through feature branch + PR.
+- A "team" here is not a concrete entity but **the collective name for the developers
+  working on that repo at that moment**. Its technical counterpart: one GitHub team per
+  repo, whose name is derived from the config (e.g. `payments-api-devs`). When a person
+  leaves the project, a single membership is removed.
 
-### Dış Danışmanlar
-- Geçici ve dar kapsamlı erişim.
-- Tipik senaryo: tüm repo'ya read-only.
-- Mentör tarafından eklenir/çıkarılır.
+### External Consultants
+- Temporary and narrowly scoped access.
+- Typical scenario: read-only across the whole repo.
+- Added/removed by the mentor.
 
 ---
 
-## 3. GitHub Primitifleriyle Karşılığı
+## 3. Mapping to GitHub Primitives
 
-GitHub'da yetki **iki katmanlıdır**. Bu ayrımı bilmeden model doğru kurulamaz.
+In GitHub, authorization is **two-layered**. The model cannot be set up correctly without
+knowing this distinction.
 
-### Katman 1 — Repo seviyesi rol
-Bir kişi/takımın bir repo'daki rolü tektir: `pull` · `triage` · `push` · `maintain` · `admin`
+### Layer 1 — Repo-level role
+A person/team's role in a repo is singular: `pull` · `triage` · `push` · `maintain` · `admin`
 
-| Aktör | Rol | Terraform kaynağı |
+| Actor | Role | Terraform resource |
 |---|---|---|
 | Head of Engineering | org owner + `admin` | `github_membership` / `github_team_repository` |
-| Mentör | `admin` (kural değiştirebilmesi için — bkz. uyarı) | `github_team_repository` |
+| Mentor | `admin` (so they can change rules — see warning) | `github_team_repository` |
 | Developer | `push` | `github_team_repository` |
-| Dış danışman | `pull` | `github_repository_collaborator` |
+| External consultant | `pull` | `github_repository_collaborator` |
 
-> **Uyarı:** `maintain` rolü branch protection kurallarını **değiştiremez**; bu yetki
-> yalnızca `admin`'dedir. Mentörlerin kural değiştirmesi isteniyorsa `admin` olmaları
-> gerekir — bu da repo silme yetkisini beraberinde getirir.
+> **Warning:** the `maintain` role **cannot change** branch protection rules; that authority
+> belongs only to `admin`. If mentors are meant to change rules, they must be `admin` — which
+> also brings the ability to delete the repo.
 
-### Katman 2 — Branch seviyesi kısıt
-`github_branch_protection` içindeki `restrict_pushes` bloğu ile, bir branch pattern'ine
-kimlerin push edebileceği listelenir.
+### Layer 2 — Branch-level restriction
+Using the `restrict_pushes` block inside `github_branch_protection`, who can push to a given
+branch pattern is listed.
 
-**Ters mantığa dikkat:** GitHub'da "sadece şu branch'e push atabilsin" diye bir yetki
-verilemez. Write yetkisi daima repo geneline verilir, sonra branch'ler *kısıtlanır*.
+**Beware the inverted logic:** in GitHub you cannot grant an authority like "let them push
+only to this branch." Write access is always granted repo-wide, then branches are
+*restricted*.
 
-"Developer main'e push atamasın, mentör atabilsin" şöyle kurulur:
-1. Developer'a repo seviyesinde `push` ver
-2. `main` / `develop` üzerine branch protection koy
-3. `restrict_pushes` izin listesine **yalnızca mentörleri** yaz
-4. `enforce_admins = false` yap
+"Developers must not push to main, but the mentor can" is set up like this:
+1. Give the developer `push` at the repo level
+2. Put branch protection on `main` / `develop`
+3. Write **only the mentors** into the `restrict_pushes` allow list
+4. Set `enforce_admins = false`
 
-### ✅ Uygulanan durum _(2026-08-16 itibarıyla)_
-Yukarıdaki dört adımın tamamı canlıda. `enforce_admins` her dalda `false` ve
-`push_allowed_roles: [mentor, head-of-engineering]` allowlist'i
-[`config/organization.yml`](terraform/config/organization.yml) üzerinden uygulanıyor.
+### ✅ Implemented state _(as of 2026-08-16)_
+All four steps above are live. `enforce_admins` is `false` on every branch and the
+`push_allowed_roles: [mentor, head-of-engineering]` allowlist is applied via
+[`config/organization.yml`](terraform/config/organization.yml).
 
-Bu dosyanın önceki sürümü, `terraform/branch-protection.tf` içindeki elle yazılmış
-`main` kuralının `enforce_admins = true` olduğunu bir uyumsuzluk olarak not ediyordu.
-O dosya artık boş: `pilot-intern-api` 2026-08-15'te `terraform state mv` ile
-`modules/repository` altına taşındı ve kuralları da config'den üretiliyor.
+The previous version of this file noted, as an inconsistency, that the hand-written `main`
+rule in `terraform/branch-protection.tf` had `enforce_admins = true`. That file is now empty:
+`pilot-intern-api` was moved under `modules/repository` with `terraform state mv` on
+2026-08-15, and its rules are now generated from config as well.
 
-`enforce_admins = false` **kalıcı bir karardır**, unutulmuş bir ayar değil. Gerekçesi ve
-üç sonucu: [`docs/rbac-and-permissions.md`](docs/rbac-and-permissions.md) Bölüm 4
-(ROADMAP Karar E / K5).
-
----
-
-## 4. Mimari Kararlar
-
-### Kişi bazlı değil, takım bazlı yönetim
-Config kişi bazlı gelebilir, ancak Terraform bunu **takıma** çevirmelidir.
-
-Gerekçe: her kişi × repo bir Terraform kaynağıdır. 50 kişi × 40 repo = 2000 kaynak;
-`plan` süresi ve state boyutu yönetilemez hale gelir. Ayrıca kişi ayrıldığında 40 ayrı
-yerden silmek gerekir. Takım üzerinden gidilirse tek üyelik silinir, tüm erişim gider.
-
-Tek kişilik istisnalar (dış danışman gibi) için `github_repository_collaborator`
-kullanılır — ama istisna olarak kalmalıdır.
-
-Bu karar, "her developer tek bir takımda olacak" kuralıyla da doğal olarak uyumludur.
-
-### Klasik branch protection yerine Ruleset
-Provider v6'da `github_repository_ruleset` ve `github_organization_ruleset` mevcut
-(şema üzerinden doğrulandı; `bypass_actors` → `actor_id`, `actor_type`, `bypass_mode`).
-
-Ruleset'lerin bu model için avantajları:
-- **Katmanlanabilir.** Org seviyesinde değiştirilemez bir taban kural, repo seviyesinde
-  üzerine ekleme. Klasik branch protection'da katman yoktur.
-- **`bypass_actors`** ile "kural herkese geçerli, şu takım hariç" tek satırda ifade
-  edilir — mentör istisnasının doğal karşılığı budur.
-
-Pilot aşamasında klasik branch protection kullanılabilir, ancak hedef mimari ruleset
-olmalıdır. Bu karar `docs/adr/` altında bir ADR ile kayda geçirilmeli.
+`enforce_admins = false` is **a permanent decision**, not a forgotten setting. Its rationale
+and its three consequences: [`docs/rbac-and-permissions.md`](docs/rbac-and-permissions.md)
+Section 4 (ROADMAP Decision E / K5).
 
 ---
 
-## 5. Verilen Kararlar
+## 4. Architectural Decisions
 
-### Karar 1 — Kod katmanı / veri katmanı ayrımı ✅
-**Dashboard Terraform kodunu değiştirmez, veriyi değiştirir.** Sistem iki katmandır:
+### Team-based, not person-based management
+The config may arrive person-based, but Terraform must translate it into **teams**.
 
-| Katman | İçerik | Kim değiştirir | Sıklık |
+Rationale: each person × repo is one Terraform resource. 50 people × 40 repos = 2000
+resources; `plan` duration and state size become unmanageable. Moreover, when a person
+leaves you would have to remove them from 40 separate places. Going through teams, a single
+membership is removed and all access disappears.
+
+For single-person exceptions (such as an external consultant), `github_repository_collaborator`
+is used — but it must remain an exception.
+
+This decision also aligns naturally with the rule "every developer will be in a single team."
+
+### Rulesets instead of classic branch protection
+Provider v6 offers `github_repository_ruleset` and `github_organization_ruleset` (verified
+against the schema; `bypass_actors` → `actor_id`, `actor_type`, `bypass_mode`).
+
+Rulesets' advantages for this model:
+- **Layerable.** An immutable base rule at the org level, additions on top of it at the repo
+  level. Classic branch protection has no layering.
+- **`bypass_actors`** expresses "the rule applies to everyone, except this team" in a single
+  line — this is the natural counterpart of the mentor exception.
+
+Classic branch protection may be used during the pilot phase, but the target architecture
+must be rulesets. This decision should be recorded with an ADR under `docs/adr/`.
+
+---
+
+## 5. Decisions Made
+
+### Decision 1 — Code layer / data layer separation ✅
+**The dashboard does not change Terraform code, it changes data.** The system has two layers:
+
+| Layer | Content | Who changes it | Frequency |
 |---|---|---|---|
-| Kod (HCL) | "Repo nasıl kurulur, kural nasıl uygulanır" tarifi | owner-a / dev-1 | Nadiren |
-| Veri (config) | Hangi repo, kimde hangi yetki, hangi branch kimde | Mentör (dashboard) | Sık |
+| Code (HCL) | The recipe for "how a repo is set up, how a rule is applied" | owner-a / dev-1 | Rarely |
+| Data (config) | Which repo, who has which authority, which branch belongs to whom | Mentor (dashboard) | Often |
 
-Mentör "min onay 3 olsun" dediğinde bir config alanı değişir; HCL'e dokunulmaz.
-Dashboard'un işi: config dosyasını düzenleyip GitHub'a PR açmak. Terraform ile hiç
-konuşmaz. Akış: dashboard → PR → CI `plan` → merge → `apply`.
+When a mentor says "let the minimum approvals be 3," a config field changes; the HCL is not
+touched. The dashboard's job: edit the config file and open a PR to GitHub. It never talks to
+Terraform. Flow: dashboard → PR → CI `plan` → merge → `apply`.
 
-### Karar 2 — HCP Terraform mentör arayüzü olarak KULLANILMAYACAK ✅
-Gerekçeler:
-- HCP bir yetki yönetim paneli değil, çalıştırma + state motorudur.
-- Arayüzden değiştirilebilen tek şey workspace değişkenleridir; bunlar workspace
-  geneline aittir, repo bazında ince ayar yapılamaz.
-- "No-code provisioning" özelliği ücretli katman gerektirir ve mevcut yetkileri
-  düzenlemeye değil yeni kaynak oluşturmaya yöneliktir.
-- Mentöre HCP erişimi vermek, **tüm org'un state'ine** erişim vermek demektir; yetki
-  sınırlaması yapılamaz.
+### Decision 2 — HCP Terraform WILL NOT be used as the mentor interface ✅
+Rationale:
+- HCP is not an authorization management panel, but a run + state engine.
+- The only thing changeable from its interface is workspace variables; these belong to the
+  whole workspace, and fine-tuning per repo is not possible.
+- The "No-code provisioning" feature requires a paid tier and is aimed at creating new
+  resources rather than editing existing authorizations.
+- Giving a mentor HCP access means giving access to **the entire org's state**;
+  authorization cannot be limited.
 
-**Sonuç: ayrı bir dashboard yazılacak.** İşi görece basittir — bir JSON/YAML dosyasını
-düzenleyip PR açmak.
+**Conclusion: a separate dashboard will be written.** Its job is relatively simple — edit a
+JSON/YAML file and open a PR.
 
-### Karar 3 — Mentör rolü: `admin` ✅
-Kaçınılmaz sonucu: mentör GitHub arayüzünden branch protection'ı elle değiştirebilir ve
-Terraform bunu bir sonraki `apply`'da geri alır.
+### Decision 3 — Mentor role: `admin` ✅
+Its unavoidable consequence: a mentor can change branch protection by hand from the GitHub
+interface, and Terraform reverts it on the next `apply`.
 
-Bu **bir hata değil, bir güvence olarak konumlandırılmalıdır**: standart dışına çıkan her
-değişiklik otomatik olarak standarda döner; kalıcı değişiklik yalnızca config üzerinden
-yapılır. Mentörlere bu davranış önceden bildirilmelidir, aksi halde "ayarım kayboldu"
-şikayeti gelir.
+This must be **positioned not as an error, but as a safeguard**: every change that departs
+from the standard automatically returns to the standard; a permanent change is made only via
+config. Mentors must be told about this behavior in advance, otherwise the complaint "my
+setting disappeared" will come.
 
-### Karar 4 — Config dosyasının yeri: bu repo, `config/` klasörü ✅
-Gerekçe: tek denetim izi, Terraform kodu ile verinin aynı PR'da görülmesi, `plan`
-çıktısının doğrudan ilgili PR'a düşmesi. Ayrı repo yalnızca dashboard'u farklı bir ekip
-işletirse anlamlı olur; şimdilik gereksiz karmaşıklık.
+### Decision 4 — Location of the config file: this repo, the `config/` folder ✅
+Rationale: a single audit trail, seeing the Terraform code and the data in the same PR, the
+`plan` output landing directly on the relevant PR. A separate repo only makes sense if a
+different team operates the dashboard; for now it is needless complexity.
 
-(İlgili: `terraform-plan.yml` / `terraform-apply.yml`)
+(Related: `terraform-plan.yml` / `terraform-apply.yml`)
 
 ---
 
-### Karar 5 — Kurallar role bağlanır, kişiye değil ✅
-Bu projede **her şey değişebilir kabul edilir**: kişiler gelir gider, mentörler değişir,
-head of engineering bir kişi değil bir roldür.
+### Decision 5 — Rules are bound to the role, not the person ✅
+In this project **everything is assumed to be changeable**: people come and go, mentors
+change, head of engineering is not a person but a role.
 
-Bu nedenle config'de yetki tanımları **rollere** yazılır (`roles` bölümü), kişiler yalnızca
-o rollere atanır. Branch push izinleri de kişi listesiyle değil `push_allowed_roles` ile
-ifade edilir. Kişi değiştiğinde tek bir atama değişir; kural metni hiç değişmez.
+For this reason, authorization definitions in the config are written to **roles** (the
+`roles` section), and people are merely assigned to those roles. Branch push permissions are
+also expressed with `push_allowed_roles` rather than a list of people. When a person changes,
+a single assignment changes; the rule text never changes.
 
-### Karar 6 — Dashboard repo da açabilecek ✅
-Config'den bir repo tanımı silinmez/eklenmez sadece yetki yönetilmez; **repo yaşam döngüsü
-de config'den yönetilir.** Bu nedenle repo tanımı zengindir (dil, görünürlük, açıklama,
-template).
+### Decision 6 — The dashboard can also create repos ✅
+Config is not just where a repo definition is removed/added and only authorization is
+managed; **the repo lifecycle is also managed from config.** For this reason the repo
+definition is rich (language, visibility, description, template).
 
-### Karar 7 — Branch kuralları repo bazında ezilebilir ✅
-`defaults.protected_branches` tüm repo'lara taban kuralı verir; repo kendi bloğunda
-yalnızca **farklı olan alanı** yazarak ezer. Böylece yeni repo hiçbir şey yazmadan güvenli
-varsayılanlarla doğar, istisna gerektiren repo tek satırla ayrışır.
+### Decision 7 — Branch rules can be overridden per repo ✅
+`defaults.protected_branches` gives every repo a base rule; a repo overrides it in its own
+block by writing only the **field that differs**. This way a new repo is born with safe
+defaults without writing anything, and a repo that needs an exception distinguishes itself
+with a single line.
 
-### Karar 8 — Onay kuralı projeden projeye değişir ✅
-İki ayrı alan bu esnekliği sağlar:
-- `required_reviews` — kaç onay gerekli
-- `require_code_owner_review` — mentör onayı **zorunlu mu**, yoksa başka bir
-  developer'ın onayı yeterli mi
+### Decision 8 — The approval rule varies from project to project ✅
+Two separate fields provide this flexibility:
+- `required_reviews` — how many approvals are required
+- `require_code_owner_review` — whether mentor approval is **mandatory**, or whether another
+  developer's approval is sufficient
 
-2 kişilik bir projede mentörün darboğaz olmaması için `false` yapılabilir.
+In a 2-person project this can be set to `false` so the mentor is not a bottleneck.
 
-### Karar 9 — Repo silme yerine arşivleme ✅
-Config'den bir repo satırı silinirse Terraform o repo'yu **gerçekten siler**. Bunun yerine
-`archived: true` kullanılır; repo dondurulur, içerik korunur. Gerçekten silmek gerekirse
-ileride ayrı ve bilinçli bir adım olarak yapılır.
+### Decision 9 — Archiving instead of repo deletion ✅
+If a repo line is removed from config, Terraform **actually deletes** that repo. Instead,
+`archived: true` is used; the repo is frozen and the content is preserved. If it really needs
+to be deleted, it is done later as a separate and deliberate step.
 
-### Karar 10 — Org geneli `.github` repo'su kullanılmayacak ✅
-Community health dosyalarını (CONTRIBUTING, SECURITY, issue/PR template) org geneli
-dağıtmanın en temiz yolu `.github` adında bir repo açmaktır. Ancak issue ve PR
-template'lerinin çalışması için o repo'nun **public** olması gerekiyor — dosyalar
-internete açılırdı. Kabul edilmedi.
+### Decision 10 — An org-wide `.github` repo will not be used ✅
+The cleanest way to distribute community health files (CONTRIBUTING, SECURITY, issue/PR
+templates) org-wide is to create a repo named `.github`. However, for issue and PR templates
+to work, that repo must be **public** — the files would be exposed to the internet. This was
+not accepted.
 
-**Bunun yerine:** Şablonlar her repo'ya ayrı ayrı yazılacak (`github_repository_file`).
-Private repo'larda çalışır, içerik dışarı açılmaz. Bedeli: bir şablonu güncellemek N
-repo'da N commit üretir.
+**Instead:** the templates will be written into each repo separately (`github_repository_file`).
+This works in private repos and the content is not exposed. The cost: updating one template
+produces N commits across N repos.
 
-### Karar 11 — Şablon dosyaları için iki senkronizasyon modu ✅
-- **`strict`** — Terraform içeriği sahiplenir; elle yapılan değişiklik bir sonraki
-  `apply`'da geri alınır. Kapsam: `CODEOWNERS`, `.github/workflows/*`, issue/PR
-  template'leri, `dependabot.yml`.
-- **`seed`** — Yalnızca ilk oluşturmada yazılır; repo sonradan kendine göre değiştirebilir.
-  Kapsam: `CONTRIBUTING.md`, `SECURITY.md`, `.editorconfig`, `README.md`.
+### Decision 11 — Two synchronization modes for template files ✅
+- **`strict`** — Terraform owns the content; a change made by hand is reverted on the next
+  `apply`. Scope: `CODEOWNERS`, `.github/workflows/*`, issue/PR templates, `dependabot.yml`.
+- **`seed`** — Written only on first creation; the repo can change it to suit itself
+  afterwards. Scope: `CONTRIBUTING.md`, `SECURITY.md`, `.editorconfig`, `README.md`.
 
-Yönetişim dosyaları standart kalır, içerik dosyaları repo'ya devredilir.
+Governance files stay standard, content files are handed over to the repo.
 
-### Karar 12 — Disiplin takımları kaldırılıyor ✅
+### Decision 12 — Discipline teams are being removed ✅
 `backend-team`, `frontend-team`, `devops-team`, `core-engineering`, `tech-leads`,
-`interns-2026`, `interns-backend`, `interns-frontend`, `external-collaborators` siliniyor.
-Rol tabanlı modelde karşılıkları yok; yetki repo başına üretilen takımlardan geliyor.
+`interns-2026`, `interns-backend`, `interns-frontend`, `external-collaborators` are being
+deleted. In the role-based model they have no counterpart; authorization comes from the teams
+generated per repo.
 
-**`platform-admins` kalıyor** — silinemez. `head-of-engineering` rolü teknik olarak bu
-takım üzerinden uygulanıyor: modüldeki `github_team_repository.org_admins` ve branch
-protection'ın `push_allowed_roles` içindeki `head-of-engineering` karşılığı ona bağlı.
+**`platform-admins` stays** — it cannot be deleted. The `head-of-engineering` role is
+technically applied through this team: the module's `github_team_repository.org_admins` and
+the `head-of-engineering` counterpart in branch protection's `push_allowed_roles` depend on
+it.
 
-_İleride disiplin takımları geri istenirse **etiket** olarak eklenebilir — ancak repo
-yetkisi verilmeden. GitHub bir kişiye birden fazla takım üzerinden erişim verildiğinde
-en yüksek yetkiyi uygular; yetki verilirse en az yetki ilkesi sessizce delinir._
+_If discipline teams are wanted back in the future, they can be added as a **label** — but
+without granting repo authority. When a person is given access through more than one team,
+GitHub applies the highest authority; if authority is granted, the least-privilege principle
+is silently breached._
 
-### Karar 13 — Dashboard bu repo'nun içinde yaşayacak ✅
-Config, Terraform kodu ve dashboard aynı repo'da. Ayrı repo açılmayacak.
+### Decision 13 — The dashboard will live inside this repo ✅
+Config, Terraform code, and the dashboard in the same repo. A separate repo will not be
+created.
 
-Blast radius sonucu: dashboard'un App'i bu repo'ya yazma yetkisi taşır, dolayısıyla
-teorik olarak HCL'i de değiştirebilir. İki önlemle sınırlanır — dashboard doğrudan
-`main`'e yazmaz (PR açar), ve `CODEOWNERS` `terraform/*.tf` yollarını insan onayına
-bağlar.
+Blast radius consequence: the dashboard's App carries write authority to this repo, so it
+could theoretically also change the HCL. It is limited by two measures — the dashboard does
+not write directly to `main` (it opens a PR), and `CODEOWNERS` binds the `terraform/*.tf`
+paths to human approval.
 
-### Karar 15 — Dashboard kullanıcının kendi kimliğiyle çalışacak ✅
-Dashboard'un kendi token'ı **olmayacak**. Kullanıcı GitHub **device flow** ile giriş yapar
-(`client_secret` gerektirmez, tarayıcıda çalışan uygulamalar için tasarlanmıştır) ve
-işlemler onun token'ıyla yapılır.
+### Decision 15 — The dashboard will operate with the user's own identity ✅
+The dashboard **will not have** its own token. The user signs in via GitHub **device flow**
+(it does not require a `client_secret` and is designed for apps that run in the browser), and
+operations are performed with their token.
 
-**Kazandırdıkları:**
-- Barındırılacak, güncellenecek, güvenliği sağlanacak bir sunucu yok
-- Dashboard'un elinde `admin:org` kapsamlı bir sır yok — ele geçirilecek bir şey yok
-- **Yetkilendirmeyi GitHub yapar:** kullanıcının config repo'suna yazma yetkisi yoksa
-  istek reddedilir. "Mentör yalnızca kendi repo'sunu düzenler" kuralını CODEOWNERS
-  merge anında zorlar.
-- **Denetim izi gerçek:** commit'ler bot adına değil, işlemi yapan kişinin adına düşer
+**What this brings:**
+- No server to host, update, and keep secure
+- The dashboard holds no `admin:org`-scoped secret — there is nothing to be compromised
+- **GitHub does the authorization:** if the user has no write access to the config repo, the
+  request is rejected. The rule "a mentor only edits their own repo" is enforced by CODEOWNERS
+  at merge time.
+- **The audit trail is real:** commits land in the name of the person who did the operation,
+  not in the name of a bot
 
-**Plan önizlemesi HCP API'siyle değil, PR yorumundan gelir.** GitOps workflow'u zaten
-PR'a `plan` çıktısını yazacak; dashboard o yorumu kullanıcının token'ıyla okuyup gösterir.
-Böylece dashboard'un HCP Terraform'a hiç bağlanması gerekmez.
+**The plan preview comes not from the HCP API, but from the PR comment.** The GitOps workflow
+will already write the `plan` output to the PR; the dashboard reads that comment with the
+user's token and displays it. This way the dashboard never needs to connect to HCP Terraform
+at all.
 
-**Kısıt:** Dashboard, kullanıcının yapamayacağı hiçbir şeyi yapamaz. Bu bir özelliktir,
-ancak yükseltilmiş yetki gerektiren senaryolar (acil erişim kesme gibi) için ileride
-küçük bir servis gerekebilir. Gerekirse eklenecek.
+**Constraint:** the dashboard cannot do anything the user cannot do. This is a feature, but
+for scenarios that require elevated authority (such as emergency access cut-off) a small
+service may be needed in the future. It will be added if needed.
 
-> **Not:** Semaphore UI gibi Terraform çalıştırma arayüzleri değerlendirildi ve elendi.
-> Onlar HCP Terraform ile aynı kategoride — yetki yönetim paneli değil, çalıştırma
-> arayüzü. Karar 2'deki gerekçelerin tamamı onlar için de geçerli, üstelik işletilecek
-> bir sistem daha eklerler.
+> **Note:** Terraform run interfaces like Semaphore UI were evaluated and eliminated. They
+> are in the same category as HCP Terraform — a run interface, not an authorization
+> management panel. All of the rationale in Decision 2 applies to them too, and moreover they
+> add one more system to operate.
 
-### Karar 16 — Config dosyaları sahipliğe göre ayrılır ✅
-YAML programla yeniden üretildiğinde yorum satırları ve biçim kaybolur. Bu nedenle:
+### Decision 16 — Config files are separated by ownership ✅
+When YAML is regenerated programmatically, comment lines and formatting are lost. For this
+reason:
 
-| Dosya | Sahibi | Kural |
+| File | Owner | Rule |
 | :--- | :--- | :--- |
-| `config/repositories/*.yml` | **Makine** | Dashboard yazar. Yorum satırı konmaz, serbestçe yeniden üretilebilir. |
-| `config/organization.yml` | **İnsan** | Roller, varsayılanlar, açıklayıcı yorumlar. Nadiren değişir; dashboard dokunmaz veya cerrahi düzenleme yapar. |
+| `config/repositories/*.yml` | **Machine** | The dashboard writes it. No comment lines are placed; it can be freely regenerated. |
+| `config/organization.yml` | **Human** | Roles, defaults, explanatory comments. Rarely changes; the dashboard does not touch it or makes surgical edits. |
 
-Depoda saklanan biçim her zaman **YAML**'dır. JSON Schema yalnızca doğrulama için
-kullanılır — YAML ayrıştırıldığında JSON ile aynı veri modeline dönüştüğü için aynı şema
-her ikisini de doğrular. Dosya formatı dönüşümü yoktur.
+The format stored in the repository is always **YAML**. JSON Schema is used only for
+validation — because when YAML is parsed it converts to the same data model as JSON, the same
+schema validates both. There is no file format conversion.
 
-### Karar 14 — Repo isimlendirme standardı yok ✅
-Önek zorunluluğu (`svc-`, `web-`, `lib-`) uygulanmayacak. Repo'ları head-of-engineering
-veya mentörler açıyor; isim serbest.
+### Decision 14 — No repo naming standard ✅
+A prefix requirement (`svc-`, `web-`, `lib-`) will not be enforced. Repos are created by the
+head-of-engineering or the mentors; names are free-form.
 
 ---
 
 ## 5b. Future Work
 
-Bilinçli olarak ertelenen, sistemin çalışması için gerekli olmayan konular:
+Topics deliberately deferred, not required for the system to work:
 
-| Konu | Not |
+| Topic | Note |
 |---|---|
-| **Dış danışman (`consultant` rolü)** | Şimdilik gerek yok. Gerekirse `pull` yetkisi verilir; öneri/geri bildirim Linear veya Slack üzerinden alınır. Şemada yorum satırı olarak hazır bekliyor. |
-| **Erişim süre sınırı (`expires_at`)** | Terraform'da otomatik süre dolumu yoktur; zamanlanmış ayrı bir iş gerekir. Şimdilik elle kaldırma yeterli. |
-| **GitHub App** | Kısa vadede kişisel PAT ile ilerlenecek. |
-| **Force delete akışı** | Arşivleme yeterli; gerçek silme ileride bilinçli bir adım olarak eklenebilir. |
-| **Audit / değişiklik geçmişi** | PR akışı bunu büyük ölçüde zaten sağlıyor (her değişiklik bir commit). Ek mekanizma gerekmeyebilir. |
-| **Dashboard'un teknik detayları** | Teknoloji seçimi, kimlik doğrulama, PR'ı hangi kimlikle açacağı. |
+| **External consultant (`consultant` role)** | Not needed for now. If needed, `pull` access is granted; suggestions/feedback are taken via Linear or Slack. It waits ready in the schema as a comment line. |
+| **Access time limit (`expires_at`)** | Terraform has no automatic expiry; a separate scheduled job is required. Manual removal is sufficient for now. |
+| **GitHub App** | In the short term we will proceed with a personal PAT. |
+| **Force delete flow** | Archiving is sufficient; real deletion can be added later as a deliberate step. |
+| **Audit / change history** | The PR flow largely already provides this (every change is a commit). An additional mechanism may not be needed. |
+| **The dashboard's technical details** | Technology choice, authentication, which identity it opens the PR with. |
 
 ---
 
-## 6. Kısıtlar
+## 6. Constraints
 
-### GitHub plan seviyesi
-Free plan'de **private repo'larda branch protection ve ruleset çalışmaz.** Repo'lar bu
-yüzden `public` açıldı; `defaults.visibility` değeri
-[`config/organization.yml`](terraform/config/organization.yml) içinde bu gerekçeyle
-`public`. Gerçek organizasyonda repo'ların çoğu private olacağına göre **GitHub Team
-planı bu mimarinin ön koşuludur.** Sunumda açıkça belirtilmelidir.
+### GitHub plan level
+On the Free plan, **branch protection and rulesets do not work in private repos.** The repos
+were therefore created `public`; the `defaults.visibility` value in
+[`config/organization.yml`](terraform/config/organization.yml) is `public` for this reason.
+Since most repos in a real organization will be private, **the GitHub Team plan is a
+precondition of this architecture.** It must be stated explicitly in the presentation.
 
-Plan geldiğinde yapılacaklar tek yerde toplandı: [`ROADMAP.md`](ROADMAP.md) Faz 7.
+The things to do once the plan arrives are gathered in one place: [`ROADMAP.md`](ROADMAP.md)
+Phase 7.
 
-### Config şeması = asıl sözleşme
-UI ile Terraform arasındaki sözleşme config şemasıdır. Şema yanlış tasarlanırsa her iki
-taraf da yeniden yazılır. Bu nedenle **modül yazılmadan önce şema taslağı çıkarılmalıdır.**
+### The config schema = the actual contract
+The contract between the UI and Terraform is the config schema. If the schema is designed
+wrong, both sides are rewritten. For this reason **a schema draft must be produced before the
+module is written.**
 
 ---
 
-## 7. Mevcut Durum
+## 7. Current State
 
-Bu dosya **tasarımı ve gerekçeleri** anlatır; anlık durum burada tutulmaz.
+This file describes **the design and the rationale**; the instantaneous state is not kept
+here.
 
-Neyin canlıda olduğu, neyin eksik kaldığı tek yerden okunur:
-[`ROADMAP.md`](ROADMAP.md) Bölüm 1.
+What is live and what remains missing is read from a single place:
+[`ROADMAP.md`](ROADMAP.md) Section 1.
 
-> _Not: Buradaki 2026-08-07 tarihli anlık fotoğraf kaldırıldı. İki yerde durum tutmak,
-> ikisinin de eskimesine yol açıyordu._
+> _Note: the 2026-08-07 snapshot that used to be here was removed. Keeping state in two places
+> was causing both of them to go stale._

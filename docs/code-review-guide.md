@@ -1,176 +1,176 @@
-# Code Review Rehberi
+# Code Review Guide
 
-Code review'ın amacı hata yakalamak değil — hata yakalamak yan faydasıdır. Asıl amaç
-**kodun ekibin ortak malı olması**: yazan kişi yarın olmasa da başkasının o kodu
-anlayabilmesi.
+The purpose of code review is not to catch bugs — catching bugs is a side benefit. The real
+purpose is **for the code to become the team's shared property**: so that even if the person who
+wrote it is gone tomorrow, someone else can understand that code.
 
-Bu doküman iki tarafa da hitap eder: PR açan ve PR inceleyen.
-
----
-
-## 1. PR Açan İçin
-
-### 1.1 Küçük PR aç
-
-Bu, review kalitesini belirleyen tek en önemli faktördür. 200 satırlık bir PR ciddi
-biçimde incelenir; 2000 satırlık bir PR göz gezdirilip onaylanır.
-
-Büyük bir iş varsa parçalara böl:
-- Önce refactor, sonra özellik — ikisini aynı PR'a koyma
-- Önce veri katmanı, sonra iş mantığı, sonra arayüz
-- Bağımsız düzeltmeleri ayır
-
-### 1.2 Açıklamayı doldur
-
-PR şablonundaki **"Why?"** alanı en kritik olanıdır. Ne değiştiğini diff zaten gösterir;
-neden değiştiğini yalnızca sen bilirsin. Reviewer'ın zamanının çoğu bu soruyu tahmin
-etmeye gider — cevabı verirsen review hızlanır.
-
-İyi bir açıklama şunları içerir:
-- Hangi problemi çözüyor
-- Neden bu yaklaşım seçildi, hangi alternatif elendi
-- Nasıl test edildi
-- Reviewer'ın özellikle bakmasını istediğin yer
-
-### 1.3 Kendi PR'ını önce kendin incele
-
-PR'ı açtıktan sonra "Files changed" sekmesine gir ve diff'i baştan sona oku. Yorum
-satırında kalmış bir `console.log`, yanlış girinti, kopyala-yapıştır artığı çoğu zaman
-burada yakalanır. Reviewer'ın zamanını bunlarla harcama.
-
-### 1.4 CI yeşil olmadan review isteme
-
-Kırmızı bir PR'ı incelemek zaman kaybıdır — reviewer'ın yorumları düzeltme sonrası
-geçersiz olabilir. Önce `ci/test` yeşile dönsün.
-
-### 1.5 Yorumlara cevap ver
-
-Bir yorumu uyguladıysan "done" yaz veya emoji ile işaretle. Uygulamadıysan **neden**
-uygulamadığını yaz. Sessizce kapatılan yorum reviewer'da "görülmedi mi acaba" şüphesi
-bırakır.
+This document addresses both sides: the PR author and the PR reviewer.
 
 ---
 
-## 2. Reviewer İçin
+## 1. For the PR Author
 
-### 2.1 Neye bakılır
+### 1.1 Open a small PR
 
-Öncelik sırasıyla:
+This is the single most important factor determining review quality. A 200-line PR gets reviewed
+seriously; a 2000-line PR gets skimmed and approved.
 
-**1. Doğruluk.** Kod iddia ettiği şeyi yapıyor mu? Sınır durumları düşünülmüş mü — boş
-liste, null, sıfır, negatif sayı, eşzamanlı çağrı? Hata durumunda ne oluyor?
+If there is a large piece of work, break it into parts:
+- Refactor first, then the feature — don't put both in the same PR
+- Data layer first, then business logic, then the interface
+- Separate independent fixes
 
-**2. Güvenlik.** Kullanıcı girdisi doğrulanıyor mu? SQL sorguları parametreli mi?
-Yetki kontrolü var mı? Koda gömülü bir sır var mı? Log'a hassas veri yazılıyor mu?
+### 1.2 Fill in the description
 
-**3. Okunabilirlik.** Altı ay sonra biri bu kodu anlayabilir mi? İsimlendirme ne
-yaptığını söylüyor mu? Karmaşık bir bölüm neden öyle yazıldığını açıklıyor mu?
+The **"Why?"** field in the PR template is the most critical one. The diff already shows what
+changed; only you know why it changed. Most of the reviewer's time goes into guessing this question
+— if you provide the answer, review speeds up.
 
-**4. Performans.** Döngü içinde sorgu var mı (N+1)? Gereksiz kopyalama? Büyük veri
-kümesinde ne olur? — Ancak erken optimizasyon isteme; ölçülmemiş performans endişesi
-çoğu zaman gürültüdür.
+A good description includes:
+- Which problem it solves
+- Why this approach was chosen, which alternative was ruled out
+- How it was tested
+- The place you specifically want the reviewer to look at
 
-**5. Test.** Yeni davranışın testi var mı? Test gerçekten davranışı mı doğruluyor,
-yoksa implementasyonu mu tekrar ediyor?
+### 1.3 Review your own PR yourself first
 
-### 2.2 Neye bakılmaz
+After opening the PR, go to the "Files changed" tab and read the diff end to end. A `console.log`
+left in, wrong indentation, a copy-paste leftover — these are most often caught here. Don't spend
+the reviewer's time on them.
 
-Format, girinti, tırnak tipi. Bunlar linter ve `.editorconfig` işidir. İnsan review'ı
-makinenin yapabileceği işe harcanmamalıdır. Böyle bir yorum yazacaksan, bunun yerine
-linter kuralı eklemeyi öner.
+### 1.4 Don't request a review before CI is green
 
-### 2.3 Geri bildirim nasıl verilir
+Reviewing a red PR is a waste of time — the reviewer's comments may become invalid after the fix.
+Let `ci/test` turn green first.
 
-**Koda yorum yap, kişiye değil.**
-❌ "Bunu neden böyle yaptın, hiç mantıklı değil."
-✅ "Burada X olursa ne oluyor? Ben bir sorun göremedim ama emin olamadım."
+### 1.5 Respond to comments
 
-**Önem derecesini belirt.** Her yorum eşit ağırlıkta değil:
-- `blocker:` — düzeltilmeden merge edilmemeli
-- `öneri:` — daha iyi olurdu, ama zorunlu değil
-- `soru:` — anlamadım, açıklar mısın
-- `nit:` — çok küçük, istersen yap
+If you applied a comment, write "done" or mark it with an emoji. If you didn't apply it, write
+**why** you didn't. A silently closed comment leaves the reviewer wondering "did they even see it?"
 
-Bu ön ek, PR sahibinin neyi mutlaka yapması gerektiğini netleştirir.
+---
 
-**Alternatif öner.** "Bu yanlış" demek yerine ne olması gerektiğini yaz. En iyisi kod
-örneği vermek — GitHub'ın "suggestion" bloğu tek tıkla uygulanabilir.
+## 2. For the Reviewer
 
-**İyi olanı da söyle.** Zarif bir çözüm gördüysen yaz. Review yalnızca eleştiri kanalı
-olursa insanlar PR açmaktan çekinir.
+### 2.1 What to look at
 
-### 2.4 Approve mi, Request changes mi?
+In order of priority:
 
-| Durum | Karar |
+**1. Correctness.** Does the code do what it claims to do? Are the edge cases considered — empty
+list, null, zero, negative number, concurrent call? What happens on error?
+
+**2. Security.** Is user input validated? Are SQL queries parameterized?
+Is there an authorization check? Is there a secret embedded in the code? Is sensitive data written
+to logs?
+
+**3. Readability.** Will someone be able to understand this code six months from now? Does the
+naming say what it does? Does a complex section explain why it was written that way?
+
+**4. Performance.** Is there a query inside a loop (N+1)? Unnecessary copying? What happens with a
+large dataset? — But don't ask for premature optimization; an unmeasured performance concern is
+most often noise.
+
+**5. Tests.** Is there a test for the new behavior? Does the test actually verify the behavior,
+or does it just repeat the implementation?
+
+### 2.2 What not to look at
+
+Formatting, indentation, quote style. These are the job of the linter and `.editorconfig`. Human
+review should not be spent on work the machine can do. If you are about to write such a comment,
+suggest adding a linter rule instead.
+
+### 2.3 How to give feedback
+
+**Comment on the code, not the person.**
+❌ "Why did you do this, it makes no sense at all."
+✅ "What happens here if X? I couldn't see a problem but I wasn't sure."
+
+**State the severity.** Not every comment carries equal weight:
+- `blocker:` — must not be merged without fixing
+- `suggestion:` — would be better, but not required
+- `question:` — I don't understand, could you explain
+- `nit:` — very minor, do it if you want
+
+This prefix clarifies what the PR owner must do for sure.
+
+**Suggest an alternative.** Instead of saying "this is wrong", write what it should be. Best of all
+is to give a code example — GitHub's "suggestion" block can be applied with one click.
+
+**Say what's good too.** If you saw an elegant solution, say so. If review is only a channel for
+criticism, people become reluctant to open PRs.
+
+### 2.4 Approve or Request changes?
+
+| Situation | Decision |
 | :--- | :--- |
-| Sorun yok | **Approve** |
-| Yalnızca `nit:` ve `öneri:` var | **Approve** — güveni PR sahibine bırak |
-| Anlamadığın bir yer var ama yanlış olduğundan emin değilsin | **Comment** — soru sor, bloke etme |
-| Doğruluk veya güvenlik sorunu var | **Request changes** |
-| Kapsam PR'ın amacını aşmış | **Request changes** — bölünmesini iste |
+| No problems | **Approve** |
+| Only `nit:` and `suggestion:` | **Approve** — leave the trust to the PR owner |
+| There's something you don't understand but you're not sure it's wrong | **Comment** — ask, don't block |
+| There's a correctness or security problem | **Request changes** |
+| The scope has exceeded the PR's purpose | **Request changes** — ask for it to be split |
 
-"Request changes" cömertçe kullanılacak bir araç değil; PR'ı fiilen durdurur. Küçük
-düzeltmeler için Approve + yorum çoğu zaman daha hızlı ilerletir.
+"Request changes" is not a tool to be used generously; it effectively stops the PR. For small
+fixes, Approve + a comment often moves things faster.
 
 ---
 
-## 3. Onay Kuralları Repo'ya Göre Değişir
+## 3. Approval Rules Vary by Repo
 
-Tek bir "min 2 onay" kuralı yoktur. Her repo kendi kuralını konfigürasyondan alır:
+There is no single "min 2 approvals" rule. Each repo gets its own rule from the configuration:
 
-| Ayar | Anlamı |
+| Setting | Meaning |
 | :--- | :--- |
-| `required_reviews` | Kaç onay gerekli |
-| `require_code_owner_review` | Mentörün (code owner) onayı zorunlu mu |
+| `required_reviews` | How many approvals are required |
+| `require_code_owner_review` | Whether the mentor's (code owner) approval is mandatory |
 
-Tipik yapılandırma:
+Typical configuration:
 
-- **`main`** — 2 onay + mentör onayı zorunlu. Canlıya giden kod.
-- **`develop`** — 1 onay, mentör onayı zorunlu değil. Başka bir developer yeterli.
+- **`main`** — 2 approvals + mentor approval mandatory. Code going to production.
+- **`develop`** — 1 approval, mentor approval not mandatory. Another developer is enough.
 
-İki kişilik bir projede mentör onayını zorunlu kılmak onu darboğaz yapar; o yüzden bu
-ayar repo bazında gevşetilebilir. Kuralı değiştirmek için:
+In a two-person project, making mentor approval mandatory makes it a bottleneck; that's why this
+setting can be relaxed per repo. To change the rule:
 [`config-guide.md`](config-guide.md).
 
-### CODEOWNERS elle düzenlenmez
+### CODEOWNERS is not edited by hand
 
-Her repo'daki `.github/CODEOWNERS` dosyası konfigürasyondan **üretilir**. Elle
-değiştirirsen bir sonraki `terraform apply` üzerine yazar. Sahiplik değişikliği config
-üzerinden yapılmalıdır.
+The `.github/CODEOWNERS` file in each repo is **generated** from the configuration. If you change
+it by hand, the next `terraform apply` overwrites it. Ownership changes must be made through the
+config.
 
 ---
 
-## 4. Review Süresi
+## 4. Review Time
 
-| Beklenti | Süre |
+| Expectation | Time |
 | :--- | :--- |
-| İlk yanıt | 1 iş günü içinde |
-| Küçük PR (<200 satır) | Aynı gün |
-| Acil düzeltme / hotfix | Mümkün olan en kısa sürede — kanaldan haber ver |
+| First response | Within 1 business day |
+| Small PR (<200 lines) | Same day |
+| Urgent fix / hotfix | As soon as possible — notify via the channel |
 
-> Bu süreler bir öneri olarak yazılmıştır; ekip pratikte farklı bir tempo benimserse
-> doküman güncellenmelidir.
+> These times are written as a recommendation; if the team adopts a different pace in practice, the
+> document should be updated.
 
-Review yapamayacak durumdaysan (izin, yoğunluk) PR'a kısa bir yorum bırak. Sessizlik en
-kötü seçenektir — PR sahibi beklediğini bilemez.
-
----
-
-## 5. Yeni Commit Onayları Düşürür
-
-`dismiss_stale_reviews` ayarı açıktır: bir PR onaylandıktan sonra yeni commit gelirse
-mevcut onaylar düşer ve yeniden review gerekir.
-
-Bu bilinçli bir tercihtir — onaylanan kod ile merge edilen kodun aynı olmasını garanti
-eder. Küçük bir düzeltme için tekrar onay istemek can sıkıcı görünebilir, ancak
-alternatif "onaydan sonra sessizce eklenen kod"tur.
+If you are not in a position to review (leave, workload), leave a short comment on the PR. Silence
+is the worst option — the PR owner can't know what they're waiting for.
 
 ---
 
-## 6. İlgili Dokümanlar
+## 5. New Commits Dismiss Approvals
 
-- [`workflow-guide.md`](workflow-guide.md) — Genel iş akışı
-- [`commit-convention.md`](commit-convention.md) — Commit mesajı standardı
-- [`branching-strategy.md`](branching-strategy.md) — Dal stratejisi
-- [`config-guide.md`](config-guide.md) — Onay kurallarını değiştirmek
-- [`security-policy.md`](security-policy.md) — Güvenlik açısından nelere dikkat edilir
+The `dismiss_stale_reviews` setting is on: if a new commit arrives after a PR is approved, the
+existing approvals are dismissed and a re-review is required.
+
+This is a deliberate choice — it guarantees that the approved code and the merged code are the
+same. Requesting approval again for a small fix may seem annoying, but the alternative is "code
+silently added after approval."
+
+---
+
+## 6. Related Documents
+
+- [`workflow-guide.md`](workflow-guide.md) — General workflow
+- [`commit-convention.md`](commit-convention.md) — Commit message standard
+- [`branching-strategy.md`](branching-strategy.md) — Branch strategy
+- [`config-guide.md`](config-guide.md) — Changing the approval rules
+- [`security-policy.md`](security-policy.md) — What to watch for from a security standpoint

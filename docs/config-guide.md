@@ -1,52 +1,51 @@
-# Konfigürasyon Rehberi
+# Configuration Guide
 
-Organizasyonundaki her repo, takım ve yetki iki farklı yapı altında yönetilir:
+Every repo, team, and permission in your organization is managed under two different structures:
 
-1. **Global Ayarlar**: `terraform/config/organization.yml` (Roller, varsayılanlar, takımlar)
-2. **Repo Tanımları**: `terraform/config/repositories/<repo-adı>.yml` (Mentörler, developer'lar, projeye özel ayarlar)
+1. **Global Settings**: `terraform/config/organization.yml` (Roles, defaults, teams)
+2. **Repo Definitions**: `terraform/config/repositories/<repo-name>.yml` (Mentors, developers, project-specific settings)
 
-Bu doküman bu dosyaların nasıl okunacağını, nasıl değiştirileceğini ve değişikliğin
-GitHub'a nasıl yansıdığını anlatır.
+This document explains how to read these files, how to change them, and how a change is
+reflected in GitHub.
 
-> **Kimin için:** mentörler ve head-of-engineering. Developer'ların bu dosyalara
-> dokunması gerekmez.
+> **Who it's for:** mentors and head-of-engineering. Developers don't need to
+> touch these files.
 
 ---
 
-## 1. Temel İlke — Kod ve Veri Ayrı
+## 1. Core Principle — Code and Data Are Separate
 
-Sistem iki katmandan oluşur:
+The system consists of two layers:
 
-| Katman | Dosyalar | İçerik | Kim değiştirir | Sıklık |
+| Layer | Files | Content | Who changes it | Frequency |
 | :--- | :--- | :--- | :--- | :--- |
-| **Kod** | `terraform/modules/repository/*.tf` | "Repo nasıl kurulur, kural nasıl uygulanır" | Platform ekibi | Nadiren |
-| **Veri (Global)** | `terraform/config/organization.yml` | Roller, varsayılan branch korumaları, genel ayarlar | Head of Engineering | Nadiren |
-| **Veri (Repo)** | `terraform/config/repositories/*.yml` | "Hangi repo var, kimde hangi yetki var" | Mentör | Sık |
+| **Code** | `terraform/modules/repository/*.tf` | "How a repo is set up, how a rule is enforced" | Platform team | Rarely |
+| **Data (Global)** | `terraform/config/organization.yml` | Roles, default branch protections, general settings | Head of Engineering | Rarely |
+| **Data (Repo)** | `terraform/config/repositories/*.yml` | "Which repo exists, who has which permission" | Mentor | Often |
 
-Yeni bir repo eklemek için Terraform kodu yazılmaz — `config/repositories/` altına yeni bir dosya eklenir.
-İleride bu dosyaları bir dashboard yazacak; o zaman da değişen şey yalnızca bu veri dosyaları
-olacak.
+You don't write Terraform code to add a new repo — you add a new file under `config/repositories/`.
+In the future a dashboard will write these files; even then the only thing that changes will be these data files.
 
-Şema referansı ve tüm alanların örnekleri:
+Schema reference and examples of all fields:
 - [`organization.example.yml`](../terraform/config/organization.example.yml)
 - [`repository.example.yml`](../terraform/config/repository.example.yml)
-Modelin gerekçeleri: [`ACCESS-MODEL.md`](../ACCESS-MODEL.md).
+The rationale for the model: [`ACCESS-MODEL.md`](../ACCESS-MODEL.md).
 
 ---
 
-## 2. Dosyanın Bölümleri
+## 2. Sections of the File
 
-### 2.1 `roles` — Yetkinin tanımı
+### 2.1 `roles` — The definition of a permission
 
 ```yaml
 roles:
   head-of-engineering:
-    scope: organization      # Tüm repo'lara uygulanır
+    scope: organization      # Applies to all repos
     repo_permission: admin
     bypass_branch_protection: true
 
   mentor:
-    scope: repository        # Yalnızca atandığı repo'da
+    scope: repository        # Only in the repo it is assigned to
     repo_permission: admin
     bypass_branch_protection: true
 
@@ -56,17 +55,17 @@ roles:
     bypass_branch_protection: false
 ```
 
-**Tasarım ilkesi: kurallar role bağlıdır, kişiye değil.** Bir rolün ne yapabildiği burada
-bir kez tanımlanır. Kişi değiştiğinde bu bölüme dokunulmaz — yalnızca atama değişir.
+**Design principle: rules depend on the role, not the person.** What a role can do is defined
+here once. When the person changes, this section is not touched — only the assignment changes.
 
-`repo_permission` değerleri GitHub'ın rolleridir: `pull` (salt okuma), `triage`,
-`push` (yazma), `maintain`, `admin`.
+`repo_permission` values are GitHub's roles: `pull` (read-only), `triage`,
+`push` (write), `maintain`, `admin`.
 
-> ⚠️ Bu bölümü değiştirmek **tüm organizasyonu** etkiler. `developer` rolünün
-> `repo_permission` değerini `admin` yapmak, tek satırla herkesi her repo'da admin yapar.
-> Bu tür değişiklikler ikinci bir gözden geçirme ister.
+> ⚠️ Changing this section affects **the entire organization.** Making the `developer` role's
+> `repo_permission` value `admin` makes everyone an admin on every repo with a single line.
+> Changes like this call for a second review.
 
-### 2.2 `people` — Kişiler
+### 2.2 `people` — People
 
 ```yaml
 people:
@@ -78,17 +77,17 @@ people:
     org_role: member
 ```
 
-Anahtar, kişinin **GitHub kullanıcı adıdır** — yazım hatası sessizce yanlış kişiye yetki
-verebilir, iki kez kontrol edin.
+The key is the person's **GitHub username** — a typo can silently grant permission to the wrong
+person, so check it twice.
 
-`org_role`: organizasyon seviyesindeki rol (`admin` veya `member`).
-`roles`: organizasyon geneli rol atamaları (yalnızca `head-of-engineering` için gerekir).
+`org_role`: the organization-level role (`admin` or `member`).
+`roles`: organization-wide role assignments (only needed for `head-of-engineering`).
 
-> **Not:** Bu bölüm şu an Terraform tarafından tüketilmiyor. Organizasyon üyeliğinin
-> (`github_membership`) Terraform'a devredilmesi, mevcut owner yetkilerini
-> etkileyebileceği için bilinçli olarak ertelendi.
+> **Note:** This section is currently not consumed by Terraform. Handing organization membership
+> (`github_membership`) over to Terraform was deliberately deferred because it could affect
+> existing owner permissions.
 
-### 2.3 `defaults` — Her repo'nun mirası
+### 2.3 `defaults` — Every repo's inheritance
 
 ```yaml
 defaults:
@@ -109,46 +108,46 @@ defaults:
       ...
 
   labels:
-    - { name: "type: bug", color: "d73a4a", description: "Hatalı davranış" }
+    - { name: "type: bug", color: "d73a4a", description: "Bug / incorrect behavior" }
     ...
 ```
 
-Buraya yazılan her şey **tüm repo'lara** uygulanır. Bir repo farklı davranmak isterse
-yalnızca farklı olan alanı kendi bloğunda yazar.
+Everything written here applies to **all repos.** If a repo wants to behave differently, it writes
+only the field that differs in its own block.
 
-Bu bölümün amacı şudur: yeni bir repo hiçbir güvenlik ayarı yazılmadan da **güvenli
-varsayılanlarla** doğsun. Repo açan kişinin branch protection bilmesi gerekmez.
+The purpose of this section is this: a new repo is born with **safe defaults** even without any
+security setting written. The person creating the repo does not need to know branch protection.
 
-### 2.4 Repo Bazlı Konfigürasyonlar (`config/repositories/<repo-adı>.yml`)
+### 2.4 Per-Repo Configurations (`config/repositories/<repo-name>.yml`)
 
-Her projenin tanımı, kendi ismiyle oluşturulan bir `.yml` dosyasında saklanır. Örneğin, `payments-api` reposu için `config/repositories/payments-api.yml` dosyası:
+Each project's definition is stored in a `.yml` file created with its own name. For example, for the `payments-api` repo, the `config/repositories/payments-api.yml` file:
 
 ```yaml
-description: "Ödeme servisi"
+description: "Payment service"
 language: go
 mentors: [mentor-a]
 developers: [dev-1, dev-2]
 ```
 
-| Alan | Zorunlu | Açıklama |
+| Field | Required | Description |
 | :--- | :--- | :--- |
-| `description` | ✅ | Repo açıklaması |
+| `description` | ✅ | Repo description |
 | `language` | ✅ | `go` · `python` · `typescript` · `php` |
-| `mentors` | — | Mentörlerin kullanıcı adları (liste; bugün tek eleman) |
-| `developers` | — | Projede çalışan developer'lar (many-to-many) |
-| `visibility` | — | Varsayılanı ezer (`public` \| `private`) |
-| `archived` | — | `true` ise repo dondurulur |
-| `protected_branches` | — | Dal kurallarını ezer (bkz. Bölüm 3) |
-| `code_owners` | — | Yol bazlı review yönlendirmesi |
-| `labels` | — | Label setini tamamen değiştirir |
-| `files` | — | Şablon dosyalarının dağıtım modu (bkz. Bölüm 2.5) |
-| `workflows` | — | Dağıtılacak workflow'lar: `ci` · `release`. Liste **tamamen ezer**, kısmi birleştirme yok. |
+| `mentors` | — | Mentors' usernames (a list; today a single element) |
+| `developers` | — | Developers working on the project (many-to-many) |
+| `visibility` | — | Overrides the default (`public` \| `private`) |
+| `archived` | — | If `true`, the repo is frozen |
+| `protected_branches` | — | Overrides branch rules (see Section 3) |
+| `code_owners` | — | Path-based review routing |
+| `labels` | — | Replaces the label set entirely |
+| `files` | — | Distribution mode of template files (see Section 2.5) |
+| `workflows` | — | Workflows to distribute: `ci` · `release`. The list **fully overrides**, no partial merge. |
 
-> ⚠️ `dependabot` bir workflow **değildir**. `.github/dependabot.yml` bir şablon
-> dosyasıdır ve `files.dependabot` altında yönetilir. `workflows` listesine yazılırsa
-> Terraform var olmayan bir şablon dosyası arar ve `apply` hata verir.
+> ⚠️ `dependabot` is **not** a workflow. `.github/dependabot.yml` is a template
+> file and is managed under `files.dependabot`. If it is written into the `workflows` list,
+> Terraform looks for a non-existent template file and `apply` errors.
 
-### 2.5 `files` — Şablon dosyalarının dağıtımı
+### 2.5 `files` — Distribution of template files
 
 ```yaml
 files:
@@ -160,21 +159,21 @@ files:
   dependabot: strict
 ```
 
-| Mod | Davranış | Kime uygun |
+| Mode | Behavior | Suitable for |
 | :--- | :--- | :--- |
-| `strict` | Terraform içeriği sahiplenir; elle yapılan değişiklik bir sonraki `apply`'da geri alınır | Yönetişim dosyaları |
-| `seed` | Yalnızca ilk oluşturmada yazılır; repo sonradan kendine göre değiştirebilir | İçerik dosyaları |
-| `none` | Hiç yazılmaz | — |
+| `strict` | Terraform owns the content; a manual change is reverted on the next `apply` | Governance files |
+| `seed` | Written only on first creation; the repo can later change it to its own liking | Content files |
+| `none` | Never written | — |
 
-Bu harita **düz bir map** olduğu için repo yalnızca değiştirmek istediği anahtarı yazar;
-gerisi `defaults`'tan gelir. Workflow'lar bu tablonun dışındadır ve **daima `strict`**
-davranır — yönetişim dosyası sayılırlar.
+Because this map is **a flat map**, a repo writes only the key it wants to change;
+the rest comes from `defaults`. Workflows are outside this table and **always behave `strict`** —
+they count as governance files.
 
 ---
 
-## 3. Varsayılan ve Ezme Mantığı
+## 3. Default and Override Logic
 
-Repo yalnızca **farklı olan alanı** yazar; geri kalanı `defaults`'tan gelir.
+A repo writes only **the field that differs**; the rest comes from `defaults`.
 
 ```yaml
 # defaults (organization.yml)
@@ -188,90 +187,90 @@ defaults:
 # billing-web.yml (config/repositories/billing-web.yml)
 protected_branches:
   main:
-    required_reviews: 3      # Yalnızca bu alan farklı
+    required_reviews: 3      # Only this field differs
 ```
 
-Sonuç: `billing-web` için `main` dalı **3 onay** ister, ama `require_code_owner_review`
-ve `dismiss_stale_reviews` varsayılandan gelmeye devam eder.
+Result: for `billing-web`, the `main` branch requires **3 reviews**, but `require_code_owner_review`
+and `dismiss_stale_reviews` continue to come from the default.
 
-Birleştirme dal bazında yapılır — bir dalı ezmek o dalın diğer alanlarını silmez.
+Merging is done per branch — overriding one branch does not delete that branch's other fields.
 
 ---
 
-## 4. Yaygın İşlemler
+## 4. Common Operations
 
-### Yeni repo eklemek
+### Adding a new repo
 
-`config/repositories/yeni-servis.yml` adında yeni bir dosya oluşturup içine şunları yazın:
+Create a new file named `config/repositories/yeni-servis.yml` and write the following into it:
 
 ```yaml
-description: "Kısa açıklama"
+description: "Short description"
 language: go
 mentors: [mentor-a]
 developers: [dev-1, dev-2]
 ```
 
-Dosya oluştuktan sonra dallar, korumalar, takımlar, label'lar ve CODEOWNERS otomatik oluşur.
+After the file is created, branches, protections, teams, labels, and CODEOWNERS are created automatically.
 
-### Projeye developer eklemek
+### Adding a developer to a project
 
-İlgili repo'nun `developers` listesine kullanıcı adını ekle. Kişi organizasyonda yeni
-ise `people` bölümüne de bir satır ekle.
+Add the username to the relevant repo's `developers` list. If the person is new to the organization,
+also add a line to the `people` section.
 
-### Kişiyi projeden çıkarmak
+### Removing a person from a project
 
-`developers` listesinden adını sil. Terraform o kişinin takım üyeliğini kaldırır ve
-repo erişimi anında sona erer.
+Delete their name from the `developers` list. Terraform removes that person's team membership and
+repo access ends instantly.
 
-### Kişi işten ayrıldığında
+### When a person leaves the company
 
-Tüm repo'ların `developers` / `mentors` listelerinden ve `people` bölümünden çıkar.
-Tek noktadan yönetildiği için repo repo dolaşmak gerekmez.
+Remove them from all repos' `developers` / `mentors` lists and from the `people` section.
+Because it's managed from a single point, there's no need to go repo by repo.
 
-> ⚠️ Terraform yalnızca **GitHub'ı** yönetir. Linear, Slack ve diğer sistemlerdeki
-> erişimler ayrıca kaldırılmalıdır. Tam kontrol listesi: [`runbook.md`](runbook.md).
+> ⚠️ Terraform only manages **GitHub.** Access in Linear, Slack, and other systems
+> must be removed separately. Full checklist: [`runbook.md`](runbook.md).
 
-### Mentör değiştirmek
+### Changing the mentor
 
-`mentors` alanını güncelle. Eski mentörün admin yetkisi otomatik düşer, yenisininki
-gelir. Kural metnine dokunulmaz.
+Update the `mentors` field. The old mentor's admin permission drops automatically and the new one's
+comes in. The rule text is not touched.
 
-### Bir repo'da onay kuralını gevşetmek
+### Relaxing the review rule on a repo
 
-`config/repositories/rapid-prototype.yml` içine:
+Into `config/repositories/rapid-prototype.yml`:
 
 ```yaml
 protected_branches:
   develop:
-    required_reviews: 0        # Onaysız merge serbest
+    required_reviews: 0        # Merge allowed without review
     require_status_checks: []  # CI beklemeden merge
 ```
 
-`push_allowed_roles` ezilmediği sürece developer'lar yine doğrudan push atamaz; katkı
-PR üzerinden gelmeye devam eder — sadece bekleme kalkar.
+As long as `push_allowed_roles` is not overridden, developers still cannot push directly;
+contributions keep coming via PR — only the wait is removed.
 
-### Repo'yu kapatmak
+### Closing a repo
 
 ```yaml
 # config/repositories/legacy-api.yml
 archived: true
 ```
 
-**Config dosyasını dizinden silmeyin.** Silmek Terraform'a "bu repo'yu yok et" demektir;
-`prevent_destroy` koruması devreye girip `apply`'ı durdurur:
+**Do not delete the config file from the directory.** Deleting it tells Terraform to "destroy this repo";
+the `prevent_destroy` protection kicks in and stops the `apply`:
 
 ```
 Error: Instance cannot be destroyed
 ```
 
-Doğru yol arşivlemektir: repo dondurulur, içerik korunur, kimse yazamaz.
+The right way is to archive: the repo is frozen, the content is preserved, no one can write.
 
 ---
 
-## 5. Değişiklik Nasıl Yürürlüğe Girer
+## 5. How a Change Takes Effect
 
 ```
-config/repositories/*.yml veya organization.yml değişir
+config/repositories/*.yml or organization.yml changes
         ↓
     Pull Request
         ↓
@@ -282,96 +281,94 @@ CI: terraform plan  →  plan çıktısı PR'a yorum olarak düşer
    terraform apply  →  GitHub'da yetkiler güncellenir
 ```
 
-**`plan` çıktısını okumadan onaylamayın.** Özellikle şu satıra bakın:
+**Do not approve without reading the `plan` output.** Look especially at this line:
 
 ```
 Plan: 3 to add, 1 to change, 0 to destroy.
 ```
 
-`destroy` sayısı 0'dan büyükse ne silineceğini mutlaka kontrol edin.
+If the `destroy` count is greater than 0, be sure to check what will be deleted.
 
-### Elle çalıştırmak
+### Running manually
 
 ```powershell
-terraform -chdir=terraform plan     # Farkı göster, hiçbir şeyi değiştirme
+terraform -chdir=terraform plan     # Show the diff, change nothing
 terraform -chdir=terraform apply    # Uygula (onay ister)
 ```
 
-Sistemin kararlı olduğunu doğrulamak için:
+To verify the system is stable:
 
 ```
 No changes. Your infrastructure matches the configuration.
 ```
 
-Bundan farklı bir çıktı ya birinin arayüzden elle değişiklik yaptığını ya da bir ayarın
-yerleşmediğini gösterir.
+Any other output shows either that someone made a manual change from the UI or that a setting did
+not take hold.
 
 ---
 
-## 6. Sık Karşılaşılan Tuzaklar
+## 6. Common Pitfalls
 
-**Arayüzden yaptığınız değişiklik geri alınır.** GitHub arayüzünden branch protection
-değiştirirseniz bir sonraki `apply` bunu eski hâline döndürür. Kalıcı değişikliğin tek
-yolu config'dir. Bu bir hata değil, standart dışına çıkışı otomatik düzelten bir
-güvencedir.
+**A change you make from the UI is reverted.** If you change branch protection from the GitHub UI,
+the next `apply` returns it to its old state. The only way to make a change permanent is the config.
+This is not a bug but a safeguard that automatically corrects departures from the standard.
 
-**GitHub bazı istekleri sessizce yok sayar.** Örneğin bir takımı `push_allowed_roles`
-listesine koyarsanız ama o takımın repo erişimi yoksa, GitHub isteği hata vermeden
-görmezden gelir. Belirtisi: her `plan`'da aynı kaynağın "değişecek" görünmesi. Böyle bir
-durumda ayarın gerçekten yerleşip yerleşmediğini kontrol edin.
+**GitHub silently ignores some requests.** For example, if you put a team on the `push_allowed_roles`
+list but that team has no repo access, GitHub ignores the request without erroring. The symptom: the
+same resource appearing as "will change" on every `plan`. In such a case, check whether the setting
+actually took hold.
 
-**`require_status_checks` ile CI dağıtımı birlikte ayarlanmalı.** Bir repo'ya CI
-workflow'u dağıtılmıyorsa `require_status_checks` da boşaltılmalıdır; yoksa PR'lar hiç
-raporlanmayacak bir check'i sonsuza kadar bekler ve merge edilemez.
+**`require_status_checks` and CI distribution must be set together.** If a CI workflow is not
+distributed to a repo, `require_status_checks` must also be emptied; otherwise PRs wait forever for a
+check that will never be reported and cannot be merged.
 
-**Kullanıcı adı yazım hataları sessizdir.** Var olmayan bir kullanıcı adı `apply`
-sırasında hata verir, ama var olan **yanlış** bir kullanıcıya yetki vermek hiçbir uyarı
-üretmez.
+**Username typos are silent.** A non-existent username errors during `apply`, but granting permission
+to an existing **wrong** user produces no warning at all.
 
-**Free plan kısıtı.** Private repo'larda branch protection ve push kısıtları GitHub Team
-planı gerektirir. Şu an public repo'larla çalışıldığı için bu kısıt hissedilmiyor;
-private'a geçişte plan yükseltmesi gerekecek.
+**Free plan constraint.** On private repos, branch protection and push restrictions require the GitHub
+Team plan. Because we currently work with public repos this constraint isn't felt; a plan upgrade will
+be needed when moving to private.
 
 ---
 
-## 7. CI/CD Otomasyonu ve Kimlik Yapılandırması
+## 7. CI/CD Automation and Identity Configuration
 
-Sistemde **iki ayrı kimlik** var; karıştırılmamalıdır:
+There are **two separate identities** in the system; they must not be confused:
 
-| Kimlik | Neye erişir | Nerede durur |
+| Identity | What it accesses | Where it lives |
 | :--- | :--- | :--- |
 | **`TF_API_TOKEN`** (HCP Team API Token) | GitHub Actions → HCP Terraform Cloud (state + run) | GitHub repository secret |
-| **`tidyorg-infra-bot`** (GitHub App) | Terraform provider → GitHub organizasyonu | HCP Terraform'da sensitive environment variable |
+| **`tidyorg-infra-bot`** (GitHub App) | Terraform provider → GitHub organization | Sensitive environment variable in HCP Terraform |
 
-GitHub'a yazan taraf **App**'tir; `TF_API_TOKEN` yalnızca CI'ın HCP'ye bağlanmasını
-sağlar. App'in private key'i hiçbir geliştiricinin makinesine inmez ve installation
-token'ı ~1 saatte bir otomatik yenilenir. Kurulum ve izin listesi:
+The side that writes to GitHub is the **App**; `TF_API_TOKEN` only lets CI connect to HCP. The App's
+private key never lands on any developer's machine and the installation token is renewed automatically
+about once an hour. Setup and permission list:
 [`../integrations/github-app/README.md`](../integrations/github-app/README.md).
 
-### 7.1 Team API Token Oluşturma (HCP Terraform)
+### 7.1 Creating a Team API Token (HCP Terraform)
 
-1. HCP Terraform'da organizasyon ayarlarına gidin:
+1. In HCP Terraform, go to the organization settings:
    `https://app.terraform.io/app/tidyorg-infra/settings/organization-tokens`
-2. **Team Tokens** sekmesini seçin.
-3. Workspace üzerinde `Admin` veya `Write` yetkisi olan bir takımı seçin (örn: `owners` takımı).
-4. **"Generate a team token"** butonuna basın, açıklama yazın ve oluşturun.
-5. Oluşturulan token'ı kopyalayın.
+2. Select the **Team Tokens** tab.
+3. Select a team that has `Admin` or `Write` permission on the workspace (e.g. the `owners` team).
+4. Click the **"Generate a team token"** button, write a description, and create it.
+5. Copy the generated token.
 
-### 7.2 GitHub Secrets Konfigürasyonu
+### 7.2 GitHub Secrets Configuration
 
-1. GitHub'da `tidyorg` reposunun ayarlarına (**Settings**) gidin.
-2. Sol menüden **Secrets and variables** -> **Actions** yolunu izleyin.
-3. **"New repository secret"** butonuna tıklayın.
-4. İsim alanına **`TF_API_TOKEN`** yazın.
-5. Değer alanına kopyaladığınız Team API Token'ı yapıştırın ve kaydedin.
+1. In GitHub, go to the settings (**Settings**) of the `tidyorg` repo.
+2. From the left menu, follow **Secrets and variables** -> **Actions**.
+3. Click the **"New repository secret"** button.
+4. In the name field, enter **`TF_API_TOKEN`**.
+5. In the value field, paste the Team API Token you copied and save.
 
 ---
 
-## 8. İlgili Dokümanlar
+## 8. Related Documents
 
-- [`workflow-guide.md`](workflow-guide.md) — İş akışlarının genel görünümü
-- [`rbac-and-permissions.md`](rbac-and-permissions.md) — Roller ve yetki matrisi
-- [`runbook.md`](runbook.md) — Operasyonel senaryolar
-- [`../ACCESS-MODEL.md`](../ACCESS-MODEL.md) — Modelin gerekçeleri ve verilen kararlar
-- [`../terraform/config/organization.example.yml`](../terraform/config/organization.example.yml) — Tam şema örneği
-- [`../terraform/config/repository.example.yml`](../terraform/config/repository.example.yml) — Repo şema örneği
+- [`workflow-guide.md`](workflow-guide.md) — Overview of the workflows
+- [`rbac-and-permissions.md`](rbac-and-permissions.md) — Roles and the permission matrix
+- [`runbook.md`](runbook.md) — Operational scenarios
+- [`../ACCESS-MODEL.md`](../ACCESS-MODEL.md) — The model's rationale and the decisions made
+- [`../terraform/config/organization.example.yml`](../terraform/config/organization.example.yml) — Full schema example
+- [`../terraform/config/repository.example.yml`](../terraform/config/repository.example.yml) — Repo schema example

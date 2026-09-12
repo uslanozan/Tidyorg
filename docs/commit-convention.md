@@ -1,69 +1,69 @@
-# Commit Mesajı Standartları (Conventional Commits)
+# Commit Message Standards (Conventional Commits)
 
-Tidyorg mühendislik ekipleri olarak, kod geçmişimizi temiz tutmak, kod inceleme (code review) süreçlerini hızlandırmak ve otomatik sürüm yönetimi (Semantic Versioning) yapabilmek için [Conventional Commits](https://www.conventionalcommits.org/) standardını kullanıyoruz.
+As the Tidyorg engineering teams, we use the [Conventional Commits](https://www.conventionalcommits.org/) standard to keep our code history clean, to speed up code review processes, and to be able to do automated version management (Semantic Versioning).
 
-Tüm PR'lar (Pull Request) ve commit mesajları bu standarda uygun olmalıdır.
+All PRs (Pull Requests) and commit messages must conform to this standard.
 
 ---
 
-## 1. Commit Mesajı Formatı
+## 1. Commit Message Format
 
-Her commit mesajı yapısal olarak şu formatta olmalıdır:
+Every commit message must structurally be in the following format:
 
 ```text
-<type>(<scope>): <kısa-aciklama>
+<type>(<scope>): <short-description>
 
-[opsiyonel gövde (body)]
+[optional body]
 
-[opsiyonel altbilgi (footer)]
+[optional footer]
 ```
 
-* **Type (Tür):** Değişikliğin amacını belirtir (Zorunlu).
-* **Scope (Kapsam):** Değişikliğin kod tabanında nereyi etkilediğini belirtir (Opsiyonel ama şiddetle önerilir).
-* **Description (Açıklama):** Yapılan işin kısa bir özetidir. İngilizce yazılmalı ve emir kipiyle başlamalıdır (örneğin "added" değil "add").
-* **Body & Footer:** Değişikliğin detaylarını, neden yapıldığını veya kapatılan Issue numaralarını yazmak için kullanılır (Opsiyonel).
+* **Type:** Indicates the purpose of the change (Required).
+* **Scope:** Indicates where in the codebase the change has an effect (Optional but strongly recommended).
+* **Description:** A short summary of the work done. It must be written in English and start with the imperative mood (e.g., "add" not "added").
+* **Body & Footer:** Used to write the details of the change, why it was made, or the numbers of the Issues it closes (Optional).
 
 ---
 
-## 2. İzin Verilen Türler (Types)
+## 2. Allowed Types
 
-Aşağıdaki türler, otomasyon araçlarımız (CI/CD) tarafından tanınır ve sürüm notlarına (Changelog) uygun şekilde yansıtılır.
+The following types are recognized by our automation tools (CI/CD) and are reflected appropriately in the release notes (Changelog).
 
-| Tür (Type) | Kullanım Amacı | Sürüm Notuna Etkisi |
+| Type | Purpose of Use | Effect on Release Notes |
 | :--- | :--- | :--- |
-| `feat` | Tamamen yeni bir özellik ekler. | Yeni Özellikler (Features) |
-| `fix` | Kod tabanındaki bir hatayı giderir. | Hata Düzeltmeleri (Bug Fixes) |
-| `chore` | Üretim kodunu etkilemeyen bakım işleri, bağımlılık güncellemeleri. | Görünmez (Gizli) |
-| `refactor` | Ne hata düzelten ne de özellik ekleyen kod iyileştirmesi. | Görünmez (Gizli) |
-| `docs` | Yalnızca Markdown belgeleri veya kod içi yorum güncellemeleri. | Görünmez (Gizli) |
-| `test` | Eksik testlerin eklenmesi veya mevcut testlerin düzeltilmesi. | Görünmez (Gizli) |
-| `ci` | CI/CD yapılandırma dosyaları ve scriptlerindeki değişiklikler. | Görünmez (Gizli) |
-| `perf` | Kodun performansını artıran bir değişiklik. | Performans İyileştirmeleri |
+| `feat` | Adds a completely new feature. | New Features |
+| `fix` | Fixes a bug in the codebase. | Bug Fixes |
+| `chore` | Maintenance work and dependency updates that do not affect production code. | Invisible (Hidden) |
+| `refactor` | A code improvement that neither fixes a bug nor adds a feature. | Invisible (Hidden) |
+| `docs` | Updates to Markdown documents or in-code comments only. | Invisible (Hidden) |
+| `test` | Adding missing tests or fixing existing tests. | Invisible (Hidden) |
+| `ci` | Changes to CI/CD configuration files and scripts. | Invisible (Hidden) |
+| `perf` | A change that improves the performance of the code. | Performance Improvements |
 
 ---
 
-## 3. Kapsam (Scope) Örnekleri
+## 3. Scope Examples
 
-Scope, projenin hangi parçasının değiştiğini belirtir. Projeye göre değişiklik gösterse de genel kullanımlar şöyledir:
+The scope indicates which part of the project changed. Although it varies by project, common usages are as follows:
 
-* `(auth)`: Kimlik doğrulama, JWT, login işlemleri.
-* `(payment)`: Ödeme altyapısı, faturalandırma.
-* `(ui)`: Kullanıcı arayüzü, frontend bileşenleri.
-* `(db)`: Veritabanı şemaları, migration dosyaları.
-* `(api)`: REST/GraphQL uç noktaları (endpoints).
-* `(deps)`: Bağımlılık (dependency) güncellemeleri.
+* `(auth)`: Authentication, JWT, login operations.
+* `(payment)`: Payment infrastructure, billing.
+* `(ui)`: User interface, frontend components.
+* `(db)`: Database schemas, migration files.
+* `(api)`: REST/GraphQL endpoints.
+* `(deps)`: Dependency updates.
 
 ---
 
-## 4. İyi ve Kötü Commit Örnekleri
+## 4. Good and Bad Commit Examples
 
-**❌ Kötü Örnekler (Reddedilecekler):**
-> * "login hatası düzeltildi" *(Format yok, standart dışı)*
-> * "update" *(Çok belirsiz, ne güncellendi?)*
-> * "fix(ui): menü düzeltildi ve auth eklendi" *(Tek commit'te iki farklı iş yapılmış)*
-> * "WIP" *(Work In Progress - Bu tarz commit'ler PR açılmadan önce squash edilmelidir)*
+**❌ Bad Examples (Will Be Rejected):**
+> * "fixed login bug" *(No format, non-standard)*
+> * "update" *(Too vague, what was updated?)*
+> * "fix(ui): fixed the menu and added auth" *(Two different tasks done in a single commit)*
+> * "WIP" *(Work In Progress — these kinds of commits should be squashed before opening a PR)*
 
-**✅ İyi Örnekler (Kabul Edilecekler):**
+**✅ Good Examples (Will Be Accepted):**
 > * `feat(auth): add google oauth2 login integration`
 > * `fix(payment): resolve null pointer exception in stripe webhook`
 > * `chore(deps): bump react from 18.2.0 to 18.3.1`
@@ -71,11 +71,11 @@ Scope, projenin hangi parçasının değiştiğini belirtir. Projeye göre deği
 
 ---
 
-## 5. Semantic Versioning (SemVer) ile İlişkisi
+## 5. Relationship with Semantic Versioning (SemVer)
 
-Commit mesajlarındaki başlıklar, otomatik sürüm etiketleme (`vX.Y.Z`) sistemimizi doğrudan tetikler:
+The headers in commit messages directly trigger our automatic version tagging (`vX.Y.Z`) system:
 
-1. **PATCH (v1.0.X):** `fix`, `perf` türündeki commit'ler yama (patch) sürümünü artırır.
-2. **MINOR (v1.X.0):** `feat` türündeki commit'ler minör sürümü artırır.
-3. **MAJOR (vX.0.0):** Herhangi bir commit türünün yanına `!` işareti konulursa veya footer bölümüne `BREAKING CHANGE:` yazılırsa, bu geriye dönük uyumluluğun kırıldığını gösterir ve majör (ana) sürümü artırır.
-   * Örnek: `feat(api)!: remove v1 endpoints`
+1. **PATCH (v1.0.X):** Commits of type `fix`, `perf` increase the patch version.
+2. **MINOR (v1.X.0):** Commits of type `feat` increase the minor version.
+3. **MAJOR (vX.0.0):** If a `!` mark is placed next to any commit type or `BREAKING CHANGE:` is written in the footer section, this indicates that backward compatibility has been broken and increases the major version.
+   * Example: `feat(api)!: remove v1 endpoints`

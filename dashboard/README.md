@@ -1,121 +1,122 @@
-# 🖥️ tidyorg Yönetim Paneli
+# 🖥️ tidyorg Management Dashboard
 
-Head of engineering'lerin ve mentörlerin projeleri, mentörleri ve developer'ları
-YAML dosyası yazmadan yönetebildiği arayüz.
+An interface where heads of engineering and mentors can manage projects, mentors,
+and developers without writing YAML files.
 
-Panelin **kendi sunucusu ve kendi token'ı yoktur**. Kullanıcı GitHub ile giriş
-yapar, tüm istekler kullanıcının kendi token'ıyla gider. Yetkilendirmeyi GitHub
-yapar: bir mentör başkasının repo config'ini değiştirmeye kalkarsa PR açılır ama
-CODEOWNERS onayı olmadan merge edilemez.
+The dashboard **has no server and no token of its own**. The user signs in with
+GitHub, and every request goes out with the user's own token. GitHub handles
+authorization: if a mentor tries to change someone else's repo config, a PR is
+opened but cannot be merged without CODEOWNERS approval.
 
-## Ne yapar?
+## What does it do?
 
-| Ekran | İş |
+| Screen | Purpose |
 | :--- | :--- |
-| **Projeler** | `terraform/config/repositories/*.yml` dosyalarını okuyup kart olarak listeler; ada/dile göre filtreler |
-| **Proje detayı** | Mentör/developer listesi, dal koruması (org varsayılanı ile birleşik), repo bilgileri |
-| **Yazma işlemleri** | Developer/mentör ekle-çıkar, repo bilgisi düzenle, yeni proje aç — **hepsi PR açar** |
-| **Üye** | Bir kişinin hangi projede hangi rolde olduğu |
-| **Bekleyen PR'lar** | Panelden açılan PR'lar + PR'a düşen `terraform plan` yorumunun özeti |
+| **Projects** | Reads the `terraform/config/repositories/*.yml` files and lists them as cards; filters by name/language |
+| **Project detail** | Mentor/developer list, branch protection (merged with org defaults), repo info |
+| **Write operations** | Add/remove developers/mentors, edit repo info, create a new project — **all open a PR** |
+| **Member** | Which project a person is in and in which role |
+| **Pending PRs** | PRs opened from the dashboard + a summary of the `terraform plan` comment posted to the PR |
 
-Panel `main`'e asla doğrudan yazmaz. Her değişiklik `dashboard/<işlem>-<repo>-<zaman>`
-adlı bir branch'e yazılır ve PR olarak açılır.
+The dashboard never writes directly to `main`. Every change is written to a branch
+named `dashboard/<operation>-<repo>-<timestamp>` and opened as a PR.
 
-## Çalıştırma
+## Running
 
 ```bash
 cd dashboard
 npm install
-cp .env.example .env    # değerleri doldur
+cp .env.example .env    # fill in the values
 npm run dev             # http://localhost:5173
 ```
 
-| Komut | İş |
+| Command | Purpose |
 | :--- | :--- |
-| `npm run dev` | Geliştirme sunucusu |
-| `npm run build` | Tip kontrolü + prod derlemesi (`dist/`) |
-| `npm run typecheck` | Yalnızca tip kontrolü |
-| `npm run verify:yaml` | Gerçek config dosyalarında yazma güvenlik ağı (aşağıya bak) |
+| `npm run dev` | Development server |
+| `npm run build` | Type checking + production build (`dist/`) |
+| `npm run typecheck` | Type checking only |
+| `npm run verify:yaml` | Write safety net on the real config files (see below) |
 
-## Ortam değişkenleri
+## Environment variables
 
-| Değişken | Ne işe yarar |
+| Variable | What it does |
 | :--- | :--- |
-| `VITE_GITHUB_CLIENT_ID` | tidyorg **GitHub App**'inin client_id'si (`Iv1.…`/`Iv23.…`). **owner-a sağlar.** `client_secret` gerekmez ve istenmez. |
-| `VITE_CONFIG_OWNER` | Config repo'sunun sahibi (org adı) |
-| `VITE_CONFIG_REPO` | Config repo'sunun adı |
-| `VITE_CONFIG_BRANCH` | PR'ların hedef dalı (varsayılan `main`) |
-| `VITE_OAUTH_PROXY` | OAuth proxy yolu. Boş bırakılırsa `/gh-oauth` kullanılır. |
+| `VITE_GITHUB_CLIENT_ID` | The client_id of the tidyorg **GitHub App** (`Iv1.…`/`Iv23.…`). **Provided by owner-a.** No `client_secret` is needed or requested. |
+| `VITE_CONFIG_OWNER` | The owner of the config repo (org name) |
+| `VITE_CONFIG_REPO` | The name of the config repo |
+| `VITE_CONFIG_BRANCH` | The target branch for PRs (default `main`) |
+| `VITE_OAUTH_PROXY` | The OAuth proxy path. If left empty, `/gh-oauth` is used. |
 
-`client_id` gizli bilgi değildir; Device Flow'un tüm güvenliği kullanıcının
-GitHub'da yaptığı onaya + App'in kurulu olduğu repo'ya dayanır.
+The `client_id` is not secret; the entire security of the Device Flow rests on the
+approval the user gives on GitHub + the repo the App is installed on.
 
-**İki kaynak, bu sırayla:** `window.__ENV__` (çalışma zamanı — Docker image'ında
-entrypoint `env.js`'i konteyner ortam değişkenlerinden üretir) → `import.meta.env`
-(build'e gömülü `.env`). Runtime her zaman kazanır; yerelde `.env` yeterli.
+**Two sources, in this order:** `window.__ENV__` (runtime — in the Docker image the
+entrypoint generates `env.js` from the container's environment variables) →
+`import.meta.env` (the `.env` baked into the build). Runtime always wins; locally,
+`.env` is enough.
 
-## Giriş: GitHub App Device Flow — ve CORS notu
+## Sign-in: GitHub App Device Flow — and a CORS note
 
-Statik bir SPA `client_secret` saklayamayacağı için Device Flow kullanılır:
-kullanıcıya bir kod gösterilir, kullanıcı kodu github.com'da onaylar, panel
-token'ı alır. Token **`sessionStorage`**'da tutulur (`localStorage` değil):
-sekme kapanınca oturum biter. Token'ın süresi App ayarından **kapalıdır**
-(refresh token akışı yok).
+Because a static SPA cannot store a `client_secret`, Device Flow is used: the user
+is shown a code, the user approves the code on github.com, and the dashboard
+receives the token. The token is kept in **`sessionStorage`** (not `localStorage`):
+when the tab closes, the session ends. Token expiration is **disabled** in the App
+settings (there is no refresh token flow).
 
-**Yetkiyi GitHub verir.** `scope` gönderilmez; kullanıcının neye erişebileceğini
-App'in yüklü olduğu repo'ların izinleri (Contents RW, Pull requests RW, Metadata R)
-belirler. App bu kullanıcı için config repo'suna kurulu değilse giriş yine başarılı
-olur ama panel "Bu hesabın erişimi yok" ekranını gösterir — ilk `contents` isteği
-403 döndüğünde.
+**GitHub grants the authorization.** No `scope` is sent; what the user can access is
+determined by the permissions of the repos the App is installed on (Contents RW,
+Pull requests RW, Metadata R). If the App is not installed on the config repo for
+this user, sign-in still succeeds but the dashboard shows the "This account has no
+access" screen — when the first `contents` request returns 403.
 
-Giriş ekranındaki **"token ile giriş"** yolu artık yalnızca geliştirme
-derlemesinde görünür (bir PAT, App kurulum kısıtını atlardı).
+The **"sign in with token"** path on the login screen is now visible only in
+development builds (a PAT would bypass the App installation restriction).
 
-⚠️ **Tek pürüz:** `github.com/login/device/code` ve `.../oauth/access_token`
-uçları CORS başlığı göndermez, yani tarayıcıdan doğrudan çağrılamaz. Bu yüzden
-istekler aynı-origin bir yol (`/gh-oauth/...`) üzerinden geçer:
+⚠️ **The one snag:** the `github.com/login/device/code` and `.../oauth/access_token`
+endpoints do not send CORS headers, so they cannot be called directly from the
+browser. That is why the requests go through a same-origin path (`/gh-oauth/...`):
 
-- **Geliştirmede** → `vite.config.ts` içindeki proxy
-- **Vercel'de** → `vercel.json` rewrite
-- **Netlify'da** → `public/_redirects`
+- **In development** → the proxy in `vite.config.ts`
+- **On Vercel** → the `vercel.json` rewrite
+- **On Netlify** → `public/_redirects`
 
-Üçü de yalnızca yönlendirmedir; çalışan bir sunucu kodu yoktur, yani mimari
-hâlâ backend-less. OAuth App henüz hazır değilken giriş ekranındaki
-**"Gelişmiş: token ile giriş"** ile kişisel erişim token'ı (`repo`, `read:org`)
-kullanılabilir.
+All three are only redirects; there is no running server code, so the architecture
+is still backend-less. While the OAuth App is not yet ready, a personal access token
+(`repo`, `read:org`) can be used via **"Advanced: sign in with token"** on the login
+screen.
 
-## Yazma akışı
+## Write flow
 
-Her değişiklik aynı adımlardan geçer:
+Every change goes through the same steps:
 
-1. Dosya güncel hâliyle okunur (`sha` dahil)
-2. Değişiklik **yalnızca ilgili satırlara** uygulanır
-3. `main`'den yeni branch açılır
-4. Dosya branch'e yazılır (`sha` ile — kayıp güncelleme koruması)
-5. PR açılır, kullanıcıya linki gösterilir
+1. The file is read in its current state (including `sha`)
+2. The change is applied **only to the relevant lines**
+3. A new branch is opened from `main`
+4. The file is written to the branch (with `sha` — lost-update protection)
+5. A PR is opened and its link is shown to the user
 
-**Çakışma:** Araya başka bir değişiklik girdiyse GitHub 409/422 döner. Panel
-dosyayı baştan okur, değişikliği güncel içeriğin üstüne uygular ve tekrar dener
-(en fazla 3 deneme). Kullanıcıya "dosya değişmişti, tekrar denendi" bilgisi
-verilir.
+**Conflict:** If another change slipped in between, GitHub returns 409/422. The
+dashboard re-reads the file from scratch, applies the change on top of the current
+content, and retries (up to 3 attempts). The user is informed: "the file had
+changed, retried."
 
-### Neden satır bazlı düzenleme?
+### Why line-based editing?
 
-Config dosyalarını `parse → dump` turundan geçirmek **yorumları siler**. Bu
-repo'da yorumlar süs değil, karar gerekçesi taşıyor (örn.
-`tidyorg.yml` içindeki mentör listesi uyarısı). Bu yüzden
-güncellemede yalnızca hedeflenen anahtarın satır bloğu yeniden yazılır
-(`src/services/yaml.ts` → `applyEdits`).
+Putting the config files through a `parse → dump` round trip **removes comments**.
+In this repo, comments are not decoration — they carry the rationale for decisions
+(e.g. the mentor list warning in `tidyorg.yml`). That is why, on update, only the
+line block of the targeted key is rewritten (`src/services/yaml.ts` → `applyEdits`).
 
-`npm run verify:yaml` bunu gerçek config dosyalarında doğrular: developer ekle →
-başka hiçbir alan değişmemeli, hiçbir yorum kaybolmamalı, geri alınca dosya başa
-dönmeli. Yazma koduna dokunmadan önce bu komutu çalıştırın.
+`npm run verify:yaml` verifies this on the real config files: add a developer →
+no other field should change, no comment should be lost, and undoing it should
+return the file to its original state. Run this command before touching the write
+code.
 
-**Bilinen sınır:** Bir listenin *içine* serpiştirilmiş yorumlar (örn. iki
-developer satırı arasındaki yorum) o liste düzenlenirken kaybolur. Anahtarın
-üstündeki yorum blokları korunur.
+**Known limitation:** Comments interspersed *inside* a list (e.g. a comment between
+two developer lines) are lost when that list is edited. Comment blocks above the key
+are preserved.
 
-## Klasör yapısı
+## Folder structure
 
 ```
 dashboard/
@@ -124,47 +125,48 @@ dashboard/
 │   ├── pages/        # Login, Projects, ProjectDetail, NewProject, MemberDetail, PullRequests
 │   ├── services/     # githubApi, deviceFlow, configRepo, yaml, validation, terraformPlan
 │   ├── hooks/        # useAuth, useProjects, useProposal, useToast, useTheme
-│   ├── styles/       # tokens.css (tasarım sistemi) + global.css
-│   └── types/        # config.ts (YAML şeması), github.ts (REST cevapları)
+│   ├── styles/       # tokens.css (design system) + global.css
+│   └── types/        # config.ts (YAML schema), github.ts (REST responses)
 ├── scripts/          # verify-yaml.ts
 └── public/
 ```
 
-## Konfigürasyon şeması — dört dosya
+## Configuration schema — four files
 
-| Dosya | Sahiplik | Dashboard | İçerik |
+| File | Ownership | Dashboard | Content |
 | :--- | :--- | :--- | :--- |
-| `people.yml` | makine | ✅ yazar (`members` ekle/çıkar) | org üyeliği — **yetki taşımaz** |
-| `repositories/*.yml` | makine | ✅ yazar | repo tanımı + erişim + dal koruması |
-| `privileged.yml` | insan | ❌ **asla yazmaz** (okur, gösterir) | org owner + head-of-engineering |
-| `organization.yml` | insan | ❌ yazmaz | roller, defaults |
+| `people.yml` | machine | ✅ writes (add/remove `members`) | org membership — **carries no privilege** |
+| `repositories/*.yml` | machine | ✅ writes | repo definition + access + branch protection |
+| `privileged.yml` | human | ❌ **never writes** (reads, displays) | org owners + head-of-engineering |
+| `organization.yml` | human | ❌ does not write | roles, defaults |
 
-🔒 `isHeadOfEngineering` / owner kontrolü `privileged.yml`'dan okunur. Panelde
-"owner yap" gibi bir buton **yoktur** — yetki yükseltme yalnızca elle PR +
-CODEOWNERS onayıyla.
+🔒 The `isHeadOfEngineering` / owner check is read from `privileged.yml`. The
+dashboard has **no** button like "make owner" — privilege escalation happens only
+through a manual PR + CODEOWNERS approval.
 
-## owner-a'a bağlı olan işler
+## Work that depends on owner-a
 
-| İhtiyaç | Şu anki durum |
+| Need | Current status |
 | :--- | :--- |
-| GitHub App `client_id` | Kod hazır; `client_id` gelince `.env` / `window.__ENV__`'e yazmak yeterli. Dev'de token ile giriş devrede |
-| GitHub App'in oluşturulması + config repo'ya kurulması | owner-a (org admin işi) |
-| GitOps plan yorumu (Faz 3) | Ekran hazır; yorum düşmeyen PR'da "Plan bekleniyor…" gösterilir, 30 sn'de bir yenilenir |
-| JSON Schema (Hafta 6) | `src/services/validation.ts` içinde elle kontroller var; şema gelince oraya bağlanır |
+| GitHub App `client_id` | Code is ready; once the `client_id` arrives, writing it to `.env` / `window.__ENV__` is enough. Token sign-in is active in dev |
+| Creating the GitHub App + installing it on the config repo | owner-a (an org admin task) |
+| GitOps plan comment (Phase 3) | The screen is ready; on a PR without a posted comment, "Waiting for plan…" is shown and refreshed every 30 s |
+| JSON Schema (Week 6) | Manual checks exist in `src/services/validation.ts`; once the schema arrives, it is wired in there |
 
-## Repo yazma modu — kapsam
+## Repo write mode — scope
 
-"Repo ayarları" diyaloğu (`src/components/RepoSettingsDialog.tsx`) şu alanları
-düzenler: açıklama, dil, `visibility`, `default_branch`, `archived`, `has_*`,
-`vulnerability_alerts`, `secret_scanning`, `files` (mod), `workflows`,
-`protected_branches` (dal bazında kural / `null` / varsayılana bırak) ve
-`code_owners`. Mentör/developer listeleri kendi akışında (ekle/çıkar).
+The "Repo settings" dialog (`src/components/RepoSettingsDialog.tsx`) edits these
+fields: description, language, `visibility`, `default_branch`, `archived`, `has_*`,
+`vulnerability_alerts`, `secret_scanning`, `files` (mode), `workflows`,
+`protected_branches` (per-branch rule / `null` / leave to default), and
+`code_owners`. Mentor/developer lists are in their own flow (add/remove).
 
-Yazma **yorum-koruyan**: `applyEdits` yalnızca değişen anahtarın satır bloğunu
-yeniden yazar — iç içe alanlar (`protected_branches`, `code_owners`) dahil.
-`serializeRepoConfig` (tam yeniden üretim, yorumsuz) yalnızca **yeni** dosyalarda
-kullanılır. `npm run verify:yaml` bunu her canlı config dosyasında doğrular.
+Writing is **comment-preserving**: `applyEdits` rewrites only the line block of the
+changed key — including nested fields (`protected_branches`, `code_owners`).
+`serializeRepoConfig` (full regeneration, without comments) is used only for **new**
+files. `npm run verify:yaml` verifies this on every live config file.
 
-**Kalan koordinasyon:** Faz 5 başlamadan `repositories/*.yml` + `people.yml` alan
-seti dondurulmalı (yazma modu hareket eden hedefe göç etmesin — plan sync #2).
-`organization.yml` / `privileged.yml` insan-sahipli; panel onlara dokunmaz.
+**Remaining coordination:** Before Phase 5 begins, the `repositories/*.yml` +
+`people.yml` field set must be frozen (so write mode does not migrate to a moving
+target — plan sync #2). `organization.yml` / `privileged.yml` are human-owned; the
+dashboard does not touch them.

@@ -1,179 +1,180 @@
-# ADR-004: Erişim Yönetimi için Config-Driven Terraform
+# ADR-004: Config-Driven Terraform for Access Management
 
-**Durum:** Kabul edildi
-**Tarih:** 2026-08-08
-**Karar verenler:** owner-a, dev-1
-**İlgili:** [`ACCESS-MODEL.md`](../../ACCESS-MODEL.md), [`config-guide.md`](../config-guide.md)
-
----
-
-## Bağlam
-
-Organizasyonda birden çok repo ve bu repo'larda rol bazlı yetkilere sahip kişiler var.
-Hedeflenen model:
-
-- **head-of-engineering** — organizasyon geneli admin (kişi değil, rol)
-- **mentor** — sorumlu olduğu repo'da admin; kural değiştirebilir
-- **developer** — birden çok projede yer alabilir (many-to-many); korumalı dallara
-  doğrudan yazamaz
-
-Nihai hedef, bu yetkilerin teknik olmayan kullanıcılar tarafından bir **dashboard**
-üzerinden yönetilebilmesi. Yetki değişikliği sık yaşanan bir olay: kişi projeye katılır,
-ayrılır, mentör değişir, yeni repo açılır.
-
-Sorulması gereken soru: bu yönetim katmanı nasıl kurulmalı?
+**Status:** Accepted
+**Date:** 2026-08-08
+**Deciders:** owner-a, dev-1
+**Related:** [`ACCESS-MODEL.md`](../../ACCESS-MODEL.md), [`config-guide.md`](../config-guide.md)
 
 ---
 
-## Değerlendirilen Seçenekler
+## Context
 
-### 1. GitHub API'sini doğrudan çağıran bir uygulama
+The organization has multiple repos and people with role-based authorization across those
+repos. The target model:
 
-Dashboard, GitHub REST API'sini doğrudan çağırır. "Kullanıcıyı takımdan çıkar" tek bir
-HTTP isteğidir.
+- **head-of-engineering** — organization-wide admin (a role, not a person)
+- **mentor** — admin in the repo they are responsible for; can change rules
+- **developer** — can be involved in multiple projects (many-to-many); cannot write directly
+  to protected branches
 
-**Artıları:** Anında etki, aracı yok, öğrenme eğrisi düşük.
+The ultimate goal is for these authorizations to be manageable by non-technical users through
+a **dashboard**. An authorization change is a frequent event: a person joins a project,
+leaves, a mentor changes, a new repo is created.
 
-**Eksileri:**
-- Tek doğruluk kaynağı yok — GitHub'ın o anki hâli tek gerçek olur
-- "Kim ne zaman hangi yetkiyi verdi" sorusunun cevabı kalmaz
-- Drift kavramı yok; biri arayüzden bir şey değiştirirse fark edilmez
-- Organizasyon sıfırdan yeniden kurulamaz
-- Idempotency, sıralama, hata toparlama, sayfalama, rate limit — hepsi elle yazılır
-- Dashboard'un `admin:org` kapsamında bir token taşıması gerekir; internete açık bir
-  uygulamada bu yüksek risk
+The question to ask: how should this management layer be built?
+
+---
+
+## Options Considered
+
+### 1. An application that calls the GitHub API directly
+
+The dashboard calls the GitHub REST API directly. "Remove the user from the team" is a single
+HTTP request.
+
+**Pros:** Instant effect, no intermediary, low learning curve.
+
+**Cons:**
+- No single source of truth — GitHub's current state becomes the only truth
+- The question "who granted which authority and when" no longer has an answer
+- No concept of drift; if someone changes something from the interface, it goes unnoticed
+- The organization cannot be rebuilt from scratch
+- Idempotency, ordering, error recovery, pagination, rate limit — all written by hand
+- The dashboard must carry a token with `admin:org` scope; in an internet-facing app this is
+  high risk
 
 ### 2. `github/safe-settings`
 
-GitHub'ın yayınladığı açık kaynak uygulama. Bir yönetici repo'sunda YAML config tutulur;
-uygulama org'daki repo'lara ayarları uygular. Hiyerarşik öncelik (repo > sub-org > org)
-bizim `defaults` + ezme tasarımımızla neredeyse birebir örtüşüyor.
+The open-source application GitHub publishes. YAML config is kept in an administration repo;
+the application applies the settings to the repos in the org. Its hierarchical precedence
+(repo > sub-org > org) matches our `defaults` + override design almost exactly.
 
-**Artıları:** Olgun, GitHub'ın kendi projesi, kurulumu hazır, aynı problemi çözüyor.
+**Pros:** Mature, GitHub's own project, ready to set up, solves the same problem.
 
-**Eksileri:**
-- **Yalnızca GitHub'ı yönetir.** İleride başka sistemler (Cloudflare, AWS IAM,
-  PagerDuty) eklenirse ikinci bir mekanizma gerekir
-- Config'de GitHub'ın primitifleri konuşulur (`collaborators`, `permission: admin`);
-  bizim rol soyutlamamız (`mentor`, `developer`) ifade edilemez
-- Kendi barındırması gerekir — "hazır ürün" değil, işletilecek bir uygulama
+**Cons:**
+- **It only manages GitHub.** If other systems (Cloudflare, AWS IAM, PagerDuty) are added
+  later, a second mechanism is needed
+- The config speaks in GitHub's primitives (`collaborators`, `permission: admin`); our role
+  abstraction (`mentor`, `developer`) cannot be expressed
+- It has to be self-hosted — not a "ready product," but an application to operate
 
-### 3. GitHub'ın yerleşik özellikleri (org ruleset + custom properties)
+### 3. GitHub's built-in features (org ruleset + custom properties)
 
-Repo'lara metadata etiketi takılır, org seviyesinde ruleset'ler bu etiketlere göre
-hedeflenir. Kod yazmadan "tier=critical olan tüm repo'larda min 3 onay" kurulabilir.
+A metadata label is attached to repos, and rulesets at the org level target those labels.
+Without writing code, "min 3 approvals on all repos with tier=critical" can be set up.
 
-**Artıları:** Kod yok, bakım yok, GitHub'ın kendi modeliyle tam uyumlu, katmanlanabilir.
+**Pros:** No code, no maintenance, fully compatible with GitHub's own model, layerable.
 
-**Eksileri:**
-- Yalnızca **kuralları** yönetir; repo oluşturma, takım üyeliği, label seti kapsam dışı
-- Rol soyutlaması yok
-- Denetim izi GitHub'ın audit log'una bağlı, sürüm kontrollü değil
-- Çoğu özellik Team/Enterprise planı gerektiriyor
+**Cons:**
+- It only manages **rules**; repo creation, team membership, label sets are out of scope
+- No role abstraction
+- The audit trail depends on GitHub's audit log, not version-controlled
+- Most features require the Team/Enterprise plan
 
 ### 4. Internal Developer Portal (Backstage, Port, Cortex)
 
-Hazır portal ürünleri; self-service ile repo oluşturma akışları sunuyorlar.
+Ready-made portal products; they offer self-service repo creation flows.
 
-**Eksileri:**
-- Backstage bir ürün değil iskelettir: kendi kod tabanın olur, barındırma, katalog
-  besleme, eklenti bakımı, sürüm yükseltmeleri. 50 geliştiricinin altındaki ekipler için
-  önerilmiyor — bizim ölçeğimiz çok altında
-- Ticari alternatifler (Port, OpsLevel) ölçeğimiz için gereğinden kapsamlı ve maliyetli
-- Hiçbiri bizim mentör/developer modelimizi kutudan çıktığı gibi bilmiyor
+**Cons:**
+- Backstage is not a product but a skeleton: you get your own codebase, hosting, catalog
+  feeding, plugin maintenance, version upgrades. Not recommended for teams under 50
+  developers — our scale is far below that
+- Commercial alternatives (Port, OpsLevel) are overkill for our scale and costly
+- None of them know our mentor/developer model out of the box
 
 ---
 
-## Karar
+## Decision
 
-**Terraform (`integrations/github` provider) kullanılacak, konfigürasyon YAML dosyasından
-okunacak.**
+**Terraform (`integrations/github` provider) will be used, and the configuration will be read
+from a YAML file.**
 
-Sistem iki katmana ayrılır:
+The system is split into two layers:
 
-| Katman | İçerik | Kim değiştirir | Sıklık |
+| Layer | Content | Who changes it | Frequency |
 | :--- | :--- | :--- | :--- |
-| **Kod (HCL)** | "Repo nasıl kurulur, kural nasıl uygulanır" | Platform ekibi | Nadiren |
-| **Veri (YAML)** | "Hangi repo var, kimde hangi yetki var" | Mentör (ileride dashboard) | Sık |
+| **Code (HCL)** | "How a repo is set up, how a rule is applied" | Platform team | Rarely |
+| **Data (YAML)** | "Which repos exist, who has which authority" | Mentor (dashboard, later) | Often |
 
-Dashboard, Terraform kodunu **değiştirmez**; yalnızca config dosyasını günceller ve PR
-açar. Terraform'un varlığından habersiz olabilir.
+The dashboard **does not change** the Terraform code; it only updates the config file and
+opens a PR. It can be unaware that Terraform exists.
 
-Modül, kendi domain modelimizi (`mentor`, `developer`, `head-of-engineering`) GitHub'ın
-primitiflerine (`admin`, `push`, takım üyeliği, branch protection) **derler**.
-
----
-
-## Gerekçe
-
-**Tek doğruluk kaynağı.** Organizasyonun tamamı tek bir dosyada okunabilir. "Kimin neye
-erişimi var" sorusunun cevabı GitHub arayüzünde gezinmek değil, bir dosyayı açmaktır.
-
-**Drift düzeltme.** Biri arayüzden bir ayarı değiştirirse bir sonraki `apply` geri alır.
-Bu özelliğin değeri pilotta somut olarak görüldü: `platform-admins` takımının push izni
-GitHub tarafından **hata vermeden yok sayılıyordu** ve yalnızca drift tespiti sayesinde
-fark edildi. Doğrudan API kullanan bir sistemde bu hata sessizce yaşamaya devam ederdi.
-
-**Denetim izi.** Her yetki değişikliği bir commit, bir PR, bir `plan` çıktısı bırakır.
-Git geçmişi "kim ne zaman hangi yetkiyi verdi" sorusunun cevabıdır.
-
-**Rol soyutlaması.** Mentörün ne yapabildiği tek yerde tanımlıdır. Yetkiyi değiştirmek
-için 8 repo'daki 8 satır değil, bir rol tanımı düzenlenir. Kişi değiştiğinde kural metni
-hiç değişmez. Hazır araçların hiçbiri bu soyutlamayı sunmuyor.
-
-**Blast radius.** Dashboard'un `admin:org` token'ı taşıması gerekmez; yalnızca config
-dosyasına yazma yetkisi yeterlidir. Organizasyonu yönetebilen kimlik CI/HCP tarafında,
-internete kapalı bir yerde durur.
-
-**Genişleyebilirlik.** Provider'ı olan her sistem aynı akışa dahil edilebilir.
-safe-settings ve org ruleset'leri mimari gereği GitHub'la sınırlı.
+The module **compiles** our own domain model (`mentor`, `developer`, `head-of-engineering`)
+into GitHub's primitives (`admin`, `push`, team membership, branch protection).
 
 ---
 
-## Sonuçlar
+## Rationale
 
-### Olumlu
+**Single source of truth.** The entire organization can be read in a single file. The answer
+to "who has access to what" is opening a file, not navigating the GitHub interface.
 
-- Organizasyon konfigürasyondan sıfırdan yeniden kurulabilir
-- Yetki değişiklikleri gözden geçirilebilir ve geri alınabilir
-- Yeni repo açmak beş satırlık bir config değişikliği
-- Güvenli varsayılanlar otomatik uygulanır; repo açan kişinin branch protection bilmesi
-  gerekmez
+**Drift correction.** If someone changes a setting from the interface, the next `apply`
+reverts it. The value of this feature was seen concretely in the pilot: the `platform-admins`
+team's push permission **was being ignored by GitHub without error**, and it was noticed only
+thanks to drift detection. In a system using the API directly, this error would have
+continued to live silently.
 
-### Olumsuz / kabul edilen tavizler
+**Audit trail.** Every authorization change leaves a commit, a PR, a `plan` output. The git
+history is the answer to "who granted which authority and when."
 
-- **Gecikme.** Değişiklik anında yansımaz; `plan` + `apply` döngüsü gerekir. Acil erişim
-  kesme senaryosu için ayrı bir hızlı yol düşünülmelidir.
-- **Öğrenme yükü.** Ekibin Terraform'un temel kavramlarını (state, plan, apply, drift)
-  bilmesi gerekir.
-- **Yüksek frekanslı değişiklikler Terraform'un tasarım hedefi değil.** Her `apply` tüm
-  kaynakları tazeler; organizasyon büyüdükçe bu yavaşlar. Eşik aşılırsa üyelik yönetimi
-  ayrı bir mekanizmaya taşınabilir.
-- **Tek state, tek kader.** Bir yerdeki bozuk config tüm `apply`'ı durdurur.
-- **Dashboard yazılmalı.** Hazır bir arayüz alınmıyor; ince de olsa bir uygulama
-  geliştirilecek.
+**Role abstraction.** What a mentor can do is defined in a single place. To change the
+authority, you edit one role definition, not 8 lines across 8 repos. When a person changes,
+the rule text never changes. None of the ready-made tools offer this abstraction.
 
-### Yeniden değerlendirme koşulları
+**Blast radius.** The dashboard does not need to carry an `admin:org` token; write access to
+the config file alone is sufficient. The identity that can manage the organization sits on the
+CI/HCP side, in a place closed off to the internet.
 
-Bu karar şu durumlarda gözden geçirilmelidir:
-
-- Repo sayısı ~100'ü aştığında (plan süreleri ve state boyutu)
-- Yetki değişiklik sıklığı günde onlarca kez seviyesine çıktığında
-- GitHub'ın yerleşik özellikleri (custom properties + org ruleset) ihtiyacın tamamını
-  karşılar hâle geldiğinde
-- Şirket bir IGA ürünü (Okta Governance, ConductorOne vb.) benimserse — o zaman erişim
-  yönetimi Terraform'dan o ürüne taşınabilir
+**Extensibility.** Any system that has a provider can be included in the same flow.
+safe-settings and org rulesets are, by architecture, limited to GitHub.
 
 ---
 
-## Notlar
+## Consequences
 
-**Bu karar GitHub'ın ötesini kapsamaz.** Terraform yalnızca provider'ı olan sistemleri
-yönetir. Linear, Slack gibi sistemlerdeki erişimler bu akışın dışındadır; offboarding
-gibi çok sistemli senaryolarda orkestrasyon dashboard'un sorumluluğundadır. Bkz.
+### Positive
+
+- The organization can be rebuilt from scratch from the configuration
+- Authorization changes can be reviewed and rolled back
+- Creating a new repo is a five-line config change
+- Safe defaults are applied automatically; the person creating a repo does not need to know
+  branch protection
+
+### Negative / accepted trade-offs
+
+- **Latency.** A change is not reflected instantly; a `plan` + `apply` cycle is required. A
+  separate fast path should be considered for the emergency access cut-off scenario.
+- **Learning burden.** The team needs to know Terraform's basic concepts (state, plan, apply,
+  drift).
+- **High-frequency changes are not Terraform's design goal.** Every `apply` refreshes all
+  resources; as the organization grows this slows down. If the threshold is exceeded,
+  membership management can be moved to a separate mechanism.
+- **Single state, single fate.** A broken config in one place stops the entire `apply`.
+- **A dashboard must be written.** A ready-made interface is not being bought; an application,
+  however thin, will be developed.
+
+### Re-evaluation conditions
+
+This decision should be reviewed in the following cases:
+
+- When the repo count exceeds ~100 (plan durations and state size)
+- When the frequency of authorization changes rises to tens of times per day
+- When GitHub's built-in features (custom properties + org ruleset) come to meet the entire
+  need
+- If the company adopts an IGA product (Okta Governance, ConductorOne, etc.) — then access
+  management can be moved from Terraform to that product
+
+---
+
+## Notes
+
+**This decision does not cover beyond GitHub.** Terraform only manages systems that have a
+provider. Access in systems like Linear, Slack is outside this flow; in multi-system scenarios
+such as offboarding, orchestration is the dashboard's responsibility. See
 [`runbook.md`](../runbook.md).
 
-**Klasik branch protection geçicidir.** Kurallar şu an `github_branch_protection` ile
-yazılıyor. Provider'da `github_repository_ruleset` ve `github_organization_ruleset`
-mevcut; katmanlanabilir kurallar ve `bypass_actors` desteği modelimize daha uygun.
-Ruleset'e geçiş ayrı bir ADR ile kararlaştırılmalıdır.
+**Classic branch protection is temporary.** Rules are currently written with
+`github_branch_protection`. The provider has `github_repository_ruleset` and
+`github_organization_ruleset`; layerable rules and `bypass_actors` support fit our model
+better. The migration to rulesets should be decided with a separate ADR.

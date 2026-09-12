@@ -1,78 +1,78 @@
-# Onboarding — Yeni Geliştirici Rehberi
+# Onboarding — New Developer Guide
 
-Hoş geldin. Bu rehber ilk günden ilk merge edilen PR'ına kadar geçen yolu anlatır.
-Baştan sona okuman yaklaşık 15 dakika sürer; kurulum dahil ilk yarım günün bununla
-geçmesi normaldir.
+Welcome. This guide covers the path from your first day to your first merged PR.
+Reading it end to end takes about 15 minutes; it is normal for your first half day,
+including setup, to be spent on this.
 
 ---
 
-## 1. İlk Gün — Kontrol Listesi
+## 1. First Day — Checklist
 
-### 1.1 Erişim
+### 1.1 Access
 
-- [ ] **GitHub organizasyon davetini kabul et.**
-      Davet e-postası otomatik gelir; kimse elle davet etmez. Mentörün seni
-      konfigürasyona ekler, sistem daveti üretir.
-      Davet gelmediyse mentörüne söyle — büyük ihtimalle henüz `apply` çalışmamıştır.
-      _Bu iddia 2026-08-18'den beri gerçekten doğru: davet
+- [ ] **Accept the GitHub organization invitation.**
+      The invitation email arrives automatically; nobody invites you by hand. Your mentor
+      adds you to the configuration, and the system generates the invitation.
+      If the invitation does not arrive, tell your mentor — most likely `apply` has not run yet.
+      _This claim has actually been true since 2026-08-18: the invitation is generated from
       [`terraform/config/organization.yml`](../terraform/config/organization.yml) →
-      `people` bölümünden üretiliyor. Öncesinde üyelikler elle yazılıyordu._
+      the `people` section. Before that, memberships were written by hand._
 
-- [ ] **İki faktörlü doğrulamayı (2FA) etkinleştir.**
+- [ ] **Enable two-factor authentication (2FA).**
       GitHub → Settings → Password and authentication.
-      Organizasyon üyeliği için zorunludur; 2FA'sız hesap erişimini kaybeder.
+      It is mandatory for organization membership; an account without 2FA loses access.
 
-- [ ] **SSH anahtarı oluştur ve ekle.**
+- [ ] **Generate and add an SSH key.**
       ```bash
-      ssh-keygen -t ed25519 -C "adin@sirket.com"
+      ssh-keygen -t ed25519 -C "you@company.com"
       cat ~/.ssh/id_ed25519.pub
       ```
-      Çıktıyı GitHub → Settings → SSH and GPG keys → New SSH key altına yapıştır.
-      Doğrula:
+      Paste the output under GitHub → Settings → SSH and GPG keys → New SSH key.
+      Verify:
       ```bash
       ssh -T git@github.com
       ```
 
-- [ ] **Hangi repo'lara erişimin olduğunu öğren.**
-      `https://github.com/orgs/<org>/teams` adresinde üyesi olduğun `<repo>-devs`
-      takımlarını görürsün. Her takım bir projeye karşılık gelir.
+- [ ] **Find out which repos you have access to.**
+      At `https://github.com/orgs/<org>/teams` you will see the `<repo>-devs`
+      teams you are a member of. Each team corresponds to a project.
 
-### 1.2 Geliştirme ortamı
+### 1.2 Development environment
 
-- [ ] **Projeyi klonla**
+- [ ] **Clone the project**
       ```bash
       git clone git@github.com:<org>/<repo>.git
       cd <repo>
       ```
 
-- [ ] **Projeye özel kurulumu yap.** Repo'nun kendi `README.md` veya
-      `CONTRIBUTING.md` dosyasındaki adımları izle (bağımlılıklar, `.env` dosyası,
-      veritabanı vb.).
+- [ ] **Do the project-specific setup.** Follow the steps in the repo's own `README.md` or
+      `CONTRIBUTING.md` file (dependencies, the `.env` file,
+      database, etc.).
 
-- [ ] **`.editorconfig` eklentisini kur.** Editörün girinti ve satır sonu ayarlarını
-      projeyle hizalar; format farkından doğan gereksiz diff'leri önler.
+- [ ] **Install the `.editorconfig` plugin.** It aligns your editor's indentation and line-ending
+      settings with the project; it prevents unnecessary diffs caused by formatting differences.
       VS Code: `EditorConfig for VS Code`.
 
-- [ ] **Sırları asla commit'leme.** Tüm hassas veriler `.env` dosyalarında tutulur ve
-      `.gitignore` ile engellenmiştir. Ayrıntı: [`security-policy.md`](security-policy.md).
+- [ ] **Never commit secrets.** All sensitive data is kept in `.env` files and
+      blocked by `.gitignore`. Details: [`security-policy.md`](security-policy.md).
 
-### 1.3 Okunacaklar
+### 1.3 Required reading
 
-| Doküman | Neden |
+| Document | Why |
 | :--- | :--- |
-| [`workflow-guide.md`](workflow-guide.md) | Genel resmi görmek için |
-| [`branching-strategy.md`](branching-strategy.md) | Dal isimlendirme ve akış |
-| [`commit-convention.md`](commit-convention.md) | Commit mesajı formatı |
-| [`code-review-guide.md`](code-review-guide.md) | Review sürecinde ne beklenir |
+| [`workflow-guide.md`](workflow-guide.md) | To see the big picture |
+| [`branching-strategy.md`](branching-strategy.md) | Branch naming and flow |
+| [`commit-convention.md`](commit-convention.md) | Commit message format |
+| [`code-review-guide.md`](code-review-guide.md) | What to expect during review |
 
 ---
 
-## 2. İlk Pull Request'in
+## 2. Your First Pull Request
 
-Küçük bir şeyle başla — bir yazım hatası düzeltmesi, eksik bir doküman satırı. Amaç
-kodun büyüklüğü değil, akışı bir kez uçtan uca yaşamak.
+Start with something small — a typo fix, a missing line of documentation. The goal is not
+the size of the code but experiencing the flow end to end once.
 
-**1. Güncel `develop`'tan dal aç**
+**1. Open a branch from an up-to-date `develop`**
 
 ```bash
 git checkout develop
@@ -80,53 +80,53 @@ git pull origin develop
 git checkout -b docs/fix-readme-typo
 ```
 
-Dal adı `<kategori>/<kısa-açıklama>` biçimindedir. Kategoriler: `feat/`, `fix/`,
-`chore/`, `docs/`. Issue takip sistemi kullanılıyorsa ID'yi ekle:
+The branch name follows the form `<category>/<short-description>`. Categories: `feat/`, `fix/`,
+`chore/`, `docs/`. If an issue tracking system is used, add the ID:
 `feat/LIN-123-user-auth`.
 
-> **Repo'nun `develop` dalı yoksa şaşırma.** Altyapı/config repolarında (`tidyorg`
-> gibi) `develop` bilinçli olarak yoktur; dal `main`'den açılır ve `main`'e döner.
-> Gerekçe: [`branching-strategy.md`](branching-strategy.md) Bölüm 8.
+> **Don't be surprised if a repo has no `develop` branch.** In infrastructure/config repos (like `tidyorg`)
+> `develop` deliberately does not exist; branches are opened from `main` and return to `main`.
+> Rationale: [`branching-strategy.md`](branching-strategy.md) Section 8.
 
-**2. Değişikliği yap ve commit'le**
+**2. Make the change and commit it**
 
 ```bash
 git add .
 git commit -m "docs(readme): fix installation command typo"
 ```
 
-**3. Push et**
+**3. Push**
 
 ```bash
 git push -u origin docs/fix-readme-typo
 ```
 
-**4. PR aç**
+**4. Open a PR**
 
-Terminal çıktısındaki bağlantıya tıkla veya GitHub'da "Compare & pull request" düğmesini
-kullan. Hedef dal **`develop`** olmalı.
+Click the link in the terminal output or use the "Compare & pull request" button on
+GitHub. The target branch must be **`develop`**.
 
-PR şablonu otomatik dolar. En önemli alan **"Why?"** — ne yaptığını diff zaten gösteriyor,
-neden yaptığını yalnızca sen biliyorsun.
+The PR template fills in automatically. The most important field is **"Why?"** — the diff already
+shows what you did; only you know why you did it.
 
-**5. CI'ın bitmesini bekle**
+**5. Wait for CI to finish**
 
-Altta `ci/test` adında bir kontrol çalışır. Yeşile dönmeden merge açılmaz. Kırmızıysa
-loglara bak, düzelt, tekrar push et — PR otomatik güncellenir.
+A check named `ci/test` runs below. Merge is not enabled until it turns green. If it is red,
+look at the logs, fix it, and push again — the PR updates automatically.
 
-**6. Review al**
+**6. Get a review**
 
-Gerekli onay sayısı repo'ya göre değişir. Bazı projelerde mentörün onayı zorunludur,
-bazılarında başka bir developer'ın onayı yeterlidir. PR sayfası hangisinin beklendiğini
-gösterir.
+The number of required approvals varies by repo. In some projects your mentor's approval is
+mandatory, in others another developer's approval is enough. The PR page shows which one is
+expected.
 
-**7. Merge et**
+**7. Merge**
 
-Onay ve yeşil CI geldikten sonra **Squash and merge**. Dalın otomatik silinir.
+After approval and green CI, use **Squash and merge**. Your branch is deleted automatically.
 
 ---
 
-## 3. Commit Mesajı Örnekleri
+## 3. Commit Message Examples
 
 ```
 feat(auth): add google oauth2 login integration
@@ -135,69 +135,70 @@ chore(deps): bump react from 18.2.0 to 18.3.1
 docs(readme): update installation instructions
 ```
 
-Kötü örnekler ve gerekçeleri: [`commit-convention.md`](commit-convention.md).
+Bad examples and their rationale: [`commit-convention.md`](commit-convention.md).
 
-Commit mesajın sürüm numarasını doğrudan etkiler: `feat` minor, `fix` patch,
-`BREAKING CHANGE` major artışı tetikler.
-
----
-
-## 4. Review Sürecinde Ne Beklemelisin
-
-- **İlk yorum genelde 1 iş günü içinde gelir.** Daha acilse PR'a etiket koy veya
-  mentörüne yaz.
-- **Değişiklik istenmesi normaldir.** "Request changes" kişisel bir eleştiri değil,
-  sürecin işlediğinin göstergesidir. Deneyimli geliştiriciler de aynı yorumları alır.
-- **Anlamadığın yorumu sor.** Reviewer'ın niyeti kodun daha iyi olması; sorman
-  yavaşlatmaz, hızlandırır.
-- **Küçük PR daha hızlı geçer.** 200 satırlık bir PR aynı gün, 2000 satırlık bir PR
-  günlerce bekleyebilir.
-- **Yeni commit atınca onaylar düşer.** `dismiss_stale_reviews` açık — yeniden onay
-  istemen gerekir. Bu bilinçli: onaylanan kod ile merge edilen kod aynı olsun diye.
+Your commit message directly affects the version number: `feat` triggers a minor,
+`fix` a patch, and `BREAKING CHANGE` a major increase.
 
 ---
 
-## 5. Sıkça Sorulan Sorular
+## 4. What to Expect During Review
 
-**"Repo'ya erişemiyorum / 404 görüyorum."**
-Henüz o projenin takımına eklenmemişsindir. Mentörüne söyle; seni konfigürasyona ekler,
-PR merge edilip `apply` çalıştıktan sonra erişimin açılır. Birkaç dakika sürer.
-
-**"`develop`'a push atamıyorum, reddediliyor."**
-Beklenen davranış. `main` ve `develop` korumalı dallardır; developer rolündeki kimse
-doğrudan yazamaz. Dal aç, PR üzerinden gönder.
-
-**"PR'ım `ci/test` bekliyor, hiç başlamıyor."**
-Repo'da CI workflow dosyası olmayabilir. Mentörüne bildir — repo'nun konfigürasyonunda
-CI dağıtımı ile status check zorunluluğu birlikte ayarlanmalıdır.
-
-**"Kendi PR'ımı onaylayamıyorum."**
-GitHub buna izin vermez. Başka birinin onaylaması gerekir.
-
-**"GitHub arayüzünden bir ayarı değiştirdim, sonra eski hâline döndü."**
-Doğru gördün. Repo ayarları koddan yönetiliyor; elle yapılan değişiklikler bir sonraki
-`apply` ile geri alınır. Kalıcı değişiklik için mentörüne söyle, konfigürasyondan
-yapılsın. Ayrıntı: [`config-guide.md`](config-guide.md).
-
-**"Yanlış dala PR açtım."**
-PR sayfasında "Edit" ile hedef dalı değiştirebilirsin, PR'ı kapatmana gerek yok.
-
-**"Merge edemiyorum, düğme gri."**
-Sırayla kontrol et: CI yeşil mi, yeterli onay var mı, çözülmemiş yorum kaldı mı, dal
-`develop` ile güncel mi. PR sayfası eksik olanı listeler.
-
-**"`.env` dosyamı yanlışlıkla commit ettim."**
-Hemen mentörüne haber ver. Sır bir kez push edildiyse dosyayı silmek yetmez — geçmişte
-kalır. İlgili anahtarın iptal edilip yenilenmesi gerekir.
+- **The first comment usually arrives within 1 business day.** If it is more urgent, add a label
+  to the PR or message your mentor.
+- **Being asked for changes is normal.** "Request changes" is not a personal criticism, but a
+  sign that the process is working. Experienced developers receive the same comments.
+- **Ask about a comment you don't understand.** The reviewer's intent is for the code to be
+  better; asking does not slow you down, it speeds you up.
+- **A small PR gets through faster.** A 200-line PR may go through the same day, while a 2000-line
+  PR may wait for days.
+- **New commits dismiss approvals.** `dismiss_stale_reviews` is on — you will need to request
+  approval again. This is deliberate: so that the approved code and the merged code are the same.
 
 ---
 
-## 6. Yardım Nereden Alınır
+## 5. Frequently Asked Questions
 
-1. Bu doküman ve [`workflow-guide.md`](workflow-guide.md)
-2. Repo'nun kendi `README.md` / `CONTRIBUTING.md` dosyası
-3. Projenin mentörü — kim olduğunu `<repo>-mentors` takımından görebilirsin
-4. Takım kanalı
+**"I can't access the repo / I see a 404."**
+You haven't been added to that project's team yet. Tell your mentor; they add you to the
+configuration, and after the PR is merged and `apply` runs, your access is enabled. It takes a
+few minutes.
 
-Sorunun cevabı dokümanlarda yoksa bu bir eksikliktir: sor, sonra da cevabı buraya
-eklemek için bir PR aç. Bu rehberin gelişme yolu budur.
+**"I can't push to `develop`, it's rejected."**
+Expected behavior. `main` and `develop` are protected branches; nobody in the developer role
+can write to them directly. Open a branch and submit via a PR.
+
+**"My PR is waiting for `ci/test`, and it never starts."**
+The repo may not have a CI workflow file. Notify your mentor — in the repo's configuration
+the CI deployment and the status check requirement must be set together.
+
+**"I can't approve my own PR."**
+GitHub does not allow it. Someone else has to approve.
+
+**"I changed a setting from the GitHub interface, and then it reverted."**
+You saw it right. Repo settings are managed from code; manual changes are undone by the next
+`apply`. For a permanent change, tell your mentor so it is done from the configuration.
+Details: [`config-guide.md`](config-guide.md).
+
+**"I opened a PR against the wrong branch."**
+You can change the target branch with "Edit" on the PR page; you don't need to close the PR.
+
+**"I can't merge, the button is gray."**
+Check in order: is CI green, are there enough approvals, are there unresolved comments left, is
+the branch up to date with `develop`. The PR page lists what is missing.
+
+**"I accidentally committed my `.env` file."**
+Notify your mentor immediately. Once a secret has been pushed, deleting the file is not enough —
+it remains in history. The relevant key must be revoked and rotated.
+
+---
+
+## 6. Where to Get Help
+
+1. This document and [`workflow-guide.md`](workflow-guide.md)
+2. The repo's own `README.md` / `CONTRIBUTING.md` file
+3. The project's mentor — you can see who it is from the `<repo>-mentors` team
+4. The team channel
+
+If the answer to your question is not in the docs, that is a gap: ask, and then open a PR to add
+the answer here. This is how this guide improves.

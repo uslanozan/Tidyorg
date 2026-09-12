@@ -1,152 +1,151 @@
-# Güvenlik Politikaları ve Uygulamaları
+# Security Policies and Practices
 
-Bu doküman günlük geliştirme süreçlerindeki güvenlik standartlarını belirler.
+This document defines the security standards in day-to-day development processes.
 
-Son güncelleme: 2026-08-17
+Last updated: 2026-08-17
 
-> **Bu doküman iki şeyi ayırır: bugün zorlanan kurallar ve henüz kurulmamış olanlar.**
-> Önceki sürümü hedef durumu yürürlükteymiş gibi anlatıyordu (CodeQL taraması, org geneli
-> push protection, "Tech Lead" onayı) — hiçbiri kurulu değildi. Bir güvenlik dokümanının
-> en tehlikeli hatası budur: olmayan bir korumaya güvenilmesine yol açar. Bölüm 5 açıkça
-> neyin **olmadığını** listeler.
-
----
-
-## 1. Sırların Yönetimi (Secret Management) — ✅ Yürürlükte
-
-Kod tabanına API anahtarı, şifre, token veya herhangi bir hassas veri **eklenemez.**
-
-* **Yerel geliştirme.** Tüm sırlar `.env` dosyalarında tutulur. `.env` ve `.env.*`
-  desenleri [`.gitignore`](../.gitignore) ile engellenmiştir; yalnızca `.env.example`
-  gibi şablon dosyaları depoya girer. `*.pem` ve `*.key` de aynı listede.
-* **CI/CD.** GitHub Actions'ta kullanılan hassas veriler **GitHub Secrets** üzerinden
-  gelir. Bugün tanımlı olan: `TF_API_TOKEN` (HCP Terraform Cloud kimlik doğrulaması).
-* **Terraform.** GitHub App'in private key'i ve diğer hassas değişkenler HCP Terraform'da
-  **sensitive** environment variable olarak tutulur; hiçbir geliştiricinin makinesine
-  inmez.
-
-### Sır sızdıysa ne yapılır
-
-Bir sır bir kez push edildiyse **dosyayı silmek yetmez** — git geçmişinde kalır.
-
-1. Mentöre / head-of-engineering'e hemen haber ver.
-2. **İlgili anahtarı iptal et ve yenile.** İlk ve en önemli adım budur; geçmişi
-   temizlemek ikincildir.
-3. Yeni anahtarı `.env` veya GitHub Secrets üzerinden dağıt.
+> **This document separates two things: the rules enforced today and those not yet in place.**
+> The previous version described the target state as if it were in effect (CodeQL scanning, org-wide
+> push protection, "Tech Lead" approval) — none of which were in place. This is the most dangerous
+> mistake a security document can make: it leads people to rely on a protection that does not exist.
+> Section 5 explicitly lists what is **not** in place.
 
 ---
 
-## 2. Bağımlılık Güncellemeleri (Dependabot) — ✅ Yürürlükte
+## 1. Secret Management — ✅ In Effect
 
-[`dependabot.yml`](../terraform/templates/.github/dependabot.yml) her repo'ya `strict`
-modda dağıtılır — yani Terraform içeriği sahiplenir, elle değiştirilirse bir sonraki
-`apply` geri alır.
+An API key, password, token, or any sensitive data **cannot be added** to the codebase.
 
-* **Sıklık:** haftalık, pazartesi. Kapsanan ekosistemler: `gomod`, `npm`, `pip`,
-  `composer`, `github-actions`. Manifest dosyası olmayan ekosistemi Dependabot atlar,
-  yani tek dosya her repo'da çalışır.
-* **Etiketleme:** açılan PR'lar `type: chore` etiketi alır, commit öneki `chore(deps)`
-  (Actions için `chore(ci)`).
-* **Gruplama:** paket ekosistemlerinde minor + patch tek PR'da toplanır, **major kendi
-  PR'ında gelir** — build'i kırabilir, ayrı review hak eder. GitHub Actions'ta major'lar
-  da rutin sayılıp tek PR'da toplanır.
-* **Kim inceler:** repo'nun **mentörü** (CODEOWNERS gereği code owner odur). Bu
-  dokümanın önceki sürümündeki "Tech Lead" rolü organizasyonda **yoktur** —
-  `tech-leads` takımı 2026-08-16'da kaldırıldı ([`../ACCESS-MODEL.md`](../ACCESS-MODEL.md)
-  Karar 12).
+* **Local development.** All secrets are kept in `.env` files. The `.env` and `.env.*`
+  patterns are blocked by [`.gitignore`](../.gitignore); only template files like `.env.example`
+  enter the repository. `*.pem` and `*.key` are also on the same list.
+* **CI/CD.** Sensitive data used in GitHub Actions comes via **GitHub Secrets**.
+  What is defined today: `TF_API_TOKEN` (HCP Terraform Cloud authentication).
+* **Terraform.** The GitHub App's private key and other sensitive variables are kept in HCP Terraform
+  as **sensitive** environment variables; they never land on any developer's machine.
 
-> Dependabot yalnızca **güncelleme** açar; zafiyet **uyarıları** ayrı bir ayardır
-> (`vulnerability_alerts`). O da 2026-08-18'de Terraform'a bağlandı — bkz. Bölüm 5.
+### What to do if a secret leaks
+
+Once a secret has been pushed, **deleting the file is not enough** — it remains in git history.
+
+1. Notify the mentor / head-of-engineering immediately.
+2. **Revoke and rotate the relevant key.** This is the first and most important step; cleaning up
+   the history is secondary.
+3. Distribute the new key via `.env` or GitHub Secrets.
 
 ---
 
-## 3. CI'ın Güvenlik Açısından Yaptıkları — ✅ Yürürlükte
+## 2. Dependency Updates (Dependabot) — ✅ In Effect
 
-[`ci.yml`](../terraform/templates/.github/workflows/ci.yml) her PR'da çalışır ve
-`ci/test` adıyla zorunlu status check üretir. İçeriği dile göre değişir:
+[`dependabot.yml`](../terraform/templates/.github/dependabot.yml) is deployed to every repo in `strict`
+mode — that is, Terraform owns its content, and if it is changed by hand the next
+`apply` reverts it.
 
-| Dil | Çalışanlar |
+* **Frequency:** weekly, on Monday. Covered ecosystems: `gomod`, `npm`, `pip`,
+  `composer`, `github-actions`. Dependabot skips an ecosystem that has no manifest file,
+  so a single file works in every repo.
+* **Labeling:** opened PRs get the `type: chore` label, with the commit prefix `chore(deps)`
+  (`chore(ci)` for Actions).
+* **Grouping:** for package ecosystems, minor + patch are collected into a single PR, while **majors
+  come in their own PR** — they can break the build and deserve a separate review. In GitHub Actions,
+  majors are also considered routine and collected into a single PR.
+* **Who reviews:** the repo's **mentor** (they are the code owner per CODEOWNERS). The "Tech Lead"
+  role from the previous version of this document **does not exist** in the organization —
+  the `tech-leads` team was removed on 2026-08-16 ([`../ACCESS-MODEL.md`](../ACCESS-MODEL.md)
+  Decision 12).
+
+> Dependabot only opens **updates**; vulnerability **alerts** are a separate setting
+> (`vulnerability_alerts`). That too was connected to Terraform on 2026-08-18 — see Section 5.
+
+---
+
+## 3. What CI Does from a Security Standpoint — ✅ In Effect
+
+[`ci.yml`](../terraform/templates/.github/workflows/ci.yml) runs on every PR and produces a
+mandatory status check with the name `ci/test`. Its content varies by language:
+
+| Language | What runs |
 | :--- | :--- |
 | Go | `golangci-lint` · `go test -race` · `go build` |
 | Python | `ruff check` · `pytest` |
 | TypeScript | `eslint` · `prettier --check` · `tsc --noEmit` · `npm test` |
 | PHP | `phpstan` · `pint --test` · `phpunit` |
 
-**Bunlar lint ve test araçlarıdır, güvenlik tarayıcısı değildir.** `golangci-lint` ve
-`phpstan` bazı güvenlik desenlerini yakalayabilir, ama bu bir SAST kapsamı sayılmaz.
+**These are lint and test tools, not a security scanner.** `golangci-lint` and
+`phpstan` can catch some security patterns, but this does not count as SAST coverage.
 
-> ⚠️ **Bilinen sınır:** Dil job'ları manifest dosyası yoksa `skipped` geçer ve `ci/test`
-> yine de yeşil raporlar. Bu bilinçli bir tasarım kararıdır (yoksa manifestsiz repo'da
-> check hiç raporlanmaz ve PR'lar sonsuza kadar bekler), ancak sonucu şudur: **yeşil
-> `ci/test`, "testler geçti" değil "tanımlı testler geçti" demektir.**
+> ⚠️ **Known limit:** Language jobs pass as `skipped` if there is no manifest file, and `ci/test`
+> still reports green. This is a deliberate design decision (otherwise the check is never reported in
+> a manifest-less repo and PRs wait forever), but the consequence is this: **a green
+> `ci/test` means not "the tests passed" but "the defined tests passed."**
 
 ---
 
-## 4. Kod ve Erişim Güvencesi — ✅ Yürürlükte
+## 4. Code and Access Assurance — ✅ In Effect
 
-* **Korumalı dallar.** `main` ve `develop`'a doğrudan push yalnızca `mentor` ve
-  `head-of-engineering` rollerine açıktır; developer'lar allowlist'te değildir. Force
-  push ve dal silme her iki dalda da kapalıdır. Canlıda `GH006` reddiyle doğrulandı.
-* **Zorunlu review.** `main` 2 onay + code owner (mentör) onayı; `develop` 1 onay. Yeni
-  commit gelirse mevcut onaylar düşer (`dismiss_stale_reviews`).
-* **Yetki koddan yönetilir.** Kimsenin yetkisi GitHub arayüzünden verilmez; her erişim
-  değişikliği bir commit, bir PR ve bir `plan` çıktısı bırakır
+* **Protected branches.** Direct push to `main` and `develop` is open only to the `mentor` and
+  `head-of-engineering` roles; developers are not on the allowlist. Force
+  push and branch deletion are disabled on both branches. Verified in production by a `GH006`
+  rejection.
+* **Mandatory review.** `main` requires 2 approvals + code owner (mentor) approval; `develop` requires
+  1 approval. If a new commit arrives, existing approvals are dismissed (`dismiss_stale_reviews`).
+* **Access is managed from code.** No one's access is granted from the GitHub interface; every access
+  change leaves a commit, a PR, and a `plan` output
   ([`adr/004`](adr/004-config-driven-access-management.md)).
-* **Drift geri alınır.** Arayüzden elle değiştirilen bir güvenlik ayarı bir sonraki
-  `apply` ile standarda döner.
-* **`prevent_destroy`.** Config'den bir repo tanımının yanlışlıkla silinmesi repo'yu yok
-  etmez; `apply` hata vererek durur.
+* **Drift is reverted.** A security setting changed by hand from the interface returns to the
+  standard with the next `apply`.
+* **`prevent_destroy`.** Accidentally deleting a repo definition from the config does not destroy the
+  repo; `apply` stops with an error.
 
-> ⚠️ **Kalıcı muafiyet:** `enforce_admins = false` olduğu için mentör ve
-> head-of-engineering yukarıdaki dal kurallarının tamamını bypass edebilir. Bilinçli bir
-> tavizdir ve bu rollerde kimin bulunduğunu **teknik değil insan kaynağı** meselesi
-> haline getirir. Gerekçe ve sonuçları:
-> [`rbac-and-permissions.md`](rbac-and-permissions.md) Bölüm 4.
+> ⚠️ **Permanent exemption:** Because `enforce_admins = false`, the mentor and
+> head-of-engineering can bypass all of the branch rules above. It is a deliberate concession, and it
+> makes who is in these roles a **human-resources rather than a technical** matter. Rationale and
+> consequences: [`rbac-and-permissions.md`](rbac-and-permissions.md) Section 4.
 
 ---
 
-## 5. Henüz Kurulmamış Olanlar — ⛔ Bunlara güvenmeyin
+## 5. What Is Not Yet in Place — ⛔ Don't rely on these
 
-Aşağıdakiler hedeflenen ama **bugün yürürlükte olmayan** korumalardır. Faz 6 kapsamında
-planlanmıştır ([`../ROADMAP.md`](../ROADMAP.md)).
+The following are targeted but **not in effect today** protections. They are planned under Phase 6
+([`../ROADMAP.md`](../ROADMAP.md)).
 
-| Koruma | Durum | Not |
+| Protection | Status | Note |
 | :--- | :--- | :--- |
-| **Code scanning (CodeQL)** | ⛔ Yok | `ci.yml` içinde CodeQL adımı bulunmuyor. Kritik/yüksek bulgunun merge'i engellemesi diye bir mekanizma **yoktur**. |
-| **Süre sınırlı erişim** | ⛔ Yok | Geçici erişimler elle kaldırılmalıdır. |
-| **Private repo'da dal koruması** | ⛔ Engelli | Free plan'de çalışmıyor. Repo'lar bu yüzden `public`; GitHub Team planı ön koşuldur. |
-| **Private repo'da secret scanning** | ⛔ Engelli | GitHub Advanced Security (Enterprise) ister. Modül private repo'da bu ayarı **sessizce atlar** — config'de `true` yazsa bile uygulanmaz. Bugün etkilenen tek repo: `pilot-access-test`. |
-| **`advanced_security`** | ⛔ Bilerek yönetilmiyor | Public repo'da örtük açık, private'ta lisans ister. İkisinde de yönetmeye çalışmak hata üretir. Team/Enterprise planına geçilirse yeniden değerlendirilir. |
-| **`members_can_create_public_repositories`** | ⚠️ **Açık** | Herhangi bir org üyesi **public** repo açabiliyor. `default_repository_permission = none` bunu kapatmaz — farklı eksen. Karar bekliyor. |
+| **Code scanning (CodeQL)** | ⛔ None | There is no CodeQL step in `ci.yml`. There is **no** mechanism whereby a critical/high finding blocks the merge. |
+| **Time-limited access** | ⛔ None | Temporary access must be removed by hand. |
+| **Branch protection on private repos** | ⛔ Blocked | Does not work on the free plan. Repos are `public` for this reason; the GitHub Team plan is a prerequisite. |
+| **Secret scanning on private repos** | ⛔ Blocked | Requires GitHub Advanced Security (Enterprise). The module **silently skips** this setting on a private repo — even if the config says `true`, it is not applied. The only repo affected today: `pilot-access-test`. |
+| **`advanced_security`** | ⛔ Intentionally unmanaged | Implicitly on for public repos, requires a license for private ones. Trying to manage it in either case produces an error. It will be reconsidered if we move to the Team/Enterprise plan. |
+| **`members_can_create_public_repositories`** | ⚠️ **On** | Any org member can create a **public** repo. `default_repository_permission = none` does not turn this off — a different axis. Decision pending. |
 
-### 5.1 Bu bölümden 2026-08-18'de çıkanlar
+### 5.1 Items that left this section on 2026-08-18
 
-Aşağıdakiler artık **Bölüm 4'te yürürlükte** — bu tabloda tarihsel kayıt olarak duruyor:
+The following are now **in effect in Section 4** — they remain in this table as a historical record:
 
-| Koruma | Yeni durum |
+| Protection | New status |
 | :--- | :--- |
-| **`vulnerability_alerts`** | ✅ Config'den yönetiliyor (`defaults.vulnerability_alerts`), dört repoda da açık. ⚠️ Bulgu: **bu repo'da kapalıymış** — kontrol düzleminin kendisi Dependabot uyarısı almıyormuş. |
-| **Secret scanning / Push protection** | ✅ Üç public repo'da açık (`defaults.secret_scanning`). Push protection asıl değerli olan: sızdırılmış anahtar repo'ya **girmeden** push reddedilir. |
-| **Org geneli güvenlik varsayılanları** | ✅ Beşi de açıldı — yeni repo'lar artık Dependabot alerts + security updates + dependency graph + secret scanning ile doğuyor. Öncesinde **altısı da kapalıydı**. |
-| **"Kim bypass edebiliyor?" raporu** | ✅ `terraform output branch_protection_bypass` |
+| **`vulnerability_alerts`** | ✅ Managed from config (`defaults.vulnerability_alerts`), on in all four repos. ⚠️ Finding: **it was off in this repo** — the control plane itself was not receiving Dependabot alerts. |
+| **Secret scanning / Push protection** | ✅ On in three public repos (`defaults.secret_scanning`). Push protection is the truly valuable one: a leaked key is rejected on push **before** it enters the repo. |
+| **Org-wide security defaults** | ✅ All five are turned on — new repos are now born with Dependabot alerts + security updates + dependency graph + secret scanning. Before, **all six were off**. |
+| **"Who can bypass?" report** | ✅ `terraform output branch_protection_bypass` |
 
 ---
 
-## 6. Güvenlik Açığı Raporlama
+## 6. Vulnerability Reporting
 
-1. Güvenlik açıkları için **herkese açık bir GitHub issue açmayın.**
-2. Bulguları teknik detay ve yeniden oluşturma adımlarıyla birlikte
-   `security@example.com` adresine e-posta gönderin.
+1. **Do not open a public GitHub issue** for vulnerabilities.
+2. Send findings, along with technical detail and reproduction steps, by email to
+   `security@example.com`.
 
-Repo bazlı politika metni her repo'nun kökündeki `SECURITY.md` dosyasındadır
-([`../SECURITY.md`](../SECURITY.md)). Bu dosya `seed` modda dağıtılır: ilk oluşturmada
-yazılır, sonrasında repo kendi ihtiyacına göre değiştirebilir.
+The per-repo policy text is in the `SECURITY.md` file at the root of each repo
+([`../SECURITY.md`](../SECURITY.md)). This file is deployed in `seed` mode: it is written on the
+initial creation, and afterward the repo can change it according to its own needs.
 
 ---
 
-## 7. İlgili Dokümanlar
+## 7. Related Documents
 
-- [`rbac-and-permissions.md`](rbac-and-permissions.md) — Yetki matrisi ve bypass analizi
-- [`runbook.md`](runbook.md) — Acil erişim kesme, offboarding
-- [`code-review-guide.md`](code-review-guide.md) — Review'da nelere bakılır
-- [`../ROADMAP.md`](../ROADMAP.md) — Faz 6: güvenlik ayarlarının yönetime alınması
+- [`rbac-and-permissions.md`](rbac-and-permissions.md) — Permission matrix and bypass analysis
+- [`runbook.md`](runbook.md) — Emergency access revocation, offboarding
+- [`code-review-guide.md`](code-review-guide.md) — What to look at in a review
+- [`../ROADMAP.md`](../ROADMAP.md) — Phase 6: bringing security settings under management

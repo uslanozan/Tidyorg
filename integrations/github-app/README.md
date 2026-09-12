@@ -1,131 +1,131 @@
 # tidyorg-infra-bot — GitHub App
 
-Terraform'un GitHub organizasyonunu yönetmesi için kullanılan bot kimliği.
-Kişisel token (PAT) yerine organizasyona ait bir GitHub App kullanmanın avantajları:
+The bot identity used by Terraform to manage the GitHub organization.
+Advantages of using an organization-owned GitHub App instead of a personal token (PAT):
 
-- **Kişi bağımlılığı yok** — kişi ayrılsa bile sistem çalışmaya devam eder
-- **Audit log** — tüm işlemler `tidyorg-infra-bot[bot]` adına görünür, manuel değişikliklerle karışmaz
-- **Kısa ömürlü token** — ~1 saatlik installation token otomatik yenilenir, uzun ömürlü sır saklanmaz
-- **Dar kapsam** — yalnızca izin verilen repo ve org işlemleri yapılabilir
+- **No person dependency** — the system keeps working even if a person leaves
+- **Audit log** — all operations appear under `tidyorg-infra-bot[bot]`, not mixed in with manual changes
+- **Short-lived tokens** — the ~1-hour installation token is renewed automatically, so no long-lived secret is stored
+- **Narrow scope** — only the permitted repo and org operations can be performed
 
-## Mevcut Kurulum
+## Current Setup
 
-| Alan | Değer |
+| Field | Value |
 | :--- | :--- |
 | **App ID** | `<YOUR_APP_ID>` |
 | **Installation ID** | `<YOUR_INSTALLATION_ID>` |
-| **Organizasyon** | `your-org` |
-| **Kuruldu** | 2026-08-15 |
-| **Kuran** | owner-a |
+| **Organization** | `your-org` |
+| **Installed** | 2026-08-15 |
+| **Installed by** | owner-a |
 
-### İzinler
+### Permissions
 
-| Tür | İzin | Seviye | Neden |
+| Type | Permission | Level | Reason |
 | :--- | :--- | :--- | :--- |
-| Repository | Administration | Read and write | Branch protection, takım erişimi |
-| Repository | Contents | Read and write | Dosya yazma (CODEOWNERS vb.) |
-| Repository | Issues | Read and write | Label seti yönetimi |
-| Repository | Workflows | Read and write | `.github/workflows/*` yazmak |
-| Repository | Metadata | Read-only | Repo bilgisi okuma (zorunlu) |
-| Organization | Members | Read and write | Org üyeliği yönetimi |
-| Organization | Administration | Read and write | Org ayarları (`github_organization_settings`) |
+| Repository | Administration | Read and write | Branch protection, team access |
+| Repository | Contents | Read and write | Writing files (CODEOWNERS, etc.) |
+| Repository | Issues | Read and write | Label set management |
+| Repository | Workflows | Read and write | Writing `.github/workflows/*` |
+| Repository | Metadata | Read-only | Reading repo info (required) |
+| Organization | Members | Read and write | Org membership management |
+| Organization | Administration | Read and write | Org settings (`github_organization_settings`) |
 
-> ⚠️ **`Administration` iki kere geçiyor ve bunlar AYNI İZİN DEĞİL.**
-> `Repository → Administration` repo ayarlarını açar; org ayarları için
-> `Organization → Administration` gerekir. Manifest'te ilki `administration`,
-> ikincisi `organization_administration` anahtarıyla durur.
+> ⚠️ **`Administration` appears twice, and these are NOT THE SAME PERMISSION.**
+> `Repository → Administration` unlocks repo settings; org settings require
+> `Organization → Administration`. In the manifest, the first is the `administration`
+> key and the second is the `organization_administration` key.
 
 ---
 
-## Sıfırdan Kurulum Rehberi
+## Setup Guide From Scratch
 
-> Bu bölüm App silinip yeniden oluşturulması gerekirse kullanılır.
-> Referans config: [`app-manifest.json`](app-manifest.json)
+> This section is used if the App needs to be deleted and recreated.
+> Reference config: [`app-manifest.json`](app-manifest.json)
 
-### 1. GitHub App Oluştur
+### 1. Create the GitHub App
 
-Şu sayfaya git (org admin yetkisi gerekir):
+Go to the following page (org admin permission required):
 
 ```
 https://github.com/organizations/your-org/settings/apps/new
 ```
 
-Formu doldur:
+Fill in the form:
 
-| Alan | Değer |
+| Field | Value |
 | :--- | :--- |
 | **GitHub App name** | `tidyorg-infra-bot` |
 | **Homepage URL** | `https://github.com/your-org` |
-| **Webhook → Active** | ❌ İşareti kaldır |
+| **Webhook → Active** | ❌ Uncheck |
 | **Where can this app be installed?** | Only on this account |
 
 **Repository permissions:**
 
-| İzin | Değer | Neden |
+| Permission | Value | Reason |
 | :--- | :--- | :--- |
-| Administration | Read and write | Repo ayarları, branch protection, takım erişimleri |
-| Contents | Read and write | CODEOWNERS ve şablon dosyalarını repo'ya yazmak |
-| Issues | Read and write | `github_issue_labels` — label seti yönetimi |
-| Workflows | Read and write | `.github/workflows/*` dosyalarını yazmak |
-| Metadata | Read-only (otomatik) | — |
+| Administration | Read and write | Repo settings, branch protection, team access |
+| Contents | Read and write | Writing CODEOWNERS and template files to the repo |
+| Issues | Read and write | `github_issue_labels` — label set management |
+| Workflows | Read and write | Writing `.github/workflows/*` files |
+| Metadata | Read-only (automatic) | — |
 
-> ⚠️ **Son iki satır sonradan, hata alınarak eklendi — atlama.**
+> ⚠️ **The last two rows were added later, after hitting errors — do not skip them.**
 >
-> - **Issues** yoksa label senkronizasyonu `403 Resource not accessible by integration`
->   ile patlar (2026-08-15'te yaşandı).
-> - **Workflows** yoksa `.github/workflows/` altına dosya yazmak 403 verir.
->   GitHub bu yolu ayrı bir izne bağlamıştır; `Contents: write` **tek başına yetmez.**
->   Şablon dağıtımı (Faz 2) bu izin olmadan çalışmaz.
+> - Without **Issues**, label synchronization blows up with `403 Resource not accessible by integration`
+>   (happened on 2026-08-15).
+> - Without **Workflows**, writing files under `.github/workflows/` returns 403.
+>   GitHub gates this path behind a separate permission; `Contents: write` **is not enough on its own.**
+>   Template distribution (Phase 2) does not work without this permission.
 
 **Organization permissions:**
 
-| İzin | Değer | Neden |
+| Permission | Value | Reason |
 | :--- | :--- | :--- |
-| Members | Read and write | `github_membership` — org üyeliği ve owner rolü |
-| Administration | Read and write | `github_organization_settings` — base permission, üye izinleri, güvenlik varsayılanları |
+| Members | Read and write | `github_membership` — org membership and owner role |
+| Administration | Read and write | `github_organization_settings` — base permission, member permissions, security defaults |
 
-> ⚠️ **`Organization → Administration` sonradan, hata alınarak eklendi — atlama.**
-> Yukarıdaki `Repository → Administration` **bunu karşılamaz**; ikisi ayrı izindir.
-> Yoksa `PATCH /orgs/{org}` isteği `403 Resource not accessible by integration`
-> ile patlar (2026-08-18'de yaşandı, `default_repository_permission` apply'ında).
+> ⚠️ **`Organization → Administration` was added later, after hitting an error — do not skip it.**
+> The `Repository → Administration` above **does not cover this**; the two are separate permissions.
+> Without it, the `PATCH /orgs/{org}` request blows up with `403 Resource not accessible by integration`
+> (happened on 2026-08-18, during the `default_repository_permission` apply).
 >
-> 📌 **Örüntü:** bu, `Issues` ve `Workflows` 403'lerinin üçüncüsü. Üçünde de sebep
-> aynı: **GitHub, geniş sanılan bir izni daha dar tanımlamış.** Yeni bir kaynak
-> türüne ilk kez dokunurken bu 403'ü beklemek gerekiyor — App izinleri en az yetkiyle
-> kurulduğu için normal davranış, hata değil.
+> 📌 **Pattern:** this is the third of the `Issues` and `Workflows` 403s. In all three the cause
+> is the same: **GitHub defines a permission you assumed was broad more narrowly.** When you touch
+> a new resource type for the first time, expect this 403 — because the App is set up with least
+> privilege, it is normal behavior, not a bug.
 
-"Create GitHub App" butonuna tıkla.
+Click the "Create GitHub App" button.
 
 ---
 
-### 2. App ID'yi Not Al
+### 2. Note the App ID
 
-App oluşturulduktan sonra açılan sayfada üstte:
+On the page that opens after the App is created, at the top:
 
 ```
 App ID: <YOUR_APP_ID>
 ```
 
-Bu sayıyı bir yere not al.
+Note this number down somewhere.
 
 ---
 
-### 3. Private Key Oluştur ve İndir
+### 3. Generate and Download the Private Key
 
-Aynı sayfada aşağı kaydır → **"Private keys"** bölümü:
+On the same page, scroll down → the **"Private keys"** section:
 
-1. **"Generate a private key"** butonuna tıkla
-2. `.pem` uzantılı dosya otomatik iner (örn: `tidyorg-infra-bot.2026-08-15.private-key.pem`)
-3. Bu dosyayı güvenli bir yerde sakla — **bir daha indiremezsin**
+1. Click the **"Generate a private key"** button
+2. A `.pem` file downloads automatically (e.g. `tidyorg-infra-bot.2026-08-15.private-key.pem`)
+3. Store this file somewhere safe — **you cannot download it again**
 
-> ⚠️ `.pem` dosyası RSA özel anahtarıdır. Asla repoya commit etme, paylaşma.
-> İçeriği HCP Terraform'a girdikten sonra dosyayı güvenli şekilde sil veya şifreli sakla.
+> ⚠️ The `.pem` file is an RSA private key. Never commit it to the repo or share it.
+> After entering its contents into HCP Terraform, securely delete the file or store it encrypted.
 
 ---
 
-### 4. PEM Dosyasını HCP Formatına Çevir
+### 4. Convert the PEM File to HCP Format
 
-GitHub App'in `.pem` dosyası çok satırlı RSA özel anahtarıdır:
+The GitHub App's `.pem` file is a multi-line RSA private key:
 
 ```
 -----BEGIN RSA PRIVATE KEY-----
@@ -135,40 +135,40 @@ abcd...
 -----END RSA PRIVATE KEY-----
 ```
 
-HCP Terraform bunu **tek satır** olarak bekler; satır sonları `\n` karakteriyle temsil edilmeli.
+HCP Terraform expects it as a **single line**; line breaks must be represented by the `\n` character.
 
-**PowerShell ile çevir:**
+**Convert it with PowerShell:**
 
 ```powershell
-# Dosya adını kendi indirilen dosyanla değiştir
+# Replace the file name with your own downloaded file
 $pem = Get-Content "$env:USERPROFILE\Downloads\tidyorg-infra-bot.2026-08-15.private-key.pem" -Raw
 $oneLine = $pem -replace "`r`n", "\n" -replace "`n", "\n"
 $oneLine | Set-Clipboard
-Write-Host "Kopyalandı! HCP Terraform'a yapıştırabilirsin."
+Write-Host "Copied! You can paste it into HCP Terraform."
 ```
 
-Çıktı şöyle görünmeli:
+The output should look like this:
 ```
 -----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA1234...\n...\n-----END RSA PRIVATE KEY-----\n
 ```
 
 ---
 
-### 5. App'i Organizasyona Kur
+### 5. Install the App on the Organization
 
-App settings sayfasında sol menüde **"Install App"**:
+On the App settings page, in the left menu, **"Install App"**:
 
-1. `your-org` organizasyonunu seç
-2. **"Install"** tıkla
-3. "All repositories" seç → **"Install"**
+1. Select the `your-org` organization
+2. Click **"Install"**
+3. Choose "All repositories" → **"Install"**
 
-Kurulumdan sonra Installation ID'yi al:
+After installation, get the Installation ID:
 
 ```
 https://github.com/organizations/your-org/settings/installations
 ```
 
-→ `tidyorg-infra-bot` → "Configure" tıkla → URL'ye bak:
+→ `tidyorg-infra-bot` → click "Configure" → look at the URL:
 
 ```
 https://github.com/settings/installations/<YOUR_INSTALLATION_ID>
@@ -178,28 +178,28 @@ https://github.com/settings/installations/<YOUR_INSTALLATION_ID>
 
 ---
 
-### 6. HCP Terraform'a Değişkenleri Gir
+### 6. Enter the Variables into HCP Terraform
 
 ```
 https://app.terraform.io → tidyorg-infra org → github-management workspace → Variables
 ```
 
-"Add variable" ile şu üç değişkeni ekle:
+Use "Add variable" to add these three variables:
 
 | Key | Category | Value | Sensitive |
 | :--- | :--- | :--- | :--- |
-| `github_app_id` | terraform | `<YOUR_APP_ID>` | Hayır |
-| `github_app_installation_id` | terraform | `<YOUR_INSTALLATION_ID>` | Hayır |
-| `github_app_pem_file` | terraform | *(4. adımda kopyalanan tek satır)* | **Evet** |
+| `github_app_id` | terraform | `<YOUR_APP_ID>` | No |
+| `github_app_installation_id` | terraform | `<YOUR_INSTALLATION_ID>` | No |
+| `github_app_pem_file` | terraform | *(the single line copied in step 4)* | **Yes** |
 
-> **Önemli:** Category "terraform" olmalı — "environment variable" değil.
-> Key ismi `TF_VAR_` prefix'i **olmadan** yazılır.
+> **Important:** The Category must be "terraform" — not "environment variable".
+> The key name is written **without** the `TF_VAR_` prefix.
 
 ---
 
-### 7. Terraform Kodunu Kontrol Et
+### 7. Check the Terraform Code
 
-[`terraform/main.tf`](../../terraform/main.tf) dosyasında provider şöyle olmalı:
+In [`terraform/main.tf`](../../terraform/main.tf), the provider should look like this:
 
 ```hcl
 provider "github" {
@@ -213,7 +213,7 @@ provider "github" {
 }
 ```
 
-[`terraform/variables.tf`](../../terraform/variables.tf) dosyasında:
+In [`terraform/variables.tf`](../../terraform/variables.tf):
 
 ```hcl
 variable "github_app_id" {
@@ -223,19 +223,19 @@ variable "github_app_id" {
 
 variable "github_app_installation_id" {
   type        = string
-  description = "GitHub App Installation ID (org kurulumu)"
+  description = "GitHub App Installation ID (org installation)"
 }
 
 variable "github_app_pem_file" {
   type        = string
-  description = "GitHub App private key (PEM içeriği, newline'lar \\n olarak)"
+  description = "GitHub App private key (PEM contents, with newlines as \\n)"
   sensitive   = true
 }
 ```
 
 ---
 
-### 8. Test Et
+### 8. Test It
 
 ```powershell
 cd terraform/
@@ -243,33 +243,33 @@ terraform init
 terraform plan
 ```
 
-Başarılı çıktı şöyle görünür:
+A successful output looks like this:
 ```
 Terraform used the selected providers to generate the following execution plan.
 ...
 No changes. Your infrastructure matches the configuration.
 ```
 
-Veya drift varsa değişiklik listesi gelir — `No changes` olana kadar `apply` yapılabilir.
+Or, if there is drift, a list of changes appears — you can run `apply` until it reads `No changes`.
 
 ---
 
-## Sorun Giderme
+## Troubleshooting
 
-### "401 Unauthorized" veya "Could not authenticate"
+### "401 Unauthorized" or "Could not authenticate"
 
-- HCP'deki `github_app_pem_file` değerini kontrol et: `-----BEGIN RSA PRIVATE KEY-----` ile başlamalı
-- Satır sonlarının `\n` olarak yazıldığından emin ol (`\\n` değil — iki backslash değil, bir backslash + n)
-- App'in organizasyona kurulu olduğunu doğrula: https://github.com/organizations/your-org/settings/installations
+- Check the `github_app_pem_file` value in HCP: it must start with `-----BEGIN RSA PRIVATE KEY-----`
+- Make sure the line breaks are written as `\n` (not `\\n` — not two backslashes, but one backslash + n)
+- Verify the App is installed on the organization: https://github.com/organizations/your-org/settings/installations
 
-### "Variable not declared" uyarısı
+### "Variable not declared" warning
 
-HCP değişken key'inde `TF_VAR_` prefix'i varsa kaldır. `github_app_id` olmalı, `TF_VAR_github_app_id` değil.
+If the HCP variable key has a `TF_VAR_` prefix, remove it. It must be `github_app_id`, not `TF_VAR_github_app_id`.
 
-### Private key kayboldu
+### Private key lost
 
-GitHub App settings sayfasında eski key'i iptal edip yeni bir tane üretebilirsin:
+On the GitHub App settings page, you can revoke the old key and generate a new one:
 ```
 https://github.com/organizations/your-org/settings/apps/tidyorg-infra-bot
 ```
-→ "Private keys" → "Generate a private key" → 4. adımı tekrarla → HCP'de güncelle.
+→ "Private keys" → "Generate a private key" → repeat step 4 → update it in HCP.

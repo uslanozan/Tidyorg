@@ -1,51 +1,51 @@
-# İş Akışı Rehberi
+# Workflow Guide
 
-Bu doküman, Tidyorg mühendislik organizasyonundaki **tüm iş akışlarının giriş
-noktasıdır**. Nereden başlayacağını bilmiyorsan buradan başla; her bölüm ilgili detay
-dokümanına yönlendirir.
+This document is the **entry point for all workflows** in the Tidyorg engineering
+organization. If you don't know where to start, start here; each section points you to the
+relevant detailed document.
 
-İki ayrı akış vardır ve birbirine karıştırılmamalıdır:
+There are two separate flows and they must not be confused:
 
-| Akış | Ne değişir | Kim yürütür | Doküman |
+| Flow | What changes | Who runs it | Document |
 | :--- | :--- | :--- | :--- |
-| **Kod akışı** | Ürünün kaynak kodu | Developer'lar | Bu doküman, Bölüm 2 |
-| **Yetki akışı** | Kimin nereye erişebildiği | Mentör / head-of-engineering | Bu doküman, Bölüm 3 |
+| **Code flow** | The product's source code | Developers | This document, Section 2 |
+| **Access flow** | Who can access what | Mentor / head-of-engineering | This document, Section 3 |
 
 ---
 
-## 1. Genel Görünüm
+## 1. Overview
 
 ```mermaid
 flowchart TB
-    subgraph K["KOD AKIŞI"]
+    subgraph K["CODE FLOW"]
         direction LR
-        K1[feat/ dalı] --> K2[commit] --> K3[Pull Request]
+        K1[feat/ branch] --> K2[commit] --> K3[Pull Request]
         K3 --> K4{CI + Review}
-        K4 -->|geçti| K5[develop]
+        K4 -->|passed| K5[develop]
         K5 --> K6[release/] --> K7[main + tag]
     end
 
-    subgraph Y["YETKİ AKIŞI"]
+    subgraph Y["ACCESS FLOW"]
         direction LR
         Y1[Dashboard] --> Y2[config/organization.yml]
         Y2 --> Y3[Pull Request]
         Y3 --> Y4{terraform plan}
-        Y4 -->|onay| Y5[terraform apply]
-        Y5 --> Y6[GitHub'da yetkiler]
+        Y4 -->|approved| Y5[terraform apply]
+        Y5 --> Y6[permissions in GitHub]
     end
 
-    Y6 -.->|kimin hangi repo'da<br/>ne yapabildiğini belirler| K1
+    Y6 -.->|determines who can do what<br/>in which repo| K1
 ```
 
-İki akışın kesiştiği tek nokta şudur: **yetki akışı, kod akışının kurallarını üretir.**
-Bir developer'ın hangi repo'da çalışabildiği, `main`'e kaç onayla merge edilebildiği,
-kimin doğrudan push atabildiği — hepsi konfigürasyondan gelir.
+The only point where the two flows intersect is this: **the access flow produces the rules of the
+code flow.** Which repo a developer can work in, with how many approvals something can be merged to
+`main`, who can push directly — all of it comes from the configuration.
 
 ---
 
-## 2. Kod Akışı — Günlük Geliştirme Döngüsü
+## 2. Code Flow — The Daily Development Cycle
 
-### 2.1 Döngü
+### 2.1 The cycle
 
 ```mermaid
 sequenceDiagram
@@ -57,19 +57,19 @@ sequenceDiagram
     D->>G: git checkout -b feat/LIN-123-aciklama
     D->>D: commit (Conventional Commits)
     D->>G: git push
-    D->>G: Pull Request aç (develop hedefli)
-    G->>CI: pull_request tetikleyicisi
-    CI-->>G: ci/test sonucu
-    G->>R: Review isteği (CODEOWNERS'a göre)
+    D->>G: Open Pull Request (targets develop)
+    G->>CI: pull_request trigger
+    CI-->>G: ci/test result
+    G->>R: Review request (per CODEOWNERS)
     R-->>G: Approve / Request changes
-    Note over G: Onay + yeşil CI olmadan merge açılmaz
+    Note over G: Merge is not enabled without approval + green CI
     D->>G: Squash and merge
-    G->>G: Dal otomatik silinir
+    G->>G: Branch is deleted automatically
 ```
 
-### 2.2 Adım adım
+### 2.2 Step by step
 
-**1. Güncel `develop`'tan dal aç**
+**1. Open a branch from an up-to-date `develop`**
 
 ```bash
 git checkout develop
@@ -77,180 +77,179 @@ git pull origin develop
 git checkout -b feat/LIN-123-user-auth
 ```
 
-Dal isimlendirme kuralları: [`branching-strategy.md`](branching-strategy.md).
-Kısaca: `feat/`, `fix/`, `chore/`, `docs/`, `release/`, `hotfix/`.
+Branch naming rules: [`branching-strategy.md`](branching-strategy.md).
+In short: `feat/`, `fix/`, `chore/`, `docs/`, `release/`, `hotfix/`.
 
-> **Kontrol düzlemi repolarında `develop` yoktur.** `tidyorg` gibi
-> config ve motor barındıran repolarda dal doğrudan `main`'den açılır ve `main`'e döner.
-> Gerekçe: [`branching-strategy.md`](branching-strategy.md) Bölüm 8 (Karar F).
+> **Control-plane repos have no `develop`.** In repos that host config and the engine, like `tidyorg`,
+> branches are opened directly from `main` and return to `main`.
+> Rationale: [`branching-strategy.md`](branching-strategy.md) Section 8 (Decision F).
 
-**2. Commit at**
+**2. Commit**
 
 ```bash
 git commit -m "feat(auth): add google oauth2 login"
 ```
 
-Format ve örnekler: [`commit-convention.md`](commit-convention.md).
-Commit mesajı sürüm numarasını doğrudan etkiler — `feat` minor, `fix` patch,
-`!` veya `BREAKING CHANGE` major.
+Format and examples: [`commit-convention.md`](commit-convention.md).
+The commit message directly affects the version number — `feat` minor, `fix` patch,
+`!` or `BREAKING CHANGE` major.
 
-**3. Push et ve PR aç**
+**3. Push and open a PR**
 
 ```bash
 git push -u origin feat/LIN-123-user-auth
 ```
 
-PR açıldığında şablon otomatik dolar. Boş bırakma: "Why?" bölümü review'ı hızlandıran
-en önemli alandır.
+When the PR is opened, the template fills in automatically. Don't leave it blank: the "Why?"
+section is the most important field for speeding up review.
 
-**4. CI'ın bitmesini bekle**
+**4. Wait for CI to finish**
 
-`ci/test` yeşile dönmeden merge açılmaz. Kırmızıysa önce onu düzelt; reviewer'ı kırmızı
-bir PR ile meşgul etme.
+Merge is not enabled until `ci/test` turns green. If it is red, fix that first; don't keep the
+reviewer busy with a red PR.
 
-**5. Review al**
+**5. Get a review**
 
-Kaç onay gerektiği ve mentör onayının zorunlu olup olmadığı **repo'ya göre değişir**.
-Ayrıntı: [`code-review-guide.md`](code-review-guide.md).
+How many approvals are required and whether mentor approval is mandatory **varies by repo**.
+Details: [`code-review-guide.md`](code-review-guide.md).
 
-**6. Merge et**
+**6. Merge**
 
-`develop`'a merge daima **Squash and Merge** ile yapılır. Dal merge sonrası otomatik
-silinir.
+Merging to `develop` is always done with **Squash and Merge**. The branch is deleted automatically
+after the merge.
 
-### 2.3 Neden doğrudan push atamıyorum?
+### 2.3 Why can't I push directly?
 
-`main` ve `develop` korumalı dallardır. Developer rolündeki hiç kimse bu dallara
-doğrudan yazamaz; katkı yalnızca PR üzerinden gelir. Yalnızca **mentör** ve
-**head-of-engineering** rolleri doğrudan yazabilir — acil durumlar için.
+`main` and `develop` are protected branches. Nobody in the developer role can write to these
+branches directly; contributions come only via PRs. Only the **mentor** and
+**head-of-engineering** roles can write directly — for emergencies.
 
-Bu kısıt bir güvensizlik işareti değil, iki şeyi garanti eder: her değişiklik
-gözden geçirilmiştir ve her değişikliğin bir kaydı vardır.
+This restriction is not a sign of distrust; it guarantees two things: every change has been
+reviewed, and every change has a record.
 
 ---
 
-## 3. Yetki Akışı — Erişim Nasıl Değişir
+## 3. Access Flow — How Access Changes
 
-Bu akış developer'ları ilgilendirmez; mentörler ve head-of-engineering yürütür.
+This flow does not concern developers; mentors and head-of-engineering run it.
 
 ```mermaid
 flowchart LR
-    A[Dashboard<br/>veya elle düzenleme] --> B[config/organization.yml]
+    A[Dashboard<br/>or manual editing] --> B[config/organization.yml]
     B --> C[Pull Request]
     C --> D[CI: terraform plan]
-    D --> E{Plan doğru mu?}
-    E -->|hayır| B
-    E -->|evet| F[Merge]
+    D --> E{Is the plan correct?}
+    E -->|no| B
+    E -->|yes| F[Merge]
     F --> G[terraform apply]
-    G --> H[GitHub'da yetkiler güncellenir]
+    G --> H[permissions updated in GitHub]
 ```
 
-**Temel ilke: kod katmanı ile veri katmanı ayrıdır.**
+**Core principle: the code layer and the data layer are separate.**
 
-- **Kod (HCL)** — "bir repo nasıl kurulur, kural nasıl uygulanır" tarifi. Nadiren değişir,
-  değiştiren platform ekibi.
-- **Veri (config)** — "hangi repo var, kimde hangi yetki var". Sık değişir, değiştiren
-  mentör.
+- **Code (HCL)** — the recipe for "how a repo is set up, how a rule is applied". It rarely changes,
+  and it is the platform team that changes it.
+- **Data (config)** — "which repo exists, who has which permission". It changes often, and it is the
+  mentor who changes it.
 
-Dashboard Terraform kodunu **değiştirmez**; yalnızca config dosyasını günceller.
+The Dashboard does **not** change the Terraform code; it only updates the config file.
 
-Ayrıntılı alan referansı ve yaygın işlemler: [`config-guide.md`](config-guide.md).
+Detailed field reference and common operations: [`config-guide.md`](config-guide.md).
 
-### 3.1 Arayüzden yapılan değişiklikler kalıcı değildir
+### 3.1 Changes made from the interface are not permanent
 
-Bir mentör GitHub arayüzünden branch protection ayarını değiştirirse, bir sonraki
-`terraform apply` bunu **geri alır**. Bu bir hata değil, tasarımın parçasıdır: standart
-dışına çıkan her değişiklik otomatik olarak standarda döner.
+If a mentor changes a branch protection setting from the GitHub interface, the next
+`terraform apply` **undoes** it. This is not a bug, it is part of the design: every change that
+strays from the standard automatically returns to the standard.
 
-Kalıcı değişikliğin tek yolu konfigürasyondur.
-
----
-
-## 4. Release Süreci — Özet
-
-`develop`'taki değişiklikler yeterli olgunluğa ulaştığında `main`'e taşınır ve
-sürümlenir.
-
-1. `develop`'tan `release/vX.Y.Z` dalı açılır
-2. Bu dalda yeni özellik geliştirilmez; yalnızca sürüm hazırlığı yapılır
-3. Dal hem `main`'e hem `develop`'a merge edilir
-4. `main`'e merge, [`release.yml`](../terraform/templates/.github/workflows/release.yml)
-   workflow'unu tetikler: sürüm numarası commit'lerden türetilir, tag atılır,
-   changelog'lu bir GitHub Release yayınlanır
-
-> ⚠️ **4. adım bugün çalışmıyor.** `release.yml` hiçbir repo'ya dağıtılmıyor
-> (`defaults.workflows: [ci]`); sürüm etiketi şimdilik elle atılmalıdır. Ayrıntı ve
-> aktifleştirme adımı: [`release-process.md`](release-process.md) başındaki not.
-
-Tam süreç ve komutlar: [`release-process.md`](release-process.md).
+The only way to make a permanent change is through the configuration.
 
 ---
 
-## 5. Hotfix Süreci — Özet
+## 4. Release Process — Summary
 
-Canlı ortamda sistemi durduran kritik bir hata için standart döngü beklenmez.
+When the changes in `develop` reach sufficient maturity, they are moved to `main` and
+versioned.
 
-1. `main`'den `hotfix/aciklama` dalı açılır
-2. Düzeltme yapılır, PR ile `main`'e merge edilir
-3. **Aynı dal `develop`'a da merge edilmelidir** — aksi halde düzeltme bir sonraki
-   sürümde kaybolur
+1. A `release/vX.Y.Z` branch is opened from `develop`
+2. No new features are developed on this branch; only release preparation is done
+3. The branch is merged into both `main` and `develop`
+4. Merging to `main` triggers the [`release.yml`](../terraform/templates/.github/workflows/release.yml)
+   workflow: the version number is derived from commits, a tag is created, and a GitHub Release
+   with a changelog is published
 
-Adım adım komutlar: [`branching-strategy.md`](branching-strategy.md), Bölüm 7.
+> ⚠️ **Step 4 does not work today.** `release.yml` is not deployed to any repo
+> (`defaults.workflows: [ci]`); for now the version tag must be created by hand. Details and the
+> activation step: the note at the top of [`release-process.md`](release-process.md).
 
----
-
-## 6. Bilinmesi Gereken Kısıtlar
-
-### `ci/test` job adı değiştirilemez
-
-Branch protection kuralları `ci/test` adında bir status check bekler. Bu ad
-[`ci.yml`](../terraform/templates/.github/workflows/ci.yml) içindeki toplayıcı job'un adıyla
-birebir eşleşmek zorundadır.
-
-Job adını değiştirirsen korumalı dallardaki tüm PR'lar hiç raporlanmayacak bir check'i
-sonsuza kadar bekler ve **hiçbir şey merge edilemez**. Değiştirmen gerekiyorsa config'de
-`require_status_checks` alanını da aynı anda güncelle.
-
-### CI olmayan repo'larda status check zorunluluğu kapatılmalı
-
-Her projede CI olmak zorunda değil. Bir repo'ya CI workflow'u dağıtılmıyorsa
-(`workflows` listesinde `ci` yoksa) `require_status_checks` alanı da boşaltılmalıdır;
-yoksa yukarıdaki kilit yaşanır.
-
-Bu tutarsızlık sessizce geçmez: modül `plan` aşamasında `precondition` ile hata verir
-([`modules/repository/main.tf`](../terraform/modules/repository/main.tf)). Hatayı
-gördüğünüzde ya `workflows` listesine `ci` ekleyin ya da `require_status_checks`
-içinden `ci/test` değerini çıkarın.
-
-### GitHub plan seviyesi
-
-Şu anda **free plan + public repo** ile çalışılıyor. Private repo'larda branch protection,
-ruleset ve push kısıtları GitHub Team planı gerektirir. Bu bilinçli ve geçici bir
-durumdur; ayrıntı [`ACCESS-MODEL.md`](../ACCESS-MODEL.md).
+Full process and commands: [`release-process.md`](release-process.md).
 
 ---
 
-## 7. Doküman Haritası
+## 5. Hotfix Process — Summary
 
-### Günlük iş için
-| Doküman | Ne zaman okunur |
+For a critical bug that halts the system in production, you don't wait for the standard cycle.
+
+1. A `hotfix/aciklama` branch is opened from `main`
+2. The fix is made and merged into `main` via a PR
+3. **The same branch must also be merged into `develop`** — otherwise the fix is lost in the next
+   version
+
+Step-by-step commands: [`branching-strategy.md`](branching-strategy.md), Section 7.
+
+---
+
+## 6. Constraints You Need to Know
+
+### The `ci/test` job name cannot be changed
+
+Branch protection rules expect a status check named `ci/test`. This name must match, exactly, the
+name of the aggregator job in [`ci.yml`](../terraform/templates/.github/workflows/ci.yml).
+
+If you change the job name, all PRs on protected branches will wait forever for a check that will
+never be reported, and **nothing can be merged**. If you need to change it, update the
+`require_status_checks` field in the config at the same time.
+
+### In repos without CI, the status check requirement must be turned off
+
+Not every project has to have CI. If a repo is not getting a CI workflow deployed
+(if `ci` is not in the `workflows` list), the `require_status_checks` field must also be emptied;
+otherwise the lockup above occurs.
+
+This inconsistency does not pass silently: at the `plan` stage the module errors via a
+`precondition` ([`modules/repository/main.tf`](../terraform/modules/repository/main.tf)). When you
+see the error, either add `ci` to the `workflows` list or remove the `ci/test` value from
+`require_status_checks`.
+
+### GitHub plan level
+
+We are currently working with a **free plan + public repo**. On private repos, branch protection,
+rulesets, and push restrictions require the GitHub Team plan. This is a deliberate and temporary
+situation; details in [`ACCESS-MODEL.md`](../ACCESS-MODEL.md).
+
+---
+
+## 7. Document Map
+
+### For daily work
+| Document | When to read it |
 | :--- | :--- |
-| [`onboarding.md`](onboarding.md) | Ekibe yeni katıldığında |
-| [`branching-strategy.md`](branching-strategy.md) | Dal açarken, hotfix gerektiğinde |
-| [`commit-convention.md`](commit-convention.md) | Commit mesajı yazarken |
-| [`code-review-guide.md`](code-review-guide.md) | PR açarken ve review yaparken |
-| [`release-process.md`](release-process.md) | Sürüm çıkarırken |
+| [`onboarding.md`](onboarding.md) | When you newly join the team |
+| [`branching-strategy.md`](branching-strategy.md) | When opening a branch, when a hotfix is needed |
+| [`commit-convention.md`](commit-convention.md) | When writing a commit message |
+| [`code-review-guide.md`](code-review-guide.md) | When opening a PR and doing a review |
+| [`release-process.md`](release-process.md) | When releasing a version |
 
-### Yetki ve yönetim için
-| Doküman | Ne zaman okunur |
+### For access and management
+| Document | When to read it |
 | :--- | :--- |
-| [`config-guide.md`](config-guide.md) | Yetki/repo değişikliği yaparken |
-| [`rbac-and-permissions.md`](rbac-and-permissions.md) | Roller ve yetki matrisi için |
-| [`../ACCESS-MODEL.md`](../ACCESS-MODEL.md) | Modelin gerekçesini anlamak için |
-| [`runbook.md`](runbook.md) | Operasyonel bir senaryoda (offboarding, repo kapatma) |
-| [`security-policy.md`](security-policy.md) | Sır yönetimi ve güvenlik kuralları |
+| [`config-guide.md`](config-guide.md) | When making an access/repo change |
+| [`rbac-and-permissions.md`](rbac-and-permissions.md) | For roles and the permission matrix |
+| [`../ACCESS-MODEL.md`](../ACCESS-MODEL.md) | To understand the rationale of the model |
+| [`runbook.md`](runbook.md) | In an operational scenario (offboarding, closing a repo) |
+| [`security-policy.md`](security-policy.md) | Secret management and security rules |
 
-### Kararların kaydı
-| Doküman | İçerik |
+### The record of decisions
+| Document | Content |
 | :--- | :--- |
-| [`adr/`](adr/) | Mimari kararlar ve gerekçeleri |
+| [`adr/`](adr/) | Architectural decisions and their rationale |
