@@ -13,3 +13,7 @@
 *.woff binary
 *.woff2 binary
 *.pem binary
+
+# Tidyorg's primary deliverable is the Terraform engine. The dashboard is an
+# optional client and is excluded so GitHub's language bar represents the core.
+dashboard/** linguist-detectable=false
