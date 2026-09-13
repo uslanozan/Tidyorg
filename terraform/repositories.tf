@@ -43,7 +43,8 @@ locals {
   # every project mentor is granted push access to this repository through the
   # dashboard-writers team. That is enough to create proposal branches and PRs,
   # but not enough to bypass its protected default branch.
-  config_repository = try(local.org_config.config_repository, "")
+  config_repository           = try(local.org_config.config_repository, "")
+  dashboard_writers_team_slug = "tidyorg-dashboard-writers"
   project_mentors = sort(distinct(flatten([
     for _, repo in local.repos : try(repo.mentors, [])
   ])))
@@ -132,7 +133,7 @@ module "repositories" {
   org_admin_team_slug = github_team.platform_admins.slug
 
   additional_team_access = each.key == local.config_repository ? {
-    (github_team.dashboard_writers[0].slug) = "push"
+    (local.dashboard_writers_team_slug) = "push"
   } : {}
 
   protected_branches = local.protected_branches[each.key]
@@ -150,4 +151,8 @@ module "repositories" {
   # merge. An in-between state like "remove ci but add release" would be
   # meaningless.
   workflows = try(each.value.workflows, local.repo_defaults.workflows, [])
+
+  # Keep the fixed slug above plan-time-known while still guaranteeing that the
+  # team exists before repository access is updated on a fresh organization.
+  depends_on = [github_team.dashboard_writers]
 }

@@ -6,14 +6,6 @@ override_resource {
   target = github_organization_settings.this
 }
 
-override_resource {
-  target          = github_team.dashboard_writers[0]
-  override_during = plan
-  values = {
-    slug = "tidyorg-dashboard-writers"
-  }
-}
-
 variables {
   github_org_name            = "example-org"
   github_app_id              = "123456"
@@ -44,7 +36,7 @@ run "project_mentors_can_propose_config_changes" {
       length(module.repositories["tidyorg-config"].additional_team_access) == 1 &&
       lookup(
         module.repositories["tidyorg-config"].additional_team_access,
-        github_team.dashboard_writers[0].slug,
+        "tidyorg-dashboard-writers",
         "",
       ) == "push"
     )

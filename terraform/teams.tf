@@ -87,7 +87,7 @@ resource "github_team" "platform_admins" {
 resource "github_team" "dashboard_writers" {
   count = local.config_repository != "" ? 1 : 0
 
-  name        = "tidyorg-dashboard-writers"
+  name        = local.dashboard_writers_team_slug
   description = "Project mentors who may open configuration pull requests"
   privacy     = "closed"
 
