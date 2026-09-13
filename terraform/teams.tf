@@ -104,5 +104,8 @@ resource "github_team_membership" "dashboard_writers" {
 
   team_id  = github_team.dashboard_writers[0].id
   username = each.value
-  role     = "member"
+  # GitHub always reports organization owners as team maintainers, even when
+  # `member` is requested. Model that behavior to avoid permanent plan drift;
+  # ordinary project mentors remain regular team members.
+  role = contains(local.org_owners, each.value) ? "maintainer" : "member"
 }

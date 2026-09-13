@@ -1,4 +1,4 @@
 version: 1
-org_owners: []
+org_owners: [admin-user]
 roles:
   head-of-engineering: [admin-user]

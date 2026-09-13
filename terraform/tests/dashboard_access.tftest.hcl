@@ -33,6 +33,15 @@ run "project_mentors_can_propose_config_changes" {
 
   assert {
     condition = (
+      github_team_membership.dashboard_writers["admin-user"].role == "maintainer" &&
+      github_team_membership.dashboard_writers["mentor-a"].role == "member" &&
+      github_team_membership.dashboard_writers["mentor-b"].role == "member"
+    )
+    error_message = "Organization owners must match GitHub's maintainer behavior while ordinary mentors remain members."
+  }
+
+  assert {
+    condition = (
       length(module.repositories["tidyorg-config"].additional_team_access) == 1 &&
       lookup(
         module.repositories["tidyorg-config"].additional_team_access,
