@@ -21,7 +21,7 @@
 # `head-of-engineering` branch-protection allowance. The direct reference is also
 # what makes a fresh-org apply create this team before configuring repositories.
 resource "github_team" "platform_admins" {
-  name        = "platform-admins"
+  name        = local.org_config.org_admin_team
   description = "Platform Administrators - carries the head-of-engineering role"
   privacy     = "closed"
 
