@@ -106,8 +106,11 @@ module "repositories" {
   viewers     = try(each.value.viewers, [])
   code_owners = try(each.value.code_owners, {})
 
-  role_permissions    = local.role_permissions
-  org_admin_team_slug = local.org_config.org_admin_team
+  role_permissions = local.role_permissions
+  # Use the managed resource rather than looking the team up by name inside the
+  # module. On a fresh organization the team does not exist until this apply;
+  # referencing its slug carries that creation dependency into every repo module.
+  org_admin_team_slug = github_team.platform_admins.slug
 
   protected_branches = local.protected_branches[each.key]
   labels             = try(each.value.labels, local.repo_defaults.labels)

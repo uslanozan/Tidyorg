@@ -206,13 +206,9 @@ resource "github_team" "viewers" {
 }
 
 # The head-of-engineering role has organization-wide scope: it holds admin
-# permission on every repo. This access is also a technical necessity: GitHub only
-# accepts a team into branch protection's push allow-list if the team has access to
-# the repo. The collaborators resource below provides that access too (the org_admins
-# team block).
-data "github_team" "org_admins" {
-  slug = var.org_admin_team_slug
-}
+# permission on every repo. The slug comes from the root module's managed team,
+# which also guarantees correct ordering when the team is created for the first
+# time in a fresh organization.
 
 # --- Access: AUTHORITATIVE collaborator set --------------------------------
 # Repo access comes ONLY from teams; this resource is the SINGLE and COMPLETE
@@ -245,7 +241,7 @@ resource "github_repository_collaborators" "this" {
   }
 
   team {
-    team_id    = data.github_team.org_admins.slug
+    team_id    = var.org_admin_team_slug
     permission = lookup(var.role_permissions, "head-of-engineering", "admin")
   }
 }

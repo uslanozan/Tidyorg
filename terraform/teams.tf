@@ -16,11 +16,10 @@
 
 # The technical counterpart of the head-of-engineering role.
 #
-# CARRIER RESOURCE — cannot be deleted. The module looks this team up with
-# `data "github_team"` and grants it admin access to every repo
-# (`github_team_repository.org_admins`). Also, `push_allowed_roles: [head-of-engineering]`
-# in branch protection resolves to this team. If it is deleted, apply fails and the
-# mentors' push permission collapses too.
+# CARRIER RESOURCE — cannot be deleted. Its slug is passed directly into every
+# repository module, which grants it admin access and uses it for the
+# `head-of-engineering` branch-protection allowance. The direct reference is also
+# what makes a fresh-org apply create this team before configuring repositories.
 resource "github_team" "platform_admins" {
   name        = "platform-admins"
   description = "Platform Administrators - carries the head-of-engineering role"
