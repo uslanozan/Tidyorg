@@ -222,6 +222,7 @@ export const repoSettings = {
 
     sectionSecurity: 'Güvenlik',
     triVulnAlerts: 'Dependabot uyarıları (vulnerability_alerts)',
+    triDependabotSecurityUpdates: 'Dependabot otomatik güvenlik güncellemeleri',
     triSecretScanning: 'Secret scanning + push protection',
     hintSecretScanning:
       "secret scanning yalnızca public repo'da ücretsiz; private repo GHAS ister, modül sessizce atlar.",
@@ -291,6 +292,7 @@ export const repoSettings = {
 
     sectionSecurity: 'Security',
     triVulnAlerts: 'Dependabot alerts (vulnerability_alerts)',
+    triDependabotSecurityUpdates: 'Dependabot automated security updates',
     triSecretScanning: 'Secret scanning + push protection',
     hintSecretScanning:
       'secret scanning is free only on public repos; private repos require GHAS, the module silently skips it.',

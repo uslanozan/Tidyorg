@@ -83,6 +83,8 @@ export interface RepoConfig {
   workflows?: string[]
   /** Dependabot security alerts. Org default: enabled. */
   vulnerability_alerts?: boolean
+  /** Dependabot pull requests that update vulnerable dependencies. */
+  dependabot_security_updates?: boolean
   /** Secret scanning + push protection (free for public repos only). */
   secret_scanning?: boolean
   /** Repo-specific label set — if provided, replaces org defaults. */
@@ -116,6 +118,7 @@ export interface OrgDefaults {
   auto_init?: boolean
   default_branch?: string
   vulnerability_alerts?: boolean
+  dependabot_security_updates?: boolean
   secret_scanning?: boolean
   protected_branches?: Record<string, ProtectedBranchRule>
   /** Template file → distribution mode (strict/seed/none). */

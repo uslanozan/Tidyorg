@@ -44,9 +44,10 @@ has_wiki: false
 auto_init: true # create with an initial commit (so the default branch exists)
 default_branch: develop
 
-# --- Security (optional — defaults: both on) --------------------------------
+# --- Security (optional — defaults: all on) ---------------------------------
 
 vulnerability_alerts: true # Dependabot security alerts (works on every plan)
+dependabot_security_updates: true # automated PRs that fix vulnerable dependencies
 secret_scanning: true # secret scanning + push protection (free only on public)
 
 # --- Branch protection (optional — only fields that differ from the default) -

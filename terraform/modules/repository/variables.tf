@@ -70,6 +70,22 @@ variable "vulnerability_alerts" {
   default     = true
 }
 
+variable "dependabot_security_updates" {
+  type        = bool
+  description = <<-EOT
+    Dependabot automated security updates. When enabled, GitHub opens pull
+    requests that upgrade vulnerable dependencies to a secure version.
+
+    This is managed per repository instead of relying only on the organization
+    default: live verification showed that a repository created through the API
+    can still be born with automated security updates disabled.
+
+    Dependabot alerts must be enabled for this feature to operate. The resource
+    therefore runs after github_repository_vulnerability_alerts.
+  EOT
+  default     = true
+}
+
 variable "secret_scanning" {
   type        = bool
   description = <<-EOT

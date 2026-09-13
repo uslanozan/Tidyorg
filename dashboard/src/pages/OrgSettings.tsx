@@ -118,8 +118,11 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
   const [hasProjects, setHasProjects] = useState(Boolean(d.has_projects))
   const [hasWiki, setHasWiki] = useState(Boolean(d.has_wiki))
   const [autoInit, setAutoInit] = useState(Boolean(d.auto_init))
-  const [vulnAlerts, setVulnAlerts] = useState(Boolean(d.vulnerability_alerts))
-  const [secretScanning, setSecretScanning] = useState(Boolean(d.secret_scanning))
+  const [vulnAlerts, setVulnAlerts] = useState(d.vulnerability_alerts ?? true)
+  const [dependabotSecurityUpdates, setDependabotSecurityUpdates] = useState(
+    d.dependabot_security_updates ?? true,
+  )
+  const [secretScanning, setSecretScanning] = useState(d.secret_scanning ?? true)
 
   // --- Defaults: workflows / files / labels ---------------------------------
   const [workflows, setWorkflows] = useState<string[]>(d.workflows ?? [])
@@ -174,8 +177,13 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
       ['has_projects', hasProjects, Boolean(d.has_projects)],
       ['has_wiki', hasWiki, Boolean(d.has_wiki)],
       ['auto_init', autoInit, Boolean(d.auto_init)],
-      ['vulnerability_alerts', vulnAlerts, Boolean(d.vulnerability_alerts)],
-      ['secret_scanning', secretScanning, Boolean(d.secret_scanning)],
+      ['vulnerability_alerts', vulnAlerts, d.vulnerability_alerts ?? true],
+      [
+        'dependabot_security_updates',
+        dependabotSecurityUpdates,
+        d.dependabot_security_updates ?? true,
+      ],
+      ['secret_scanning', secretScanning, d.secret_scanning ?? true],
     ]
     for (const [key, next, orig] of boolLeaves)
       if (next !== orig) push(['defaults', key], next, `defaults.${key}: ${next}`)
@@ -363,6 +371,7 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
       {/* DEFAULTS: SECURITY */}
       <Section title={t('orgSettings.section.securityTitle')} icon={ICONS.security}>
         <BoolField label={t('orgSettings.security.vulnAlerts')} value={vulnAlerts} onChange={setVulnAlerts} disabled={!canManage} />
+        <BoolField label={t('orgSettings.security.dependabotSecurityUpdates')} value={dependabotSecurityUpdates} onChange={setDependabotSecurityUpdates} disabled={!canManage} />
         <BoolField label={t('orgSettings.security.secretScanning')} value={secretScanning} onChange={setSecretScanning} disabled={!canManage} />
       </Section>
 

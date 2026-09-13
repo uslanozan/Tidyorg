@@ -98,8 +98,9 @@ module "repositories" {
   auto_init      = try(each.value.auto_init, local.repo_defaults.auto_init)
   default_branch = try(each.value.default_branch, local.repo_defaults.default_branch)
 
-  vulnerability_alerts = try(each.value.vulnerability_alerts, local.repo_defaults.vulnerability_alerts, true)
-  secret_scanning      = try(each.value.secret_scanning, local.repo_defaults.secret_scanning, true)
+  vulnerability_alerts        = try(each.value.vulnerability_alerts, local.repo_defaults.vulnerability_alerts, true)
+  dependabot_security_updates = try(each.value.dependabot_security_updates, local.repo_defaults.dependabot_security_updates, true)
+  secret_scanning             = try(each.value.secret_scanning, local.repo_defaults.secret_scanning, true)
 
   mentors     = try(each.value.mentors, [])
   developers  = try(each.value.developers, [])

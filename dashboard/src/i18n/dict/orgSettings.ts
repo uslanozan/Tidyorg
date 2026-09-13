@@ -69,6 +69,7 @@ export const orgSettings = {
 
     security: {
       vulnAlerts: 'Dependabot uyarıları (vulnerability_alerts)',
+      dependabotSecurityUpdates: 'Dependabot otomatik güvenlik güncellemeleri',
       secretScanning: 'Secret scanning + push protection',
     },
 
@@ -183,6 +184,7 @@ export const orgSettings = {
 
     security: {
       vulnAlerts: 'Dependabot alerts (vulnerability_alerts)',
+      dependabotSecurityUpdates: 'Dependabot automated security updates',
       secretScanning: 'Secret scanning + push protection',
     },
 

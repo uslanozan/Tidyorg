@@ -77,6 +77,10 @@ defaults:
   auto_init: true
   default_branch: develop
 
+  vulnerability_alerts: true
+  dependabot_security_updates: true
+  secret_scanning: true
+
   protected_branches:
     main:
       required_reviews: 2

@@ -165,6 +165,19 @@ resource "github_repository_vulnerability_alerts" "this" {
   enabled    = var.vulnerability_alerts
 }
 
+# Organization defaults are not sufficient here: during the fresh-org Docker
+# verification, GitHub created the repository with automated security updates
+# disabled even though the organization default had already been enabled. Manage
+# the final repository state explicitly so it is both enforced and auditable.
+resource "github_repository_dependabot_security_updates" "this" {
+  count = local.active ? 1 : 0
+
+  repository = github_repository.this.name
+  enabled    = var.dependabot_security_updates
+
+  depends_on = [github_repository_vulnerability_alerts.this]
+}
+
 # --- Branches --------------------------------------------------------------
 
 # auto_init creates the "main" branch; if the default branch differs, we create it separately.

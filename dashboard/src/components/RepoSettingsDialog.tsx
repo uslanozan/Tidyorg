@@ -92,6 +92,9 @@ export function RepoSettingsDialog({
   const [hasProjects, setHasProjects] = useState<Tri>(boolToTri(config.has_projects))
   const [hasWiki, setHasWiki] = useState<Tri>(boolToTri(config.has_wiki))
   const [vulnAlerts, setVulnAlerts] = useState<Tri>(boolToTri(config.vulnerability_alerts))
+  const [dependabotSecurityUpdates, setDependabotSecurityUpdates] = useState<Tri>(
+    boolToTri(config.dependabot_security_updates),
+  )
   const [secretScanning, setSecretScanning] = useState<Tri>(
     boolToTri(config.secret_scanning),
   )
@@ -194,6 +197,11 @@ export function RepoSettingsDialog({
       ['has_projects', hasProjects, config.has_projects],
       ['has_wiki', hasWiki, config.has_wiki],
       ['vulnerability_alerts', vulnAlerts, config.vulnerability_alerts],
+      [
+        'dependabot_security_updates',
+        dependabotSecurityUpdates,
+        config.dependabot_security_updates,
+      ],
       ['secret_scanning', secretScanning, config.secret_scanning],
     ]
     for (const [key, tri, current] of bools) {
@@ -356,6 +364,11 @@ export function RepoSettingsDialog({
             label={t('repoSettings.triVulnAlerts')}
             value={vulnAlerts}
             onChange={setVulnAlerts}
+          />
+          <TriField
+            label={t('repoSettings.triDependabotSecurityUpdates')}
+            value={dependabotSecurityUpdates}
+            onChange={setDependabotSecurityUpdates}
           />
           <TriField
             label={t('repoSettings.triSecretScanning')}

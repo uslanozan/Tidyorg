@@ -279,6 +279,7 @@ const SCALAR_KEYS = [
   'auto_init',
   'default_branch',
   'vulnerability_alerts',
+  'dependabot_security_updates',
   'secret_scanning',
 ] as const
 
