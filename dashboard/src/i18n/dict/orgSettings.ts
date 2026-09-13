@@ -100,9 +100,8 @@ export const orgSettings = {
     },
 
     roles: {
-      warn1:
-        " bir yükseltme yüzeyidir: açık bir rol, o rolü taşıyan herkese korumalı dallarda muafiyet verir. Değişiklik CODEOWNERS onayına takılır ama dikkatli ol. Owner'lık burada DEĞİL, ",
-      warn2: "'da yaşar.",
+      adminWarning:
+        "Repo iznini admin yapmak, mevcut branch-protection modelinde o role bypass yetkisi de verir. Owner'lık burada değil, privileged.yml dosyasında yönetilir.",
       scope: 'Kapsam (scope)',
       repoPermission: 'Repo izni (repo_permission)',
     },
@@ -215,9 +214,8 @@ export const orgSettings = {
     },
 
     roles: {
-      warn1:
-        ' is an escalation surface: an enabled role grants everyone who holds it an exemption on protected branches. The change is gated by CODEOWNERS approval, but be careful. Ownership does NOT live here, it lives in ',
-      warn2: '.',
+      adminWarning:
+        'Granting admin repository permission also grants bypass under the current branch-protection model. Ownership is managed separately in privileged.yml.',
       scope: 'Scope (scope)',
       repoPermission: 'Repo permission (repo_permission)',
     },

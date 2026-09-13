@@ -1,0 +1,8 @@
+description: Configuration repository
+language: hcl
+mentors: [admin-user]
+developers: []
+viewers: []
+visibility: public
+default_branch: main
+workflows: []

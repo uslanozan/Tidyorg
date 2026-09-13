@@ -35,6 +35,11 @@ resource "github_team" "platform_admins" {
   # It is also meaningful: this team is the carrier of the head-of-engineering role,
   # so auditing that org-scoped roles are written in the right place is exactly its job.
   lifecycle {
+    precondition {
+      condition     = length(local.legacy_bypass_roles) == 0
+      error_message = "Remove roles.*.bypass_branch_protection from organization.yml (${join(", ", local.legacy_bypass_roles)}). Under classic branch protection, repo_permission=admin is the effective bypass because enforce_admins=false; the old flag was not independently enforceable."
+    }
+
     precondition { #! runs at the plan stage and stops a bad config.
       condition = length(local.privileged_invalid_roles) == 0
       error_message = join(" ", [
@@ -72,4 +77,32 @@ resource "github_team" "platform_admins" {
       ])
     }
   }
+}
+
+# Dashboard users act with a GitHub App user token, whose effective permission is
+# the intersection of the App's permission and the signed-in user's permission.
+# Project mentors therefore need write access to the config repository in order
+# to create proposal branches. This dedicated team grants only `push`; protected
+# `main` still requires review because these users are not repo admins.
+resource "github_team" "dashboard_writers" {
+  count = local.config_repository != "" ? 1 : 0
+
+  name        = "tidyorg-dashboard-writers"
+  description = "Project mentors who may open configuration pull requests"
+  privacy     = "closed"
+
+  lifecycle {
+    precondition {
+      condition     = contains(keys(local.repos), local.config_repository)
+      error_message = "organization.yml -> config_repository must name a repository declared under config/repositories/."
+    }
+  }
+}
+
+resource "github_team_membership" "dashboard_writers" {
+  for_each = local.config_repository != "" ? toset(local.project_mentors) : toset([])
+
+  team_id  = github_team.dashboard_writers[0].id
+  username = each.value
+  role     = "member"
 }

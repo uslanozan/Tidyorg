@@ -31,6 +31,11 @@ output "org_admin_team" {
   value       = github_team.platform_admins.slug
 }
 
+output "dashboard_writers_team" {
+  description = "Team allowed to create proposal branches in the configured control-plane repository"
+  value       = try(github_team.dashboard_writers[0].slug, null)
+}
+
 # =============================================================================
 # Bypass visibility
 # =============================================================================

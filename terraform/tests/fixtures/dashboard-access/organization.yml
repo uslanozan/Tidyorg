@@ -1,0 +1,41 @@
+version: 1
+config_repository: tidyorg-config
+org_admin_team: platform-admins
+
+roles:
+  head-of-engineering:
+    scope: organization
+    repo_permission: admin
+  mentor:
+    scope: repository
+    repo_permission: admin
+  developer:
+    scope: repository
+    repo_permission: push
+  viewer:
+    scope: repository
+    repo_permission: pull
+
+defaults:
+  visibility: public
+  has_issues: true
+  has_projects: false
+  has_wiki: false
+  auto_init: true
+  default_branch: main
+  vulnerability_alerts: true
+  dependabot_security_updates: true
+  secret_scanning: true
+  protected_branches:
+    main:
+      required_reviews: 1
+      require_code_owner_review: true
+      dismiss_stale_reviews: true
+      require_status_checks: []
+      require_conversation_resolution: true
+      allow_force_push: false
+      allow_deletions: false
+      push_allowed_roles: [mentor, head-of-engineering]
+  labels: []
+  files: {}
+  workflows: []

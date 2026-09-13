@@ -39,6 +39,15 @@ locals {
     if !endswith(f, ".example.yml")
   }
 
+  # Optional control-plane repository used by the dashboard. When configured,
+  # every project mentor is granted push access to this repository through the
+  # dashboard-writers team. That is enough to create proposal branches and PRs,
+  # but not enough to bypass its protected default branch.
+  config_repository = try(local.org_config.config_repository, "")
+  project_mentors = sort(distinct(flatten([
+    for _, repo in local.repos : try(repo.mentors, [])
+  ])))
+
   repo_defaults = local.org_config.defaults
 
   # Role name → GitHub repo permission. The meaning of the permission is defined in
@@ -46,6 +55,15 @@ locals {
   role_permissions = {
     for role, cfg in local.org_config.roles : role => cfg.repo_permission
   }
+
+  # Removed in v0.1.2: classic GitHub branch protection cannot independently
+  # honor this per-role switch. Admin exemption is controlled by enforce_admins,
+  # so keeping the key would make the YAML claim a policy that GitHub may not
+  # enforce. Detect it explicitly instead of silently ignoring it.
+  legacy_bypass_roles = sort([
+    for role, cfg in local.org_config.roles : role
+    if can(cfg.bypass_branch_protection)
+  ])
 
   # Branch protection is two-layered: defaults provide the base, the repo overrides
   # only the field that differs by writing it. Because merge() is a shallow merge,
@@ -112,6 +130,10 @@ module "repositories" {
   # module. On a fresh organization the team does not exist until this apply;
   # referencing its slug carries that creation dependency into every repo module.
   org_admin_team_slug = github_team.platform_admins.slug
+
+  additional_team_access = each.key == local.config_repository ? {
+    (github_team.dashboard_writers[0].slug) = "push"
+  } : {}
 
   protected_branches = local.protected_branches[each.key]
   labels             = try(each.value.labels, local.repo_defaults.labels)

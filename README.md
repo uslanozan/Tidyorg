@@ -125,6 +125,12 @@ Enable "Device Flow" and install it on **only the config repo**. Give the dashbo
 `client_id` via `VITE_GITHUB_CLIENT_ID`. See [`integrations/github-app/`](integrations/github-app/)
 for both manifests and step-by-step setup.
 
+To let project mentors open dashboard PRs, set `config_repository` in
+`organization.yml` to that repo's name and declare the repo under
+`config/repositories/`. The engine grants the generated
+`tidyorg-dashboard-writers` team `push` on the config repo; protected `main` still
+requires the config repo's normal review rules.
+
 ## Config schema
 
 Four files under `config/`, split by ownership:

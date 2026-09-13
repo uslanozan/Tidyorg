@@ -1,0 +1,8 @@
+description: Example service
+language: go
+mentors: [mentor-a, mentor-b]
+developers: []
+viewers: []
+visibility: public
+default_branch: main
+workflows: []

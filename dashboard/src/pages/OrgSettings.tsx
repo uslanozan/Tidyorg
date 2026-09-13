@@ -235,12 +235,6 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
         push(['roles', role, 'scope'], draft.scope, `${role}.scope: ${draft.scope}`)
       if (draft.repo_permission !== orig.repo_permission)
         push(['roles', role, 'repo_permission'], draft.repo_permission, `${role}.repo_permission: ${draft.repo_permission}`)
-      if (draft.bypass_branch_protection !== orig.bypass_branch_protection)
-        push(
-          ['roles', role, 'bypass_branch_protection'],
-          draft.bypass_branch_protection,
-          `⚠️ ${role}.bypass_branch_protection: ${draft.bypass_branch_protection}`,
-        )
     }
 
     return { changes, details }
@@ -295,7 +289,7 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
             </p>
           </div>
         </div>
-        <a className="btn btn-sm" href={configFileUrl(`terraform/config/organization.yml`)} target="_blank" rel="noreferrer">
+        <a className="btn btn-sm" href={configFileUrl(PATHS.organization)} target="_blank" rel="noreferrer">
           {t('orgSettings.header.openFile')}
         </a>
       </div>
@@ -505,10 +499,7 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
       <Section title={t('orgSettings.section.rolesTitle')} hint={t('orgSettings.section.rolesHint')} icon={ICONS.roles}>
         <div className="card card-pad" style={{ background: 'var(--danger-soft)', border: '1px solid var(--danger)' }}>
           <p className="subtle" style={{ margin: 0 }}>
-            ⚠️ <strong>bypass_branch_protection</strong>
-            {t('orgSettings.roles.warn1')}
-            <code>privileged.yml</code>
-            {t('orgSettings.roles.warn2')}
+            ⚠️ {t('orgSettings.roles.adminWarning')}
           </p>
         </div>
         {Object.entries(roles).map(([role, def]) => (
@@ -529,10 +520,6 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
                 ))}
               </select>
             </div>
-            <label className="row" style={{ gap: 'var(--sp-2)', fontSize: 'var(--text-sm)' }}>
-              <input type="checkbox" checked={def.bypass_branch_protection} disabled={!canManage} onChange={(e) => patchRole(role, { bypass_branch_protection: e.target.checked })} />
-              bypass_branch_protection ⚠️
-            </label>
           </div>
         ))}
       </Section>
@@ -543,6 +530,7 @@ function OrgSettingsForm({ org, canManage }: { org: OrgConfig; canManage: boolea
           <ReadOnly label="organization" value={CONFIG_OWNER} />
           <ReadOnly label="version" value={String(org.version)} />
           <ReadOnly label="org_admin_team" value={org.org_admin_team} />
+          <ReadOnly label="config_repository" value={org.config_repository ?? '—'} />
         </div>
         <p className="hint">
           {t('orgSettings.structural.hint1')}

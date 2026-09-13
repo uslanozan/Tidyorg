@@ -257,6 +257,14 @@ resource "github_repository_collaborators" "this" {
     team_id    = var.org_admin_team_slug
     permission = lookup(var.role_permissions, "head-of-engineering", "admin")
   }
+
+  dynamic "team" {
+    for_each = var.additional_team_access
+    content {
+      team_id    = team.key
+      permission = team.value
+    }
+  }
 }
 
 resource "github_team_membership" "mentors" {

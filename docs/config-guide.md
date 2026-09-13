@@ -42,17 +42,14 @@ roles:
   head-of-engineering:
     scope: organization      # Applies to all repos
     repo_permission: admin
-    bypass_branch_protection: true
 
   mentor:
     scope: repository        # Only in the repo it is assigned to
     repo_permission: admin
-    bypass_branch_protection: true
 
   developer:
     scope: repository
     repo_permission: push
-    bypass_branch_protection: false
 ```
 
 **Design principle: rules depend on the role, not the person.** What a role can do is defined
@@ -61,11 +58,34 @@ here once. When the person changes, this section is not touched — only the ass
 `repo_permission` values are GitHub's roles: `pull` (read-only), `triage`,
 `push` (write), `maintain`, `admin`.
 
+With the current classic branch-protection model, GitHub exempts repository admins
+because `enforce_admins` is disabled. Bypass is therefore an effective consequence
+of `repo_permission: admin`, not a separate configurable role flag. The
+`terraform output branch_protection_bypass` report lists the effective people for
+each repository and protected branch.
+
+The former `bypass_branch_protection` role key was removed because classic branch
+protection cannot enforce it independently per role. The engine now fails fast if
+that legacy key remains, rather than silently accepting a misleading policy.
+
 > ⚠️ Changing this section affects **the entire organization.** Making the `developer` role's
 > `repo_permission` value `admin` makes everyone an admin on every repo with a single line.
 > Changes like this call for a second review.
 
-### 2.2 `people` — People
+### 2.2 `config_repository` — Dashboard proposal access
+
+```yaml
+config_repository: tidyorg-config
+```
+
+Set this to the repository that contains the live `config/` directory, and also
+declare that repository under `config/repositories/`. Terraform creates a
+`tidyorg-dashboard-writers` team containing the union of all project mentors and
+grants that team `push` on this repository. This lets mentors create dashboard
+branches and pull requests. It does not grant admin and therefore does not let
+them bypass the protected default branch.
+
+### 2.3 `people` — People
 
 ```yaml
 people:
@@ -87,7 +107,7 @@ person, so check it twice.
 > (`github_membership`) over to Terraform was deliberately deferred because it could affect
 > existing owner permissions.
 
-### 2.3 `defaults` — Every repo's inheritance
+### 2.4 `defaults` — Every repo's inheritance
 
 ```yaml
 defaults:
@@ -118,7 +138,7 @@ only the field that differs in its own block.
 The purpose of this section is this: a new repo is born with **safe defaults** even without any
 security setting written. The person creating the repo does not need to know branch protection.
 
-### 2.4 Per-Repo Configurations (`config/repositories/<repo-name>.yml`)
+### 2.5 Per-Repo Configurations (`config/repositories/<repo-name>.yml`)
 
 Each project's definition is stored in a `.yml` file created with its own name. For example, for the `payments-api` repo, the `config/repositories/payments-api.yml` file:
 

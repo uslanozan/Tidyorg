@@ -26,23 +26,24 @@ roles:
   head-of-engineering:
     scope: organization # Applied to all repos
     repo_permission: admin
-    bypass_branch_protection: true
 
   mentor:
     scope: repository # Valid only in the repo it is assigned to
     repo_permission: admin
-    bypass_branch_protection: true
 
   developer:
     scope: repository
     repo_permission: push # Repo-wide write; the branch restriction is applied separately
-    bypass_branch_protection: false
 
   # future work — not used for now
   # consultant:
   #   scope: repository
   #   repo_permission: pull
-  #   bypass_branch_protection: false
+
+# Repository containing the live config. Project mentors get push access here so
+# the dashboard can open PRs; branch protection still controls merge to main.
+# Uncomment after declaring the same repo under config/repositories/.
+# config_repository: your-config-repo
 
 # -----------------------------------------------------------------------------
 # PEOPLE — NOT in this file, but in separate files

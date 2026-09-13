@@ -30,6 +30,11 @@ That is why the app's permissions are deliberately reduced to the minimum:
   they cannot access anything outside the config repo (403). During installation, choose
   **"Only select repositories", NOT "All repositories"**, and add only the config repo.
 
+The App's user token uses the intersection of App and user permissions. Set
+`config_repository` in `organization.yml` so the engine grants all project mentors
+`push` through the `tidyorg-dashboard-writers` team. This permits proposal branches
+and PRs, while protected `main` remains review-gated.
+
 ## Setup From Scratch
 
 Reference config: [`dashboard-app-manifest.json`](dashboard-app-manifest.json)

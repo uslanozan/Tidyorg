@@ -49,6 +49,9 @@ jobs:
       - name: Validate
         run: terraform validate
 
+      - name: Test access model
+        run: terraform test
+
   dashboard:
     name: Dashboard
     runs-on: ubuntu-latest

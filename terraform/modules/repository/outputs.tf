@@ -49,3 +49,8 @@ output "team_ids" {
     developers = github_team.developers.id
   }
 }
+
+output "additional_team_access" {
+  description = "Additional control-plane grants applied to this repository"
+  value       = var.additional_team_access
+}

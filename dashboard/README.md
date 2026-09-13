@@ -166,6 +166,12 @@ changed key — including nested fields (`protected_branches`, `code_owners`).
 `serializeRepoConfig` (full regeneration, without comments) is used only for **new**
 files. `npm run verify:yaml` verifies this on every live config file.
 
+The user-to-server token cannot exceed the signed-in user's own GitHub access. For
+project mentors to create proposal branches, the engine config must set
+`organization.yml -> config_repository`. Terraform then grants the generated
+`tidyorg-dashboard-writers` team `push` on that repo only. Merge remains protected
+and privilege-bearing `privileged.yml` changes still require CODEOWNERS review.
+
 **Remaining coordination:** Before Phase 5 begins, the `repositories/*.yml` +
 `people.yml` field set must be frozen (so write mode does not migrate to a moving
 target — plan sync #2). `organization.yml` / `privileged.yml` are human-owned; the

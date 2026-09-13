@@ -107,7 +107,6 @@ export interface Project {
 export interface OrgRoleDefinition {
   scope: 'organization' | 'repository'
   repo_permission: string
-  bypass_branch_protection: boolean
 }
 
 export interface OrgDefaults {
@@ -140,6 +139,8 @@ export interface OrgConfig {
   /** No longer written in config; org name comes from TF_VAR_github_org_name. Dashboard uses CONFIG_OWNER. */
   organization?: string
   roles: Record<string, OrgRoleDefinition>
+  /** Repo containing this config; its project mentors may open dashboard PRs. */
+  config_repository?: string
   org_admin_team: string
   defaults: OrgDefaults
   profile?: OrgProfile

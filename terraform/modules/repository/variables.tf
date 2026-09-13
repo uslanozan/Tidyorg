@@ -190,6 +190,12 @@ variable "org_admin_team_slug" {
   default     = "platform-admins"
 }
 
+variable "additional_team_access" {
+  type        = map(string)
+  description = "Additional team slug -> repository permission grants, used for control-plane access"
+  default     = {}
+}
+
 # --- Branch protection ----------------------------------------------------
 
 variable "protected_branches" {

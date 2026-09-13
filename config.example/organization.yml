@@ -25,24 +25,27 @@ roles:
   head-of-engineering:
     scope: organization # Applies to all repos
     repo_permission: admin
-    bypass_branch_protection: true
 
   mentor:
     scope: repository # Valid only in the repo it is assigned to
     repo_permission: admin
-    bypass_branch_protection: true
 
   developer:
     scope: repository
     repo_permission: push # Write across the repo; branch restrictions are applied separately
-    bypass_branch_protection: false
 
   # Read-only repo role: people in a repo's `viewers:` list can see and clone it
   # but cannot push (e.g. an observer/advisor from another team).
   viewer:
     scope: repository
     repo_permission: pull
-    bypass_branch_protection: false
+
+# Repository containing this config directory. When it is declared under
+# repositories/, all project mentors receive push access there so the dashboard
+# can create branches and PRs on their behalf. Protected main still requires review.
+# Uncomment after adding the same repo under repositories/. Leave unset if the
+# dashboard is not used.
+# config_repository: your-config-repo
 
 # The organization-level team that carries the head-of-engineering role.
 org_admin_team: platform-admins
