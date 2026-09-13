@@ -79,9 +79,9 @@ with the `client_id`; the manifest does not include this box, so check it manual
 ### 2. Get the Client ID
 
 Once the App is created, the **Client ID** appears at the top of the page (`Iv1.xxxx...`
-or `Iv23xxxx...`). This value goes into the dashboard's `VITE_GITHUB_CLIENT_ID`
-environment variable. Device flow **requires no private key/secret** — the client_id
-can be public.
+or `Iv23xxxx...`). The published container receives it through `GITHUB_CLIENT_ID`;
+local Vite development uses `VITE_GITHUB_CLIENT_ID`. Device flow **requires no private
+key/secret** — the client_id can be public.
 
 ### 3. Install the App on the Config Repo
 
@@ -93,5 +93,9 @@ add the **config repo** → Install.
 
 ### 4. Configure the Dashboard
 
-`VITE_GITHUB_CLIENT_ID` = the Client ID above. The other settings (`owner`, `repo`,
-`branch`) come from the dashboard config.
+For the published container, set `GITHUB_CLIENT_ID`, `CONFIG_OWNER`, `CONFIG_REPO`, and
+optionally `CONFIG_BRANCH` (default: `main`). For local Vite development, use their
+`VITE_` equivalents from [`dashboard/.env.example`](../../dashboard/.env.example).
+
+The quickest container setup is the root
+[`docker-compose.ghcr.yml`](../../docker-compose.ghcr.yml).

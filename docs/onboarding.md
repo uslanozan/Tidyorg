@@ -15,7 +15,7 @@ including setup, to be spent on this.
       adds you to the configuration, and the system generates the invitation.
       If the invitation does not arrive, tell your mentor — most likely `apply` has not run yet.
       _This claim has actually been true since 2026-08-18: the invitation is generated from
-      [`terraform/config/organization.yml`](../terraform/config/organization.yml) →
+      [`terraform/config/organization.example.yml`](../terraform/config/organization.example.yml) →
       the `people` section. Before that, memberships were written by hand._
 
 - [ ] **Enable two-factor authentication (2FA).**

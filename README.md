@@ -11,6 +11,7 @@
   <img src="https://img.shields.io/badge/Terraform-%E2%89%A5%201.5-7B42BC?logo=terraform&logoColor=white" alt="Terraform >= 1.5">
   <img src="https://img.shields.io/badge/provider-integrations%2Fgithub%20~%3E%206.0-2b3137?logo=github&logoColor=white" alt="Provider: integrations/github ~> 6.0">
   <a href="https://github.com/uslanozan/Tidyorg/actions/workflows/ci.yml"><img src="https://github.com/uslanozan/Tidyorg/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/uslanozan/Tidyorg/releases/latest"><img src="https://img.shields.io/github/v/release/uslanozan/Tidyorg" alt="Latest release"></a>
 </p>
 
 Tidyorg is a config-driven engine for GitHub organizations. You describe repositories,
@@ -48,13 +49,16 @@ You need: a GitHub organization you own, and a **GitHub App** installed on it (b
 The published image includes the engine and a starter config, so cloning this repository is
 not required.
 
+The commands below use Bash syntax. On Windows, the Compose route immediately below is the
+simplest option because it avoids shell-specific volume syntax.
+
 ```bash
 # 1. Pull the image and scaffold a local config directory
-docker pull ghcr.io/uslanozan/tidyorg:latest
+docker pull ghcr.io/uslanozan/tidyorg:0.1.2
 mkdir -p config state
 docker run --rm \
   -v "$PWD/config:/config" \
-  ghcr.io/uslanozan/tidyorg:latest scaffold
+  ghcr.io/uslanozan/tidyorg:0.1.2 scaffold
 
 # edit config/ to describe your org (organization.yml, people.yml,
 # privileged.yml, repositories/*.yml)
@@ -71,7 +75,7 @@ docker run --rm \
   -e TF_VAR_github_org_name=your-org \
   -e TF_VAR_github_app_id=123456 \
   -e TF_VAR_github_app_installation_id=12345678 \
-  ghcr.io/uslanozan/tidyorg:latest plan
+  ghcr.io/uslanozan/tidyorg:0.1.2 plan
 
 # swap `plan` for `apply` once the plan looks right
 ```
@@ -85,7 +89,13 @@ fill in its variables, then run:
 ```bash
 docker compose -f docker-compose.ghcr.yml run --rm engine scaffold # first run only
 docker compose -f docker-compose.ghcr.yml run --rm engine plan
+docker compose -f docker-compose.ghcr.yml up -d dashboard
 ```
+
+The dashboard is then available at `http://localhost:8080`. Before starting it, replace
+the placeholder engine App IDs and dashboard `GITHUB_CLIENT_ID`, `CONFIG_OWNER`, and
+`CONFIG_REPO` values in the Compose file. The file pins v0.1.2 by default; set
+`TIDYORG_VERSION` when you deliberately upgrade.
 
 The regular [`docker-compose.yml`](docker-compose.yml) remains the source-build setup for
 contributors.
@@ -121,8 +131,9 @@ edit `privileged.yml`:
 | Repository → Actions | Read-only (live "applying/in-sync" badge) |
 | Repository → Metadata | Read |
 
-Enable "Device Flow" and install it on **only the config repo**. Give the dashboard its
-`client_id` via `VITE_GITHUB_CLIENT_ID`. See [`integrations/github-app/`](integrations/github-app/)
+Enable "Device Flow" and install it on **only the config repo**. For the published container,
+pass its `client_id` as the runtime variable `GITHUB_CLIENT_ID`. Local Vite development uses
+`VITE_GITHUB_CLIENT_ID` instead. See [`integrations/github-app/`](integrations/github-app/)
 for both manifests and step-by-step setup.
 
 To let project mentors open dashboard PRs, set `config_repository` in
@@ -185,11 +196,18 @@ docker run --rm \
   -e TF_VAR_github_org_name=your-org \
   -e TF_VAR_github_app_id=123456 \
   -e TF_VAR_github_app_installation_id=12345678 \
-  ghcr.io/uslanozan/tidyorg:latest plan
+  ghcr.io/uslanozan/tidyorg:0.1.2 plan
 ```
 
 The image is built with a local backend, so switching to `hcp`/`custom` re-runs `terraform init
 -reconfigure` at startup (cached providers are reused).
+
+## Verification
+
+v0.1.2 passed the repository CI, multi-architecture image checks, container smoke tests,
+and a manual end-to-end run against a disposable GitHub organization. The test steps,
+evidence, and remaining automation gaps are recorded in
+[`docs/verification.md`](docs/verification.md).
 
 ## Known limitations
 
@@ -204,13 +222,14 @@ The image is built with a local backend, so switching to `hcp`/`custom` re-runs 
 
 ```bash
 # Dashboard (React + Vite + TS)
-cd dashboard && npm install && npm run dev
+cd dashboard && npm ci && npm run dev
 
 # Engine (Terraform) — providers only, no state/credentials
 terraform -chdir=terraform init -backend=false && terraform -chdir=terraform validate
 
 # Checks CI runs before merge
 terraform -chdir=terraform fmt -check -recursive
+terraform -chdir=terraform test
 cd dashboard && npm run build && npm run verify:yaml
 ```
 
@@ -224,6 +243,8 @@ for conventions.
 
 ## Status
 
-Working name; pre-1.0. The engine, the web dashboard (full write mode via PRs), and their
-Docker images (a Terraform engine image and a separate dashboard image) are functional. A
-fresh-org first-apply still needs live verification before a 1.0 tag.
+Pre-1.0. The engine, the web dashboard (full write mode via PRs), and both Docker images are
+functional. A fresh disposable organization has been verified through initial apply,
+dashboard change, pull request, merge, reconciliation, and a final no-change plan. The live
+pilot is still manual; automated browser and disposable-organization E2E coverage remain
+before a 1.0 tag.

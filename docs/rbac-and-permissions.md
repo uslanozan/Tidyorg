@@ -125,7 +125,7 @@ exemption gates**. Closing one is not enough.
 | **org owner** | Organization | admin (every repo) | ✅ | ✅ | ✅ | ✅ *(cannot be turned off)* |
 | `tidyorg-infra-bot` | Organization | admin | ⚠️ see Section 8 | — | — | — |
 
-Role definitions: [`organization.yml`](../terraform/config/organization.yml) → `roles:`.
+Role definitions: [`organization.example.yml`](../terraform/config/organization.example.yml) → `roles:`.
 Branch rules: same file → `defaults.protected_branches`.
 
 ### 4.1 Repo creation authority — the thing GitHub cannot say _(2026-08-18)_

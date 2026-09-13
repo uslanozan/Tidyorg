@@ -111,7 +111,7 @@ only to this branch." Write access is always granted repo-wide, then branches ar
 ### ✅ Implemented state _(as of 2026-08-16)_
 All four steps above are live. `enforce_admins` is `false` on every branch and the
 `push_allowed_roles: [mentor, head-of-engineering]` allowlist is applied via
-[`config/organization.yml`](terraform/config/organization.yml).
+[`config/organization.example.yml`](terraform/config/organization.example.yml).
 
 The previous version of this file noted, as an inconsistency, that the hand-written `main`
 rule in `terraform/branch-protection.tf` had `enforce_admins = true`. That file is now empty:
@@ -342,7 +342,7 @@ Topics deliberately deferred, not required for the system to work:
 ### GitHub plan level
 On the Free plan, **branch protection and rulesets do not work in private repos.** The repos
 were therefore created `public`; the `defaults.visibility` value in
-[`config/organization.yml`](terraform/config/organization.yml) is `public` for this reason.
+[`config/organization.example.yml`](terraform/config/organization.example.yml) is `public` for this reason.
 Since most repos in a real organization will be private, **the GitHub Team plan is a
 precondition of this architecture.** It must be stated explicitly in the presentation.
 

@@ -8,15 +8,13 @@ Advantages of using an organization-owned GitHub App instead of a personal token
 - **Short-lived tokens** — the ~1-hour installation token is renewed automatically, so no long-lived secret is stored
 - **Narrow scope** — only the permitted repo and org operations can be performed
 
-## Current Setup
+## Required Values
 
 | Field | Value |
 | :--- | :--- |
 | **App ID** | `<YOUR_APP_ID>` |
 | **Installation ID** | `<YOUR_INSTALLATION_ID>` |
 | **Organization** | `your-org` |
-| **Installed** | 2026-08-15 |
-| **Installed by** | owner-a |
 
 ### Permissions
 

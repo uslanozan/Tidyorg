@@ -25,10 +25,14 @@ named `dashboard/<operation>-<repo>-<timestamp>` and opened as a PR.
 
 ```bash
 cd dashboard
-npm install
+npm ci
 cp .env.example .env    # fill in the values
 npm run dev             # http://localhost:5173
 ```
+
+To run the published image instead, use the root
+[`docker-compose.ghcr.yml`](../docker-compose.ghcr.yml) and open
+`http://localhost:8080`.
 
 | Command | Purpose |
 | :--- | :--- |
@@ -41,7 +45,7 @@ npm run dev             # http://localhost:5173
 
 | Variable | What it does |
 | :--- | :--- |
-| `VITE_GITHUB_CLIENT_ID` | The client_id of the tidyorg **GitHub App** (`Iv1.…`/`Iv23.…`). **Provided by owner-a.** No `client_secret` is needed or requested. |
+| `VITE_GITHUB_CLIENT_ID` | The client_id of the tidyorg **GitHub App** (`Iv1.…`/`Iv23.…`). No `client_secret` is needed or requested. |
 | `VITE_CONFIG_OWNER` | The owner of the config repo (org name) |
 | `VITE_CONFIG_REPO` | The name of the config repo |
 | `VITE_CONFIG_BRANCH` | The target branch for PRs (default `main`) |
@@ -54,6 +58,15 @@ approval the user gives on GitHub + the repo the App is installed on.
 entrypoint generates `env.js` from the container's environment variables) →
 `import.meta.env` (the `.env` baked into the build). Runtime always wins; locally,
 `.env` is enough.
+
+The published container maps runtime variables into those browser-facing names:
+
+| Container variable | Browser configuration |
+| :--- | :--- |
+| `GITHUB_CLIENT_ID` | `VITE_GITHUB_CLIENT_ID` |
+| `CONFIG_OWNER` | `VITE_CONFIG_OWNER` |
+| `CONFIG_REPO` | `VITE_CONFIG_REPO` |
+| `CONFIG_BRANCH` | `VITE_CONFIG_BRANCH` |
 
 ## Sign-in: GitHub App Device Flow — and a CORS note
 
@@ -77,11 +90,12 @@ endpoints do not send CORS headers, so they cannot be called directly from the
 browser. That is why the requests go through a same-origin path (`/gh-oauth/...`):
 
 - **In development** → the proxy in `vite.config.ts`
+- **In the Docker image** → the reverse proxy in `nginx.conf`
 - **On Vercel** → the `vercel.json` rewrite
 - **On Netlify** → `public/_redirects`
 
-All three are only redirects; there is no running server code, so the architecture
-is still backend-less. While the OAuth App is not yet ready, a personal access token
+These are reverse-proxy rules rather than an application backend; no client secret or
+server-side user session is introduced. While the GitHub App is not yet ready, a personal access token
 (`repo`, `read:org`) can be used via **"Advanced: sign in with token"** on the login
 screen.
 
@@ -144,14 +158,12 @@ dashboard/
 dashboard has **no** button like "make owner" — privilege escalation happens only
 through a manual PR + CODEOWNERS approval.
 
-## Work that depends on owner-a
+## Verification status
 
-| Need | Current status |
-| :--- | :--- |
-| GitHub App `client_id` | Code is ready; once the `client_id` arrives, writing it to `.env` / `window.__ENV__` is enough. Token sign-in is active in dev |
-| Creating the GitHub App + installing it on the config repo | owner-a (an org admin task) |
-| GitOps plan comment (Phase 3) | The screen is ready; on a PR without a posted comment, "Waiting for plan…" is shown and refreshed every 30 s |
-| JSON Schema (Week 6) | Manual checks exist in `src/services/validation.ts`; once the schema arrives, it is wired in there |
+The GitHub App Device Flow, config loading, dashboard change, pull-request creation,
+merge, Terraform apply, and final no-change plan were verified on a disposable organization
+for v0.1.2. See the root [`verification report`](../docs/verification.md) for the automated
+checks and remaining test boundary.
 
 ## Repo write mode — scope
 
@@ -172,7 +184,6 @@ project mentors to create proposal branches, the engine config must set
 `tidyorg-dashboard-writers` team `push` on that repo only. Merge remains protected
 and privilege-bearing `privileged.yml` changes still require CODEOWNERS review.
 
-**Remaining coordination:** Before Phase 5 begins, the `repositories/*.yml` +
-`people.yml` field set must be frozen (so write mode does not migrate to a moving
-target — plan sync #2). `organization.yml` / `privileged.yml` are human-owned; the
-dashboard does not touch them.
+The dashboard may propose supported changes to repository, people, and organization config.
+`privileged.yml` remains outside the dashboard write surface so organization-owner escalation
+stays human-controlled and review-gated.
