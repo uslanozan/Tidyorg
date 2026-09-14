@@ -47,7 +47,7 @@ jobs:
             file: ./dashboard/Dockerfile
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       # QEMU + Buildx enable the multi-arch (amd64 + arm64) build below.
       - name: Set up QEMU
