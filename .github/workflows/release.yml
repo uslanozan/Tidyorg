@@ -1,14 +1,16 @@
 # =============================================================================
-# Release — build and publish the Docker images to GHCR
+# Release — build and publish the Docker images to GHCR and Docker Hub
 # =============================================================================
 # On a version tag (e.g. v1.0.0) this builds both images and pushes them to the
-# GitHub Container Registry under the repo owner's namespace:
+# GitHub Container Registry and Docker Hub:
 #
 #   ghcr.io/<owner>/tidyorg            (engine, from ./Dockerfile)
 #   ghcr.io/<owner>/tidyorg-dashboard  (SPA,    from ./dashboard/Dockerfile)
+#   <dockerhub-user>/tidyorg
+#   <dockerhub-user>/tidyorg-dashboard
 #
-# Nothing here is account-specific: the namespace comes from the repo owner and
-# auth uses the built-in GITHUB_TOKEN, so it works wherever the repo lives.
+# GHCR uses the built-in GITHUB_TOKEN. Docker Hub uses the DOCKERHUB_USERNAME
+# repository variable and the read/write DOCKERHUB_TOKEN Actions secret.
 # Tag a release with:  git tag v0.1.0 && git push origin v0.1.0
 # A manual run (workflow_dispatch) publishes a throwaway :sha-... tag for testing.
 #
@@ -32,6 +34,7 @@ jobs:
   images:
     name: ${{ matrix.image }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -44,37 +47,45 @@ jobs:
             file: ./dashboard/Dockerfile
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # QEMU + Buildx enable the multi-arch (amd64 + arm64) build below.
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
 
       - name: Set up Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       # Derives image tags/labels from the git ref. metadata-action lowercases the
       # image name, so an owner with capitals is handled. On a semver tag it also
       # adds :latest (flavor latest=auto).
       - name: Compute tags
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
-          images: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}
+          images: |
+            ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}
+            ${{ vars.DOCKERHUB_USERNAME }}/${{ matrix.image }}
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=sha,enable=${{ github.ref_type != 'tag' }}
 
       - name: Build and push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.file }}

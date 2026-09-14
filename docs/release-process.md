@@ -1,7 +1,8 @@
 # Release Process
 
-Tidyorg uses explicit semantic-version tags. A tag builds the engine and dashboard images;
-the GitHub Release is published after those images have been verified.
+Tidyorg uses explicit semantic-version tags. A tag builds the engine and dashboard images
+once, publishes them to both GHCR and Docker Hub, and the GitHub Release is created after
+both registries have been verified.
 
 Current release: [`v0.1.2`](https://github.com/uslanozan/Tidyorg/releases/tag/v0.1.2)
 
@@ -56,18 +57,21 @@ with a new patch version.
 ## 4. Let the image workflow finish
 
 The root [`.github/workflows/release.yml`](../.github/workflows/release.yml) runs on `v*`
-tags and publishes:
+tags and publishes the same build to both registries:
 
 ```text
 ghcr.io/uslanozan/tidyorg:<version>
 ghcr.io/uslanozan/tidyorg-dashboard:<version>
+uslanozan/tidyorg:<version>
+uslanozan/tidyorg-dashboard:<version>
 ```
 
 For a tag such as `v0.1.3`, the workflow also updates `0.1` and `latest`. Both images are
 built for `linux/amd64` and `linux/arm64`. A manual `workflow_dispatch` run publishes only
 a temporary `sha-...` tag.
 
-Wait for both matrix jobs to succeed. A successful engine job alone is not a complete release.
+Wait for both matrix jobs and both registry exports to succeed. A successful engine job alone
+is not a complete release.
 
 ## 5. Verify the published artifacts
 
