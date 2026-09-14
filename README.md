@@ -54,11 +54,11 @@ simplest option because it avoids shell-specific volume syntax.
 
 ```bash
 # 1. Pull the image and scaffold a local config directory
-docker pull ghcr.io/uslanozan/tidyorg:0.1.2
+docker pull ghcr.io/uslanozan/tidyorg:0.1.3
 mkdir -p config state
 docker run --rm \
   -v "$PWD/config:/config" \
-  ghcr.io/uslanozan/tidyorg:0.1.2 scaffold
+  ghcr.io/uslanozan/tidyorg:0.1.3 scaffold
 
 # edit config/ to describe your org (organization.yml, people.yml,
 # privileged.yml, repositories/*.yml)
@@ -75,7 +75,7 @@ docker run --rm \
   -e TF_VAR_github_org_name=your-org \
   -e TF_VAR_github_app_id=123456 \
   -e TF_VAR_github_app_installation_id=12345678 \
-  ghcr.io/uslanozan/tidyorg:0.1.2 plan
+  ghcr.io/uslanozan/tidyorg:0.1.3 plan
 
 # swap `plan` for `apply` once the plan looks right
 ```
@@ -94,11 +94,26 @@ docker compose -f docker-compose.ghcr.yml up -d dashboard
 
 The dashboard is then available at `http://localhost:8080`. Before starting it, replace
 the placeholder engine App IDs and dashboard `GITHUB_CLIENT_ID`, `CONFIG_OWNER`, and
-`CONFIG_REPO` values in the Compose file. The file pins v0.1.2 by default; set
+`CONFIG_REPO` values in the Compose file. The file pins v0.1.3 by default; set
 `TIDYORG_VERSION` when you deliberately upgrade.
 
 The regular [`docker-compose.yml`](docker-compose.yml) remains the source-build setup for
 contributors.
+
+GHCR is the canonical registry and Docker Hub is an automated mirror. Both receive the
+same multi-architecture build and version tags, so users may choose either source:
+
+```bash
+# Engine
+docker pull ghcr.io/uslanozan/tidyorg:0.1.3
+docker pull uslanozan/tidyorg:0.1.3
+
+# Dashboard
+docker pull ghcr.io/uslanozan/tidyorg-dashboard:0.1.3
+docker pull uslanozan/tidyorg-dashboard:0.1.3
+```
+
+To use the Docker Hub mirror with Compose, set `TIDYORG_REGISTRY=uslanozan`.
 
 ## GitHub Apps
 
@@ -196,7 +211,7 @@ docker run --rm \
   -e TF_VAR_github_org_name=your-org \
   -e TF_VAR_github_app_id=123456 \
   -e TF_VAR_github_app_installation_id=12345678 \
-  ghcr.io/uslanozan/tidyorg:0.1.2 plan
+  ghcr.io/uslanozan/tidyorg:0.1.3 plan
 ```
 
 The image is built with a local backend, so switching to `hcp`/`custom` re-runs `terraform init
@@ -204,9 +219,9 @@ The image is built with a local backend, so switching to `hcp`/`custom` re-runs 
 
 ## Verification
 
-v0.1.2 passed the repository CI, multi-architecture image checks, container smoke tests,
-and a manual end-to-end run against a disposable GitHub organization. The test steps,
-evidence, and remaining automation gaps are recorded in
+The release candidate passed the repository CI, multi-architecture image checks, container
+smoke tests, and a manual end-to-end run against a disposable GitHub organization. The test
+steps, evidence, and remaining automation gaps are recorded in
 [`docs/verification.md`](docs/verification.md).
 
 ## Known limitations

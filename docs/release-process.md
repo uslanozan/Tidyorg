@@ -4,7 +4,7 @@ Tidyorg uses explicit semantic-version tags. A tag builds the engine and dashboa
 once, publishes them to both GHCR and Docker Hub, and the GitHub Release is created after
 both registries have been verified.
 
-Current release: [`v0.1.2`](https://github.com/uslanozan/Tidyorg/releases/tag/v0.1.2)
+Current release: [`v0.1.3`](https://github.com/uslanozan/Tidyorg/releases/tag/v0.1.3)
 
 The older generic, commit-derived release design is preserved in
 [`release-template-process-2026-08.md`](release-template-process-2026-08.md).

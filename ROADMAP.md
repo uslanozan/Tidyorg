@@ -5,7 +5,7 @@ is preserved in [`ROADMAP-2026-08.md`](ROADMAP-2026-08.md).
 
 Last updated: 2026-09-14
 
-## Current state — v0.1.2
+## Current state — v0.1.3
 
 Tidyorg is a functional pre-1.0 GitHub organization governance engine:
 

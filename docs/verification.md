@@ -5,6 +5,25 @@ what is not automated yet.
 
 Last verified: 2026-09-14
 
+## v0.1.3 release-candidate checks
+
+The dual-registry workflow was exercised from commit `be3be2b` before tagging v0.1.3.
+Run [`34791440540`](https://github.com/uslanozan/Tidyorg/actions/runs/34791440540)
+authenticated to both registries and published matching `linux/amd64` and `linux/arm64`
+indexes under the temporary `sha-be3be2b` tag:
+
+| Image | Matching GHCR / Docker Hub digest |
+| :--- | :--- |
+| `tidyorg` | `sha256:2ca59b5cc7c38b0d537629951afefe6516cc99a2401878397da1732ad00bb625` |
+| `tidyorg-dashboard` | `sha256:3348b354ee973b5d026aabbb65fe70f283a2458542e7e310d63aff60171d1c3f` |
+
+The v0.1.3 preparation was then checked with Terraform format, initialization,
+validation and test; a clean dashboard dependency install, production build and YAML
+round trip; and both GHCR and Docker Hub Compose resolutions. All passed, and `npm audit`
+reported zero vulnerabilities.
+
+The checks below document the functional v0.1.2 baseline reused by this patch release.
+
 ## Automated checks
 
 The [`CI` workflow](https://github.com/uslanozan/Tidyorg/actions/workflows/ci.yml) runs on
